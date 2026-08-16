@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 
 namespace MhwDpsMeter;
 
@@ -18,27 +19,71 @@ internal sealed class AddressMap
 
     public int[] GetOffsets(string key) => _offsets[key];
 
-    public static AddressMap? TryLoad(string pluginDirectory, int filePrivatePart)
+    public bool TryGetAddress(string key, out nint value) => _addresses.TryGetValue(key, out value);
+
+    public bool TryGetOffsets(string key, out int[] value) => _offsets.TryGetValue(key, out value!);
+
+    public static AddressMap? TryLoad(IEnumerable<string> searchDirectories, int filePrivatePart)
     {
-        var addressesDir = Path.Combine(pluginDirectory, "Addresses");
-        var exact = Path.Combine(addressesDir, $"MonsterHunterWorld.{filePrivatePart}.map");
-        if (File.Exists(exact))
-            return Parse(exact);
+        var dirs = searchDirectories
+            .Where(dir => !string.IsNullOrWhiteSpace(dir))
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        if (!Directory.Exists(addressesDir))
-            return null;
+        foreach (var dir in dirs)
+        {
+            foreach (var folder in new[] { Path.Combine(dir, "Addresses"), dir })
+            {
+                var exact = Path.Combine(folder, $"MonsterHunterWorld.{filePrivatePart}.map");
+                if (File.Exists(exact))
+                    return ParseFile(exact);
+            }
+        }
 
-        var fallback = Directory.GetFiles(addressesDir, "MonsterHunterWorld.*.map")
-            .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
+        foreach (var dir in dirs)
+        {
+            foreach (var folder in new[] { Path.Combine(dir, "Addresses"), dir })
+            {
+                if (!Directory.Exists(folder))
+                    continue;
 
-        return fallback is null ? null : Parse(fallback);
+                var fallback = Directory.GetFiles(folder, "MonsterHunterWorld.*.map")
+                    .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+                if (fallback is not null)
+                    return ParseFile(fallback);
+            }
+        }
+
+        return TryLoadEmbedded(filePrivatePart);
     }
 
-    public static AddressMap Parse(string path)
+    public static AddressMap? TryLoadEmbedded(int filePrivatePart)
     {
-        var map = new AddressMap(path);
-        foreach (var raw in File.ReadAllLines(path))
+        var assembly = Assembly.GetExecutingAssembly();
+        var names = assembly.GetManifestResourceNames();
+        var preferred = names.FirstOrDefault(name =>
+            name.EndsWith($"MonsterHunterWorld.{filePrivatePart}.map", StringComparison.OrdinalIgnoreCase));
+        var any = preferred ?? names.FirstOrDefault(name =>
+            name.EndsWith(".map", StringComparison.OrdinalIgnoreCase));
+        if (any is null)
+            return null;
+
+        using var stream = assembly.GetManifestResourceStream(any);
+        if (stream is null)
+            return null;
+
+        using var reader = new StreamReader(stream);
+        return ParseLines(reader.ReadToEnd().Split('\n'), $"embedded:{any}");
+    }
+
+    public static AddressMap ParseFile(string path) => ParseLines(File.ReadAllLines(path), path);
+
+    private static AddressMap ParseLines(IEnumerable<string> lines, string source)
+    {
+        var map = new AddressMap(source);
+        foreach (var raw in lines)
         {
             var line = raw.Trim();
             if (line.Length == 0 || line.StartsWith('#'))

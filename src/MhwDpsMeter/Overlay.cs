@@ -1,5 +1,4 @@
 using ImGuiNET;
-using SharpPluginLoader.Core;
 
 namespace MhwDpsMeter;
 
@@ -18,7 +17,7 @@ internal sealed class Overlay
 
     public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest)
     {
-        if (!Visible || !inQuest || snapshot is null || snapshot.Members.Length == 0)
+        if (!Visible || !inQuest)
             return;
 
         var flags = ImGuiWindowFlags.NoTitleBar
@@ -38,12 +37,19 @@ internal sealed class Overlay
             return;
         }
 
+        ImGui.TextUnformatted("DPS");
+        ImGui.Separator();
+
+        if (snapshot is null || snapshot.Members.Length == 0)
+        {
+            ImGui.TextDisabled("Waiting for hunt data...");
+            ImGui.End();
+            return;
+        }
+
         var members = snapshot.Members.OrderByDescending(member => member.Damage).ToArray();
         var duration = Math.Max(elapsedSeconds, 0.001f);
         var total = Math.Max(snapshot.TotalDamage, 0);
-
-        ImGui.TextUnformatted("DPS");
-        ImGui.Separator();
 
         if (ImGui.BeginTable("##mhw_dps_rows", 4, ImGuiTableFlags.SizingStretchProp))
         {
@@ -79,8 +85,10 @@ internal sealed class Overlay
         ImGui.End();
     }
 
-    public void DrawSettings(FightLogStore logs)
+    public void DrawSettings(FightLogStore? logs, string diagnostics)
     {
+        ImGui.TextWrapped(diagnostics);
+
         var visible = Visible;
         if (ImGui.Checkbox("Show overlay", ref visible))
             Visible = visible;
@@ -90,10 +98,11 @@ internal sealed class Overlay
             Opacity = opacity;
 
         ImGui.TextUnformatted("Toggle overlay: F10");
+        ImGui.TextDisabled("Overlay only appears after you depart into a quest.");
         ImGui.Separator();
         ImGui.TextUnformatted("Fight logs");
 
-        if (logs.History.Count == 0)
+        if (logs is null || logs.History.Count == 0)
         {
             ImGui.TextDisabled("No hunts recorded yet.");
             return;

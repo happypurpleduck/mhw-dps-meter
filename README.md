@@ -13,44 +13,42 @@ During a quest it shows each hunter’s **name**, **total damage**, **DPS**, and
 
 ## Linux / Proton install
 
+Proton 11 (and CachyOS Proton) will not load the `msvcrt.dll` injector from SharpPluginLoader 0.0.9. Use a newer Linux build whose injector is `ucrtbase.dll`.
+
 1. Install prefix dependencies:
 
    ```bash
    protontricks 582010 dotnetdesktop8 d3dcompiler_47
    ```
 
-2. Extract the SharpPluginLoader Linux release into the game root (same folder as `MonsterHunterWorld.exe`). You should see `ucrtbase.dll`.
+2. Download a **post-0.0.9** Linux package (GitHub Actions artifact `SharpPluginLoader-*-linux.zip` from [MSBuild on master](https://github.com/Fexty12573/SharpPluginLoader/actions/workflows/msbuild.yml)) and extract it into the game root. You must have `ucrtbase.dll` beside `MonsterHunterWorld.exe`.
 
 3. Optional: extract Stracker’s Loader into that same folder (`dinput8.dll`).
 
-4. Steam launch options:
+4. Steam launch options (keep Wayland/capture vars if you use them):
 
    ```text
-   WINEDLLOVERRIDES="ucrtbase=n,b" %command%
+   WINEDLLOVERRIDES="ucrtbase=n,b;dinput8=n,b" %command%
    ```
 
-   With Stracker’s Loader as well:
+   If a system `DOTNET_ROOT` breaks CLR load:
 
    ```text
-   WINEDLLOVERRIDES="ucrtbase,dinput8=n,b" %command%
+   DOTNET_ROOT= WINEDLLOVERRIDES="ucrtbase=n,b;dinput8=n,b" %command%
    ```
 
-   If the game fails to start because a system `DOTNET_ROOT` leaks into Proton:
-
-   ```text
-   DOTNET_ROOT= WINEDLLOVERRIDES="ucrtbase,dinput8=n,b" %command%
-   ```
-
-5. Copy the plugin folder into the game:
+5. Copy **only** the plugin folder (not a second copy in `CSharp/`):
 
    ```text
    nativePC/plugins/CSharp/MhwDpsMeter/MhwDpsMeter.dll
    nativePC/plugins/CSharp/MhwDpsMeter/Addresses/MonsterHunterWorld.421631.map
    ```
 
-   After a Release build those files are in `dist/Release/nativePC/plugins/CSharp/MhwDpsMeter/`.
+6. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. Depart on a quest; overlay is top-right. **F10** toggles it.
 
-6. Launch the game. Press **F9** for the SharpPluginLoader menu (DPS Meter settings and fight logs). Depart on a quest; the overlay appears in the top-right. **F10** toggles it.
+If F9 does nothing, SPL still is not injecting. Check that `ucrtbase.dll` exists in the game root and that launch options include `ucrtbase=n,b`. Loader logs go next to the exe when `loader-config.json` has `"logfile": true`.
+
+SharpPluginLoader reloads a plugin when its DLL changes. Under Proton that watcher often misses the copy, so quit the game fully and relaunch after updating the plugin.
 
 ## Build
 
@@ -70,8 +68,8 @@ dist/Release/nativePC/plugins/CSharp/MhwDpsMeter/
 
 | Column | Meaning |
 | --- | --- |
-| Name | Party slot name (`*` = you) |
-| Damage | Quest-award total (the same number the game uses at the end screen) |
+| Name | Party slot name, or your save name when the party list is empty (`*` = you) |
+| Damage | Quest-award total when the online session table exists; otherwise HP lost on spawned monsters |
 | DPS | `damage / seconds since you entered the quest` |
 | % | Share of current party total |
 
@@ -92,9 +90,9 @@ If the `logs` folder cannot be created, the overlay still runs and a warning is 
 ## Limitations
 
 - Address maps break when Capcom patches the exe. Add a new `Addresses/MonsterHunterWorld.<FilePrivatePart>.map` for that build.
-- Expeditions and the Guiding Lands do not fill the quest-award damage table; the overlay stays hidden and no log is written.
+- Overlay stays hidden in the hub, expeditions, and the Guiding Lands. Accepting a quest is not enough; you have to depart.
+- Solo and Challenge Arena often never allocate the quest-award damage table. In that case the meter uses monster HP lost (includes palico hits) and cannot split party damage.
 - SOS join-in-progress DPS is relative to **when you entered**, not the host’s quest timer.
-- Only weapon damage the game itself counts (same as the quest awards screen).
 - Read-only memory. No function hooks, no CRCBypass.
 
 ## Credits

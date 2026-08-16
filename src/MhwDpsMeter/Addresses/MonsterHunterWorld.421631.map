@@ -2,10 +2,12 @@
 # RVAs relative to MonsterHunterWorld.exe. Pointer chains match the
 # publicly documented quest-award party/damage layout used by community overlays.
 
+Address LEVEL_OFFSET 0x05011710
 Address PARTY_ADDRESS 0x050112F0
 Address DAMAGE_ADDRESS 0x051C2478
 Address SESSION_OFFSET 0x051C2478
 
+Offset LevelOffsets 0xA8
 Offset PARTY_OFFSETS 0x1AB0
 Offset DAMAGE_OFFSETS 0x258,0x38,0x450,0x8,0x48
 Offset SESSION_PARTY_OFFSETS 0x258,0x10,0x6574

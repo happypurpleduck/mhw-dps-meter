@@ -8,6 +8,8 @@ internal static class SafeMemory
     private const uint MemCommit = 0x1000;
     private const uint PageNoAccess = 0x01;
     private const uint PageGuard = 0x100;
+    private const ulong UserSpaceMin = 0x10000;
+    private const ulong UserSpaceMax = 0x00007FFFFFFFFFFFul;
 
     public static bool TryRead<T>(nint address, out T value) where T : unmanaged
     {
@@ -31,37 +33,101 @@ internal static class SafeMemory
 
     public static nint Follow(nint address, int[] offsets)
     {
-        var current = address;
-        foreach (var offset in offsets)
-        {
-            if (!TryRead<nint>(current, out var next) || next == 0)
-                return 0;
+        return Follow(address, offsets, out _);
+    }
 
-            current = next + offset;
+    public static nint Follow(nint address, int[] offsets, out string error)
+    {
+        var current = address;
+        for (var i = 0; i < offsets.Length; i++)
+        {
+            if (!LooksLikeUserPointer(current))
+            {
+                error = $"hop {i}/{offsets.Length} bad current 0x{current:X}";
+                return 0;
+            }
+
+            if (!TryRead<nint>(current, out var next))
+            {
+                error = $"hop {i}/{offsets.Length} unreadable 0x{current:X}";
+                return 0;
+            }
+
+            if (next == 0)
+            {
+                error = i == 0
+                    ? $"session not allocated at 0x{current:X}"
+                    : $"hop {i}/{offsets.Length} null at 0x{current:X}";
+                return 0;
+            }
+
+            current = next + offsets[i];
         }
 
+        error = "";
+        return current;
+    }
+
+    public static nint FollowFromObject(nint obj, int[] offsets, out string error)
+    {
+        if (offsets.Length == 0)
+        {
+            error = "";
+            return obj;
+        }
+
+        var current = obj + offsets[0];
+        for (var i = 1; i < offsets.Length; i++)
+        {
+            if (!LooksLikeUserPointer(current))
+            {
+                error = $"obj hop {i}/{offsets.Length} bad current 0x{current:X}";
+                return 0;
+            }
+
+            if (!TryRead<nint>(current, out var next) || next == 0)
+            {
+                error = $"obj hop {i}/{offsets.Length} null at 0x{current:X}";
+                return 0;
+            }
+
+            current = next + offsets[i];
+        }
+
+        error = "";
         return current;
     }
 
     public static bool IsReadable(nint address, uint size)
     {
-        if (address == 0 || size == 0)
+        if (!LooksLikeUserPointer(address) || size == 0)
             return false;
 
-        if (VirtualQuery(address, out var info, (nuint)Marshal.SizeOf<MemoryBasicInformation>()) == 0)
-            return false;
+        var length = (nuint)Marshal.SizeOf<MemoryBasicInformation>();
+        if (VirtualQuery(address, out var info, length) == 0)
+            return true;
 
-        if (info.State != MemCommit)
+        if (info.State != 0 && info.State != MemCommit)
             return false;
 
         if ((info.Protect & PageNoAccess) != 0 || (info.Protect & PageGuard) != 0)
             return false;
 
+        // Wine often reports RegionSize 0 for heap pages. The protect/state check is enough.
+        if (info.RegionSize == 0)
+            return true;
+
         var start = (nuint)address;
         var end = start + size;
         var regionStart = (nuint)info.BaseAddress;
         var regionEnd = regionStart + (nuint)info.RegionSize;
-        return start >= regionStart && end <= regionEnd;
+        return regionEnd <= regionStart || (start >= regionStart && end <= regionEnd);
+    }
+
+    public static bool LooksLikeUserPointer(nint address)
+    {
+        var value = (ulong)address;
+        return value >= UserSpaceMin && value <= UserSpaceMax;
     }
 
     [DllImport("kernel32.dll")]
