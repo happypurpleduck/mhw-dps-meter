@@ -1,0 +1,17 @@
+# Iceborne build 421810 (window title "MONSTER HUNTER: WORLD(421810)").
+# RVAs relative to MonsterHunterWorld.exe, taken from HunterPie's
+# MonsterHunterWorld.421810.map. The exe's version resource is 1.0.0.0, so the
+# build number is read from the title string embedded in the exe.
+
+Address LEVEL_OFFSET 0x05013950
+Address PARTY_ADDRESS 0x05013530
+Address DAMAGE_ADDRESS 0x051C46B8
+Address SESSION_OFFSET 0x051C46B8
+Address QUEST_DATA_ADDRESS 0x0500ED30
+Address FUN_DEAL_DAMAGE 0x01CC5F80
+
+Offset LevelOffsets 0xA8
+Offset PARTY_OFFSETS 0x1AB0
+Offset DAMAGE_OFFSETS 0x258,0x38,0x450,0x8,0x48
+Offset SESSION_PARTY_OFFSETS 0x258,0x10,0x6574
+Offset QUEST_DATA_OFFSETS 0x0

@@ -38,6 +38,8 @@ internal sealed class Overlay
         }
 
         ImGui.TextUnformatted("DPS");
+        ImGui.SameLine();
+        ImGui.TextDisabled(Plugin.BuildStamp);
         ImGui.Separator();
 
         if (snapshot is null || snapshot.Members.Length == 0)
@@ -47,24 +49,36 @@ internal sealed class Overlay
             return;
         }
 
-        var members = snapshot.Members.OrderByDescending(member => member.Damage).ToArray();
-        var duration = Math.Max(elapsedSeconds, 0.001f);
+        var members = snapshot.Members
+            .OrderByDescending(member => member.Damage)
+            .ThenBy(member => member.Slot)
+            .ToArray();
+        var duration = Math.Max(elapsedSeconds, 1f);
         var total = Math.Max(snapshot.TotalDamage, 0);
 
-        if (ImGui.BeginTable("##mhw_dps_rows", 4, ImGuiTableFlags.SizingStretchProp))
+        if (ImGui.BeginTable("##mhw_dps_rows", 4, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.RowBg))
         {
             ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("dmg", ImGuiTableColumnFlags.WidthFixed, 72f);
             ImGui.TableSetupColumn("dps", ImGuiTableColumnFlags.WidthFixed, 52f);
             ImGui.TableSetupColumn("pct", ImGuiTableColumnFlags.WidthFixed, 48f);
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.TextDisabled("Name");
+            ImGui.TableNextColumn();
+            ImGui.TextDisabled("Dmg");
+            ImGui.TableNextColumn();
+            ImGui.TextDisabled("DPS");
+            ImGui.TableNextColumn();
+            ImGui.TextDisabled("%");
 
             foreach (var member in members)
             {
                 var color = ImGui.ColorConvertFloat4ToU32(SlotColors[Math.Clamp(member.Slot, 0, SlotColors.Length - 1)]);
                 ImGui.PushStyleColor(ImGuiCol.Text, color);
 
-                var dps = member.Damage / duration;
-                var percent = total > 0 ? 100f * member.Damage / total : 0f;
+                var dps = member.Dps;
+                var percent = member.Percent;
                 var marker = member.IsLocal ? "*" : "";
 
                 ImGui.TableNextRow();
@@ -82,12 +96,17 @@ internal sealed class Overlay
             ImGui.EndTable();
         }
 
+        ImGui.Separator();
+        ImGui.TextUnformatted($"Total  {total:N0}   {total / duration:0.0} DPS");
+
         ImGui.End();
     }
 
-    public void DrawSettings(FightLogStore? logs, string diagnostics)
+    public void DrawSettings(FightLogStore? logs, string diagnostics, Action onDumpDiagnostics)
     {
         ImGui.TextWrapped(diagnostics);
+        if (ImGui.Button("Dump diagnostics (F6)"))
+            onDumpDiagnostics();
 
         var visible = Visible;
         if (ImGui.Checkbox("Show overlay", ref visible))
@@ -97,8 +116,8 @@ internal sealed class Overlay
         if (ImGui.SliderFloat("Opacity", ref opacity, 0.25f, 1f))
             Opacity = opacity;
 
-        ImGui.TextUnformatted("Toggle overlay: F10");
-        ImGui.TextDisabled("Overlay only appears after you depart into a quest.");
+        ImGui.TextUnformatted("Toggle overlay: F10   Dump diagnostics: F6");
+        ImGui.TextDisabled("Overlay after depart. Name / damage / DPS / % of party total.");
         ImGui.Separator();
         ImGui.TextUnformatted("Fight logs");
 

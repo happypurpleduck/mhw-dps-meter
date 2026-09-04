@@ -6,7 +6,7 @@ During a quest it shows each hunter’s **name**, **total damage**, **DPS**, and
 
 ## Requirements
 
-- Monster Hunter World: Iceborne (Steam), currently mapped for file version **421631** (game **15.23**)
+- Monster Hunter World: Iceborne (Steam), game **15.23**. Address maps ship for builds **421810** (current Steam build) and **421631**. The build is the number in the game window title, `MONSTER HUNTER: WORLD(421810)`.
 - [SharpPluginLoader](https://github.com/Fexty12573/SharpPluginLoader/releases) **Linux** zip (`ucrtbase.dll`)
 - .NET Desktop Runtime 8.0 **inside the Proton prefix**
 - Optional: [Stracker’s Loader](https://www.nexusmods.com/monsterhunterworld/mods/1982) if you also use native `nativePC` mods. This overlay does **not** need it, and does **not** need CRCBypass.
@@ -41,10 +41,11 @@ Proton 11 (and CachyOS Proton) will not load the `msvcrt.dll` injector from Shar
 
    ```text
    nativePC/plugins/CSharp/MhwDpsMeter/MhwDpsMeter.dll
+   nativePC/plugins/CSharp/MhwDpsMeter/Addresses/MonsterHunterWorld.421810.map
    nativePC/plugins/CSharp/MhwDpsMeter/Addresses/MonsterHunterWorld.421631.map
    ```
 
-6. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. Depart on a quest; overlay is top-right. **F10** toggles it.
+6. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. The first line, `Plugin build: 0.3.0+<UTC build time>`, tells you which DLL is actually running; if it does not match the one you copied, quit and relaunch. `Game build:` should name the map matching your exe. Depart on a quest; overlay is top-right. **F10** toggles it.
 
 If F9 does nothing, SPL still is not injecting. Check that `ucrtbase.dll` exists in the game root and that launch options include `ucrtbase=n,b`. Loader logs go next to the exe when `loader-config.json` has `"logfile": true`.
 
@@ -68,12 +69,16 @@ dist/Release/nativePC/plugins/CSharp/MhwDpsMeter/
 
 | Column | Meaning |
 | --- | --- |
-| Name | Party slot name, or your save name when the party list is empty (`*` = you) |
-| Damage | Quest-award total when the online session table exists; otherwise HP lost on spawned monsters |
-| DPS | `damage / seconds since you entered the quest` |
+| Name | Party slot name (`*` = you) |
+| Damage | Per-hunter quest-award total (the results-screen value). Solo/arena without that table falls back to your live hits or large-monster HP lost |
+| DPS | `damage / in-game quest timer` (same clock for every hunter). Falls back to time since you entered if the quest timer is not running |
 | % | Share of current party total |
 
 Slot colors follow the in-game party HUD (orange / green / blue / pink).
+
+## Diagnostics
+
+**F6** (or the **Dump diagnostics** button in the F9 panel) re-reads the party (even in the hub) and writes `logs/live-debug.json` plus a one-line-per-second `logs/live-debug.log` while in a quest. The F9 panel shows the same data: detected game build and map, party size, per-slot names and raw award damage, the hit-hook call counter, and the monsters the game reports. `scripts/watch-live-debug.sh` tails these from a terminal.
 
 ## Fight logs
 
@@ -89,11 +94,12 @@ If the `logs` folder cannot be created, the overlay still runs and a warning is 
 
 ## Limitations
 
-- Address maps break when Capcom patches the exe. Add a new `Addresses/MonsterHunterWorld.<FilePrivatePart>.map` for that build.
+- Address maps break when Capcom patches the exe. The plugin reads the build number from the `MONSTER HUNTER: WORLD(<build>)` string inside the exe (the exe's version resource is 1.0.0.0, so it cannot be used). Add `Addresses/MonsterHunterWorld.<build>.map` for a new build; HunterPie's `HunterPie/Address/MonsterHunterWorld.<build>.map` has the same keys. If no exact map exists the newest one is used, the hit hook is disabled, and the F9 menu shows `(MISMATCH)`.
 - Overlay stays hidden in the hub, expeditions, and the Guiding Lands. Accepting a quest is not enough; you have to depart.
-- Solo and Challenge Arena often never allocate the quest-award damage table. In that case the meter uses monster HP lost (includes palico hits) and cannot split party damage.
-- SOS join-in-progress DPS is relative to **when you entered**, not the host’s quest timer.
-- Read-only memory. No function hooks, no CRCBypass.
+- Solo and Challenge Arena often never allocate the quest-award damage table. In that case the meter uses your hooked hits or large-monster HP lost (still includes palico chip on HP).
+- SOS join-in-progress DPS uses the **quest timer** (HunterPie’s default). Your personal DPS looks lower than “time since I joined” because the clock includes the hunt before you arrived.
+- Overlay stays on the hunting map after the quest ends, then hides in the hub.
+- Party damage comes from the quest-award table the game syncs for the results screen. The deal-damage hook only ever sees your own hits (the game does not run it for other hunters), so it is just a live local fallback for solo and arena.
 
 ## Credits
 

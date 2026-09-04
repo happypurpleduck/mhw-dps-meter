@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
-using SharpPluginLoader.Core;
-using SharpPluginLoader.Core.Networking;
+using SharpPluginLoader.Core.Entities;
 
 namespace MhwDpsMeter;
 
@@ -11,8 +10,24 @@ internal sealed class PartyMemberSnapshot
     public string Name { get; init; } = "";
     public int Damage { get; init; }
     public bool IsLocal { get; init; }
+    public nint Instance { get; init; }
     public float Dps { get; init; }
     public float Percent { get; init; }
+
+    public PartyMemberSnapshot With(
+        string? name = null,
+        int? damage = null,
+        bool? isLocal = null,
+        nint? instance = null) => new()
+    {
+        Slot = Slot,
+        Name = name ?? Name,
+        Damage = damage ?? Damage,
+        IsLocal = isLocal ?? IsLocal,
+        Instance = instance ?? Instance,
+        Dps = Dps,
+        Percent = Percent
+    };
 }
 
 internal sealed class PartySnapshot
@@ -20,8 +35,17 @@ internal sealed class PartySnapshot
     public PartyMemberSnapshot[] Members { get; init; } = [];
     public int TotalDamage { get; init; }
     public int[] SlotDamage { get; init; } = new int[4];
+    public bool HasAwardTable { get; init; }
 }
 
+/// <summary>
+/// Party damage reader following HunterPie's MHWPlayer.GetParty layout:
+///   partySize   = Deref&lt;int&gt;(SESSION_OFFSET, SESSION_PARTY_OFFSETS)      (0 = solo, no session party)
+///   partyArray  = Read(PARTY_ADDRESS, PARTY_OFFSETS)                        4 structs of 0x58 bytes
+///   member      = Read&lt;ptr&gt;(partyArray + slot*0x58); name (UTF-8, 32 bytes) at member+0x49
+///   damageBase  = Read(DAMAGE_ADDRESS, DAMAGE_OFFSETS); damage[slot] = Read&lt;int&gt;(damageBase + slot*0x2A0)
+/// Local player = party member whose name equals the save-file name.
+/// </summary>
 internal sealed class PartyDamageReader
 {
     public const int PartySlots = 4;
@@ -30,12 +54,6 @@ internal sealed class PartyDamageReader
     public const int NameBytes = 32;
     public const int PartyMemberStride = 0x58;
     private const nint SaveSlotStride = 0x26CC00;
-
-    private static readonly string[] SessionSingletons =
-    [
-        "sMhNetwork",
-        "sQuest"
-    ];
 
     private readonly AddressMap _map;
     private readonly nint _moduleBase;
@@ -47,127 +65,208 @@ internal sealed class PartyDamageReader
     }
 
     public string LastError { get; private set; } = "";
-    public string DamageSource { get; private set; } = "";
+    public string DamageSource { get; set; } = "";
+    public int LastPartySize { get; private set; }
+    public string LastLayout { get; private set; } = "none";
+    public int[] LastRawDamage { get; private set; } = new int[PartySlots];
+    public string LastLocalName { get; private set; } = "";
+    public string LastLocalInstance { get; private set; } = "0";
+    public string LastPartyArray { get; private set; } = "0";
+    public string LastPartyArrayError { get; private set; } = "";
+    public string LastDamageBase { get; private set; } = "0";
+    public string LastDamageError { get; private set; } = "";
+    public bool LastHasPackedTable { get; private set; }
+    public LiveDebugSlot[] LastSlots { get; private set; } = [];
 
     public bool TryRead(out PartySnapshot snapshot, int fallbackLocalDamage = 0)
     {
-        snapshot = new PartySnapshot();
+        try
+        {
+            return TryReadCore(out snapshot, fallbackLocalDamage);
+        }
+        catch (Exception ex)
+        {
+            snapshot = LocalOnly(fallbackLocalDamage, ReadSaveNameSafe());
+            LastError = $"read aborted ({ex.GetType().Name})";
+            DamageSource = fallbackLocalDamage > 0 ? "monster HP" : "none";
+            return true;
+        }
+    }
+
+    private bool TryReadCore(out PartySnapshot snapshot, int fallbackLocalDamage)
+    {
         LastError = "";
         DamageSource = "";
+        LastLayout = "none";
+        LastSlots = [];
 
+        var partySize = ReadPartySize();
+        LastPartySize = partySize;
+
+        var localName = ReadSaveName();
+        var localInstance = LocalPlayerInstance();
+        LastLocalName = localName;
+        LastLocalInstance = $"0x{localInstance:X}";
+
+        // Damage table (quest award / results-screen totals, synced for every hunter).
+        var damageBase = SafeMemory.Follow(
+            _moduleBase + _map.GetAddress("DAMAGE_ADDRESS"),
+            _map.GetOffsets("DAMAGE_OFFSETS"),
+            out var damageError);
+        LastDamageError = damageError;
+        LastDamageBase = $"0x{damageBase:X}";
+        var hasTable = damageBase != 0 && LooksLikePackedTable(damageBase);
+        LastHasPackedTable = hasTable;
+        LastLayout = hasTable ? "quest-award packed" : "none";
+
+        var rawDamage = new int[PartySlots];
+        if (hasTable)
+        {
+            for (var slot = 0; slot < PartySlots; slot++)
+            {
+                if (SafeMemory.TryRead<int>(damageBase + slot * DamageStride, out var value)
+                    && value is >= 0 and <= 50_000_000)
+                    rawDamage[slot] = value;
+            }
+        }
+
+        LastRawDamage = (int[])rawDamage.Clone();
+
+        // Party roster.
         var partyArray = SafeMemory.Follow(
             _moduleBase + _map.GetAddress("PARTY_ADDRESS"),
             _map.GetOffsets("PARTY_OFFSETS"),
             out var partyError);
-        var damageBase = ResolveDamageBase(out var damageError);
-        if (damageBase != 0 && !LooksLikeDamageTable(damageBase))
-        {
-            damageBase = 0;
-            damageError = "damage table looked invalid";
-        }
+        LastPartyArray = $"0x{partyArray:X}";
+        LastPartyArrayError = partyError;
 
-        var localName = ReadSaveName();
+        var probes = ProbeSlots(partyArray, rawDamage);
         var members = new List<PartyMemberSnapshot>(PartySlots);
-        var slotDamage = new int[PartySlots];
-        var total = 0;
 
-        if (partyArray != 0)
+        if (partySize > 0)
         {
             for (var slot = 0; slot < PartySlots; slot++)
             {
-                if (!SafeMemory.TryRead<nint>(partyArray + slot * PartyMemberStride, out var memberPtr) || memberPtr == 0)
+                var probe = probes[slot];
+                var occupied = probe.PartyName.Length > 0 || rawDamage[slot] > 0;
+                if (!occupied)
                     continue;
 
-                if (!TryReadName(memberPtr + NameOffset, out var name) || name.Length == 0)
-                    continue;
-
-                var damage = 0;
-                if (damageBase != 0 && SafeMemory.TryRead<int>(damageBase + slot * DamageStride, out var value) && value > 0)
-                    damage = value;
-
-                slotDamage[slot] = damage;
-                total += damage;
+                var name = probe.PartyName.Length > 0 ? probe.PartyName : $"Hunter {slot + 1}";
+                var isLocal = probe.PartyName.Length > 0
+                              && localName.Length > 0
+                              && string.Equals(probe.PartyName, localName, StringComparison.Ordinal);
                 members.Add(new PartyMemberSnapshot
                 {
                     Slot = slot,
                     Name = name,
-                    Damage = damage,
-                    IsLocal = !string.IsNullOrEmpty(localName) &&
-                              string.Equals(name, localName, StringComparison.Ordinal)
+                    Damage = rawDamage[slot],
+                    IsLocal = isLocal,
+                    Instance = isLocal ? localInstance : (nint)probe.MemberPtr
                 });
             }
         }
 
-        if (members.Count == 1)
-        {
-            members[0] = new PartyMemberSnapshot
-            {
-                Slot = members[0].Slot,
-                Name = members[0].Name,
-                Damage = members[0].Damage,
-                IsLocal = true
-            };
-        }
-
         if (members.Count == 0)
         {
-            if (string.IsNullOrEmpty(localName))
-                localName = "You";
-
-            var damage = 0;
-            if (damageBase != 0 && SafeMemory.TryRead<int>(damageBase, out var tableDamage) && tableDamage > 0)
-                damage = tableDamage;
-            if (damage == 0)
-                damage = Math.Max(0, fallbackLocalDamage);
-
+            // Solo (no session party) or roster unreadable: show ourselves only.
+            var damage = rawDamage[0] > 0 ? rawDamage[0] : Math.Max(0, fallbackLocalDamage);
             members.Add(new PartyMemberSnapshot
             {
                 Slot = 0,
-                Name = localName,
+                Name = string.IsNullOrEmpty(localName) ? "You" : localName,
                 Damage = damage,
-                IsLocal = true
+                IsLocal = true,
+                Instance = localInstance
             });
-            slotDamage[0] = damage;
-            total = damage;
         }
-        else if (damageBase == 0 && fallbackLocalDamage > 0)
+        else if (!members.Any(m => m.IsLocal))
         {
-            var local = members.FindIndex(member => member.IsLocal);
-            if (local < 0)
-                local = 0;
-            var updated = members[local];
-            members[local] = new PartyMemberSnapshot
+            // Name mismatch (encoding, or save name unreadable): fall back to the
+            // game's own main-player instance, else slot 0 when alone.
+            var marked = false;
+            for (var i = 0; i < members.Count; i++)
             {
-                Slot = updated.Slot,
-                Name = updated.Name,
-                Damage = fallbackLocalDamage,
-                IsLocal = true
-            };
-            slotDamage[updated.Slot] = fallbackLocalDamage;
-            total = members.Sum(member => member.Damage);
+                if (localInstance != 0 && members[i].Instance == localInstance)
+                {
+                    members[i] = members[i].With(isLocal: true);
+                    marked = true;
+                }
+            }
+
+            if (!marked && members.Count == 1)
+                members[0] = members[0].With(isLocal: true);
         }
 
+        var slotDamage = new int[PartySlots];
+        var total = 0;
+        foreach (var member in members)
+        {
+            if (member.Slot is >= 0 and < PartySlots)
+                slotDamage[member.Slot] = member.Damage;
+            total += member.Damage;
+        }
+
+        var hasAwardValues = hasTable && rawDamage.Any(v => v > 0);
         snapshot = new PartySnapshot
         {
             Members = members.ToArray(),
             TotalDamage = total,
-            SlotDamage = slotDamage
+            SlotDamage = slotDamage,
+            HasAwardTable = hasAwardValues
         };
 
-        if (damageBase != 0)
+        var shown = members.ToDictionary(m => m.Slot, m => m);
+        for (var slot = 0; slot < PartySlots; slot++)
         {
-            DamageSource = "quest-award table";
+            shown.TryGetValue(slot, out var member);
+            var p = probes[slot];
+            var why = new List<string>();
+            if (p.PartyName.Length > 0) why.Add("party-name");
+            if (partySize > 0 && slot < partySize) why.Add($"in-size<{partySize}");
+            if (rawDamage[slot] > 0) why.Add("raw-damage");
+            if (p.PtrOk) why.Add("ptr");
+            probes[slot] = new LiveDebugSlot
+            {
+                Slot = slot,
+                Ptr = p.Ptr,
+                PtrOk = p.PtrOk,
+                PartyName = p.PartyName,
+                PartyNameHex = p.PartyNameHex,
+                SessionName = "",
+                RawDamage = rawDamage[slot],
+                Shown = member is not null,
+                ShownName = member?.Name ?? "",
+                IsLocal = member?.IsLocal ?? false,
+                Why = why.Count == 0 ? "empty" : string.Join("+", why),
+                MemberPtr = p.MemberPtr
+            };
+        }
+
+        LastSlots = probes;
+
+        if (hasAwardValues)
+        {
+            DamageSource = "quest-award packed";
+        }
+        else if (members.Count > 1 || partySize > 0)
+        {
+            DamageSource = "party list";
+            LastError = hasTable
+                ? "party found, award damage still 0"
+                : $"party found, damage table unreadable ({damageError})";
         }
         else if (fallbackLocalDamage > 0)
         {
             DamageSource = "monster HP";
+            LastError = "solo (party size 0)";
         }
         else
         {
             DamageSource = "none";
-            LastError = string.IsNullOrEmpty(damageError)
-                ? "damage session not allocated"
-                : $"damage {damageError}";
+            LastError = partySize == 0
+                ? "solo (party size 0), no damage yet"
+                : string.IsNullOrEmpty(damageError) ? "damage table not allocated" : $"damage {damageError}";
             if (partyArray == 0 && !string.IsNullOrEmpty(partyError))
                 LastError = $"party {partyError}; {LastError}";
         }
@@ -175,39 +274,44 @@ internal sealed class PartyDamageReader
         return true;
     }
 
-    private nint ResolveDamageBase(out string error)
+    private static LiveDebugSlot[] ProbeSlots(nint partyArray, int[] rawDamage)
     {
-        var offsets = _map.GetOffsets("DAMAGE_OFFSETS");
-        var fromStatic = SafeMemory.Follow(
-            _moduleBase + _map.GetAddress("DAMAGE_ADDRESS"),
-            offsets,
-            out error);
-        if (fromStatic != 0)
-            return fromStatic;
-
-        foreach (var name in SessionSingletons)
+        var probes = new LiveDebugSlot[PartySlots];
+        for (var slot = 0; slot < PartySlots; slot++)
         {
-            MtObject? singleton = name switch
+            nint memberPtr = 0;
+            var ptrOk = false;
+            var name = "";
+            var hex = "";
+            if (partyArray != 0
+                && SafeMemory.TryRead<nint>(partyArray + slot * PartyMemberStride, out memberPtr)
+                && SafeMemory.LooksLikeUserPointer(memberPtr))
             {
-                "sMhNetwork" => TrySingleton(() => Network.SingletonInstance),
-                "sQuest" => TrySingleton(() => Quest.SingletonInstance),
-                _ => SingletonManager.GetSingleton(name)
+                ptrOk = true;
+                if (SafeMemory.TryReadBytes(memberPtr + NameOffset, NameBytes, out var bytes))
+                {
+                    hex = Convert.ToHexString(bytes.AsSpan(0, Math.Min(16, bytes.Length)));
+                    if (TryDecodeUtf8Name(bytes, out var decoded))
+                        name = decoded;
+                }
+            }
+
+            probes[slot] = new LiveDebugSlot
+            {
+                Slot = slot,
+                Ptr = $"0x{memberPtr:X}",
+                PtrOk = ptrOk,
+                PartyName = name,
+                PartyNameHex = hex,
+                RawDamage = rawDamage[slot],
+                MemberPtr = ptrOk ? (long)memberPtr : 0
             };
-            if (singleton is null || singleton.Instance == 0)
-                continue;
-
-            var fromObject = SafeMemory.FollowFromObject(singleton.Instance, offsets, out _);
-            if (fromObject == 0 || !LooksLikeDamageTable(fromObject))
-                continue;
-
-            error = "";
-            return fromObject;
         }
 
-        return 0;
+        return probes;
     }
 
-    private static bool LooksLikeDamageTable(nint damageBase)
+    private static bool LooksLikePackedTable(nint damageBase)
     {
         for (var slot = 0; slot < PartySlots; slot++)
         {
@@ -220,15 +324,29 @@ internal sealed class PartyDamageReader
         return true;
     }
 
-    private static MtObject? TrySingleton(Func<MtObject> getter)
+    private int ReadPartySize()
+    {
+        if (!_map.TryGetOffsets("SESSION_PARTY_OFFSETS", out var offsets))
+            return 0;
+        if (!_map.TryGetAddress("SESSION_OFFSET", out var session)
+            && !_map.TryGetAddress("DAMAGE_ADDRESS", out session))
+            return 0;
+
+        var address = SafeMemory.Follow(_moduleBase + session, offsets, out _);
+        if (address != 0 && SafeMemory.TryRead<int>(address, out var size) && size is >= 1 and <= PartySlots)
+            return size;
+        return 0;
+    }
+
+    private string ReadSaveNameSafe()
     {
         try
         {
-            return getter();
+            return ReadSaveName();
         }
         catch
         {
-            return null;
+            return "";
         }
     }
 
@@ -249,42 +367,82 @@ internal sealed class PartyDamageReader
         if (!SafeMemory.TryRead<nint>(firstSave, out var headerBase) || headerBase == 0)
             return "";
 
-        return TryReadName(headerBase + (nint)(SaveSlotStride * slot) + 0x50, out var name) ? name : "";
+        return TryReadUtf8Name(headerBase + (nint)(SaveSlotStride * slot) + 0x50, NameBytes, out var name)
+            ? name
+            : "";
     }
 
-    private static bool TryReadName(nint address, out string name)
+    private static bool TryReadUtf8Name(nint address, int byteCount, out string name)
     {
         name = "";
-        if (!SafeMemory.TryReadBytes(address, NameBytes, out var bytes))
+        if (!SafeMemory.TryReadBytes(address, byteCount, out var bytes))
             return false;
+        return TryDecodeUtf8Name(bytes, out name);
+    }
 
+    private static bool TryDecodeUtf8Name(byte[] bytes, out string name)
+    {
+        name = "";
         var length = Array.IndexOf(bytes, (byte)0);
         if (length == 0)
             return false;
         if (length < 0)
             length = bytes.Length;
 
-        name = Encoding.UTF8.GetString(bytes, 0, length).Trim('\0', ' ');
-        return IsHunterName(name);
+        var text = Encoding.UTF8.GetString(bytes, 0, length).Trim('\0', ' ', '�');
+        if (!IsHunterName(text))
+            return false;
+
+        name = text;
+        return true;
     }
 
     private static bool IsHunterName(string name)
     {
-        if (name.Length is < 1 or > 32 || name.Contains('\uFFFD'))
-            return false;
-        if (name.StartsWith("m_", StringComparison.Ordinal) || name.StartsWith("u_", StringComparison.Ordinal))
+        if (name.Length is < 1 or > 32 || name.Contains('�'))
             return false;
 
-        var lettersOrDigits = 0;
         foreach (var c in name)
         {
             if (char.IsControl(c))
                 return false;
-            if (char.IsLetterOrDigit(c))
-                lettersOrDigits++;
         }
 
-        return lettersOrDigits > 0 && lettersOrDigits * 2 >= name.Length;
+        return true;
+    }
+
+    private static nint LocalPlayerInstance()
+    {
+        try
+        {
+            return Player.MainPlayer?.Instance ?? 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static PartySnapshot LocalOnly(int damage, string localName)
+    {
+        damage = Math.Max(0, damage);
+        return new PartySnapshot
+        {
+            Members =
+            [
+                new PartyMemberSnapshot
+                {
+                    Slot = 0,
+                    Name = string.IsNullOrEmpty(localName) ? "You" : localName,
+                    Damage = damage,
+                    IsLocal = true,
+                    Instance = LocalPlayerInstance()
+                }
+            ],
+            TotalDamage = damage,
+            SlotDamage = [damage, 0, 0, 0],
+            HasAwardTable = false
+        };
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetModuleHandleW")]

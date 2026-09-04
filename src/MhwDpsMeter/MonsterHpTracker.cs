@@ -7,6 +7,12 @@ internal sealed class MonsterHpTracker
     private readonly Dictionary<nint, int> _live = [];
     private int _completed;
 
+    /// <summary>Instances of tracked (large) monsters seen on the last poll.</summary>
+    public IReadOnlyCollection<nint> LiveInstances => _live.Keys;
+
+    /// <summary>Last poll's monster list for diagnostics: every monster SPL reports, tracked or not.</summary>
+    public string LastMonsters { get; private set; } = "";
+
     public void Reset()
     {
         _live.Clear();
@@ -16,10 +22,12 @@ internal sealed class MonsterHpTracker
     public int Poll()
     {
         HashSet<nint> seen = [];
+        var described = new List<string>();
         try
         {
             foreach (var monster in Monster.GetAllMonsters())
             {
+                described.Add(Describe(monster));
                 if (!TryDealt(monster, out var instance, out var dealt))
                     continue;
 
@@ -40,7 +48,20 @@ internal sealed class MonsterHpTracker
             _live.Remove(instance);
         }
 
+        LastMonsters = described.Count == 0 ? "(none)" : string.Join(" | ", described);
         return _completed + _live.Values.Sum();
+    }
+
+    private static string Describe(Monster monster)
+    {
+        try
+        {
+            return $"{monster.Type}@0x{monster.Instance:X} {monster.Health:0}/{monster.MaxHealth:0}";
+        }
+        catch
+        {
+            return "?";
+        }
     }
 
     private static bool TryDealt(Monster monster, out nint instance, out int dealt)
@@ -55,7 +76,7 @@ internal sealed class MonsterHpTracker
             instance = monster.Instance;
             var max = monster.MaxHealth;
             var hp = monster.Health;
-            if (instance == 0 || max is <= 1f or > 50_000_000f || float.IsNaN(max) || float.IsNaN(hp))
+            if (instance == 0 || max is < 800f or > 50_000_000f || float.IsNaN(max) || float.IsNaN(hp))
                 return false;
 
             dealt = (int)Math.Clamp(max - Math.Max(hp, 0f), 0f, max);
