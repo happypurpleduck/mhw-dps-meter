@@ -50,10 +50,10 @@ internal sealed class LiveDebugSnapshot
     public bool HasPackedTable { get; init; }
     public int FallbackLocalDamage { get; init; }
     public int HookTotal { get; init; }
-    public int[] HookSlots { get; init; } = new int[4];
+    public int[] HookSlots { get; init; } = new int[PartyDamageReader.PartySlots];
     public int OverlayMemberCount { get; init; }
     public string OverlayNames { get; init; } = "";
-    public int[] OverlayDamage { get; init; } = new int[4];
+    public int[] OverlayDamage { get; init; } = new int[PartyDamageReader.PartySlots];
     public LiveDebugSlot[] Slots { get; init; } = [];
 }
 
@@ -62,8 +62,12 @@ internal sealed class LiveDebugStore
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
+
+    /// <summary>live-debug.log is appended up to 10 times a second during a fight; roll it over past this size.</summary>
+    private const long MaxLogBytes = 8 * 1024 * 1024;
 
     private readonly string _directory;
     private readonly string _latestPath;
@@ -88,6 +92,16 @@ internal sealed class LiveDebugStore
         {
             Log.Warn($"MhwDpsMeter: live-debug dir failed ({ex.Message}).");
         }
+    }
+
+    /// <summary>Keeps one previous generation (live-debug.1.log) so a long session cannot fill the disk.</summary>
+    private void RotateLogIfLarge()
+    {
+        var info = new FileInfo(_logPath);
+        if (!info.Exists || info.Length < MaxLogBytes)
+            return;
+
+        File.Move(_logPath, Path.Combine(_directory, "live-debug.1.log"), overwrite: true);
     }
 
     public void Write(LiveDebugSnapshot snapshot, bool force = false)
@@ -120,6 +134,7 @@ internal sealed class LiveDebugStore
                 $"raw=[{string.Join(",", snapshot.Slots.Select(s => s.RawDamage))}] " +
                 $"shown=[{string.Join(",", snapshot.Slots.Where(s => s.Shown).Select(s => $"{s.Slot}:{s.ShownName}:{s.RawDamage}"))}] " +
                 $"hook={snapshot.HookTotal} calls={snapshot.HookCalls} hp={snapshot.FallbackLocalDamage} mon={snapshot.Monsters} err={snapshot.LastError}";
+            RotateLogIfLarge();
             File.AppendAllText(_logPath, line + Environment.NewLine);
         }
         catch (Exception ex)

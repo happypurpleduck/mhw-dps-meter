@@ -17,7 +17,7 @@ During a quest it shows each hunter’s **name**, **total damage**, **DPS**, and
 
 2. Download [SharpPluginLoader](https://github.com/Fexty12573/SharpPluginLoader/releases) **Windows** release (`SharpPluginLoader-<version>.zip`) and extract it into the game root (the folder containing `MonsterHunterWorld.exe`). You should have `winmm.dll` beside the exe and a `nativePC/plugins/CSharp/` folder. If the game closes immediately on launch without Steam, add `MonsterHunterWorld.exe` as a Non-Steam Game and launch through Steam (the Steam overlay changes `winmm.dll` load order).
 
-3. Download `MhwDpsMeter-0.3.0.zip` from this repo’s [Releases](https://github.com/anomalyco/mhw-dps-meter/releases) (or build it — see below) and **extract it into the same game root**. It creates:
+3. Download `MhwDpsMeter-0.4.0.zip` from this repo’s [Releases](https://github.com/anomalyco/mhw-dps-meter/releases) (or build it — see below) and **extract it into the same game root**. It creates:
 
    ```text
    nativePC/plugins/CSharp/MhwDpsMeter/MhwDpsMeter.dll
@@ -29,7 +29,7 @@ During a quest it shows each hunter’s **name**, **total damage**, **DPS**, and
 
 4. Optional: extract Stracker’s Loader into the game root (`dinput8.dll`) if you use other `nativePC` mods.
 
-5. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. The first line, `Plugin build: 0.3.0+<UTC build time>`, tells you which DLL is actually running; if it does not match the one you copied, quit and relaunch. `Game build:` should name the map matching your exe. Depart on a quest; overlay is top-right. **F10** toggles it.
+5. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. The first line, `Plugin build: 0.4.0+<UTC build time>`, tells you which DLL is actually running; if it does not match the one you copied, quit and relaunch. `Game build:` should name the map matching your exe. Depart on a quest; overlay is top-right. **F10** toggles it.
 
 If F9 does nothing, SPL is not injecting. Check that `winmm.dll` is beside `MonsterHunterWorld.exe`, that your antivirus has not quarantined it, and that `loader-config.json` next to the exe has `"logfile": true` to write loader logs.
 
@@ -59,7 +59,7 @@ Proton 11 (and CachyOS Proton) will not load the `msvcrt.dll` injector from Shar
    DOTNET_ROOT= WINEDLLOVERRIDES="ucrtbase=n,b;dinput8=n,b" %command%
    ```
 
-5. Download `MhwDpsMeter-0.3.0.zip` and extract it into the game root (same layout as Windows):
+5. Download `MhwDpsMeter-0.4.0.zip` and extract it into the game root (same layout as Windows):
 
    ```text
    nativePC/plugins/CSharp/MhwDpsMeter/MhwDpsMeter.dll
@@ -67,7 +67,7 @@ Proton 11 (and CachyOS Proton) will not load the `msvcrt.dll` injector from Shar
    nativePC/plugins/CSharp/MhwDpsMeter/Addresses/MonsterHunterWorld.421631.map
    ```
 
-6. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. The first line, `Plugin build: 0.3.0+<UTC build time>`, tells you which DLL is actually running; if it does not match the one you copied, quit and relaunch. `Game build:` should name the map matching your exe. Depart on a quest; overlay is top-right. **F10** toggles it.
+6. Launch the game. A SharpPluginLoader console should appear. Press **F9** — you should see **DPS Meter** with a status line. The first line, `Plugin build: 0.4.0+<UTC build time>`, tells you which DLL is actually running; if it does not match the one you copied, quit and relaunch. `Game build:` should name the map matching your exe. Depart on a quest; overlay is top-right. **F10** toggles it.
 
 If F9 does nothing, SPL still is not injecting. Check that `ucrtbase.dll` exists in the game root and that launch options include `ucrtbase=n,b`. Loader logs go next to the exe when `loader-config.json` has `"logfile": true`.
 
@@ -79,14 +79,14 @@ Needs the .NET 8 SDK (`dotnet --list-sdks` should show 8.0.x).
 
 ```bash
 dotnet build -c Release
-# or: scripts/package.sh   # builds and zips dist/MhwDpsMeter-0.3.0.zip
+# or: scripts/package.sh   # builds and zips dist/MhwDpsMeter-0.4.0.zip
 ```
 
 Output:
 
 ```text
 dist/Release/nativePC/plugins/CSharp/MhwDpsMeter/   # raw build
-dist/MhwDpsMeter-0.3.0.zip                            # game-root zip (same DLL works on Windows + Proton)
+dist/MhwDpsMeter-0.4.0.zip                            # game-root zip (same DLL works on Windows + Proton)
 ```
 
 Extract the zip into the game root (beside `MonsterHunterWorld.exe`). The plugin DLL is the same on both platforms — only the SharpPluginLoader injector differs (`winmm.dll` on Windows, `ucrtbase.dll` on Proton).
@@ -97,7 +97,7 @@ Extract the zip into the game root (beside `MonsterHunterWorld.exe`). The plugin
 | --- | --- |
 | Name | Party slot name (`*` = you) |
 | Damage | Per-hunter quest-award total (the results-screen value). Solo/arena without that table falls back to your live hits or large-monster HP lost |
-| DPS | `damage / in-game quest timer` (same clock for every hunter). Falls back to time since you entered if the quest timer is not running |
+| DPS | `damage / hunt clock`. The clock starts when the quest enters the in-quest state (roughly when the loading screen ends) and is the same for every hunter; logs record it as `timerSource: "local"`. It is not the on-screen quest timer yet |
 | % | Share of current party total |
 
 Slot colors follow the in-game party HUD (orange / green / blue / pink).
@@ -119,22 +119,45 @@ This needs the hit hook, which is only enabled when the address map matches the 
 
 ## Fight logs
 
-Written next to the plugin (quests only, not training sessions):
+Every quest (not training sessions, expeditions, or the Guiding Lands) is written as one JSON file next to the plugin, plus a listing file:
 
 ```text
 nativePC/plugins/CSharp/MhwDpsMeter/logs/YYYY-MM-DD_HHmmss_<questId>_<result>.json
+nativePC/plugins/CSharp/MhwDpsMeter/logs/index.json
 ```
 
-Each file has the quest name, result, duration, per-player damage / DPS / %, and a damage-over-time sample every 2 seconds (capped at 30 minutes). Recent hunts are listed under **Fight logs** in the F9 menu.
+`index.json` is a newest-first array of `{file, questId, questName, result, startedAt, durationSeconds, players[], monsters[]}` so a viewer can list hunts without opening every file. It is rebuilt from the existing files the first time the plugin starts without one. Recent hunts are also listed under **Fight logs** in the F9 menu.
 
 If the `logs` folder cannot be created, the overlay still runs and a warning is printed to the SharpPluginLoader console.
+
+### Log schema (version 2)
+
+The files are meant to be consumed by an external viewer (a web UI in the style of [relink-logs](https://github.com/villith/relink-logs)). Schema 2 is a superset of the files written by 0.3.0: old files have no `schemaVersion` and lack the new arrays, but every field they do have keeps its name, so one parser handles both.
+
+| Field | Meaning |
+| --- | --- |
+| `schemaVersion`, `pluginVersion`, `gameBuild` | `2`, the plugin build stamp, and the game build the addresses came from |
+| `questId`, `questName`, `result`, `stageId`, `stage` | Quest identity. `result` is `complete`, `fail`, `abandon`, `return`, or `leave` |
+| `startedAt`, `endedAt`, `durationSeconds`, `timerSource` | UTC timestamps; duration is the plugin's own clock from the in-quest transition (`"local"`). `"quest"` is reserved for a future read of the on-screen quest timer |
+| `hitCoverage` | Always `"local"`: the `hits` array only contains the local hunter (see below) |
+| `players[]` | `slot` (0–3, matches HUD colour), `name`, `isLocal`, `weapon` (local hunter only), `damage`, `dps`, `percent`. Sorted by damage |
+| `monsters[]` | Large monsters seen: `id` (`m1`, `m2`, … referenced by hits/events), `type`, `name`, `variant`, `maxHealth`, `lastHealth`, `firstSeenT`, `diedT` |
+| `samples[]` | `{t, damage[4]}` — cumulative party damage per slot every 2 s (capped at 30 min). This is the only per-player timeline available for other hunters |
+| `hits[]` | One row per hit from the deal-damage hook: `t`, `slot`, `monster`, `damage`, `crit`, `tenderized`, `attackId`, `actionSet`, `actionId`, `action` (internal move name when resolvable). Capped at 50 000 |
+| `events[]` | Timeline: `enrage` / `unenrage` / `death` / `flinch` (monster, `detail` = flinch action id), `weapon` (slot, `detail` = weapon type), `join` / `leave` (slot, `detail` = hunter name). Capped at 5 000 |
+
+All `t` values are seconds on the same clock as `durationSeconds`.
+
+**What per-skill data you can and cannot get.** The game only runs its deal-damage function for hits simulated on this client, so individual hits, crits, and the move that caused them exist for **your own hunter only**. Other hunters get their quest-award total plus the 2-second `samples` curve; there is no per-move breakdown for them. `attackId` is the game's attack parameter id and `actionSet`/`actionId` is the action the hunter was in when the hit landed; `action` is the game's internal action name (weapon-specific, not localized). In practice `action` is the key to group by: a dual-blades hunt used only six distinct `attackId` values but dozens of action names (`WP_02::RANBU`, `WP_02::KIJIN_RUSH`, …), and `attackId` 0 covers most normal attacks. A few percent of hits land after the action has already changed (`Common::RUN`, clutch-claw pushes); a viewer can fold those into "other". A viewer that wants friendly move names needs its own lookup table keyed by weapon + action name.
+
+Monster `flinch`, `enrage`, and `death` events are only recorded for tracked large monsters; small monsters are ignored.
 
 ## Limitations
 
 - Address maps break when Capcom patches the exe. The plugin reads the build number from the `MONSTER HUNTER: WORLD(<build>)` string inside the exe (the exe's version resource is 1.0.0.0, so it cannot be used). Add `Addresses/MonsterHunterWorld.<build>.map` for a new build; HunterPie's `HunterPie/Address/MonsterHunterWorld.<build>.map` has the same keys. If no exact map exists the newest one is used, the hit hook is disabled, and the F9 menu shows `(MISMATCH)`.
 - Overlay stays hidden in the hub, expeditions, and the Guiding Lands. Accepting a quest is not enough; you have to depart. The training area is the exception (see above).
 - Solo and Challenge Arena often never allocate the quest-award damage table. In that case the meter uses your hooked hits or large-monster HP lost (still includes palico chip on HP).
-- SOS join-in-progress DPS uses the **quest timer** (HunterPie’s default). Your personal DPS looks lower than “time since I joined” because the clock includes the hunt before you arrived.
+- The hunt clock is the plugin's own stopwatch from the in-quest transition, not the on-screen quest timer, so it includes the walk from camp. For SOS join-in-progress it starts when **you** load in, not at the quest's start.
 - Overlay stays on the hunting map after the quest ends, then hides in the hub.
 - Party damage comes from the quest-award table the game syncs for the results screen. The deal-damage hook only ever sees your own hits (the game does not run it for other hunters), so it is just a live local fallback for solo and arena.
 

@@ -47,8 +47,6 @@ internal static class SafeMemory
         }
     }
 
-    public static nint Follow(nint address, int[] offsets) => Follow(address, offsets, out _);
-
     public static nint Follow(nint address, int[] offsets, out string error)
     {
         var current = address;
@@ -81,50 +79,19 @@ internal static class SafeMemory
         return current;
     }
 
-    public static nint FollowFromObject(nint obj, int[] offsets, out string error)
-    {
-        if (offsets.Length == 0)
-        {
-            error = "";
-            return obj;
-        }
-
-        var current = obj + offsets[0];
-        for (var i = 1; i < offsets.Length; i++)
-        {
-            if (!LooksLikeUserPointer(current))
-            {
-                error = $"obj hop {i}/{offsets.Length} bad current 0x{current:X}";
-                return 0;
-            }
-
-            if (!TryRead<nint>(current, out var next) || next == 0)
-            {
-                error = $"obj hop {i}/{offsets.Length} null at 0x{current:X}";
-                return 0;
-            }
-
-            current = next + offsets[i];
-        }
-
-        error = "";
-        return current;
-    }
-
-    public static bool IsReadable(nint address, uint size) => QueryReadable(address, size, requireQuery: false);
-
-    // Far reads (session names at +0x532ED). VirtualQuery must succeed so we
-    // do not touch unmapped pages. Wine heap still reports RegionSize 0.
-    public static bool IsMapped(nint address, uint size) => QueryReadable(address, size, requireQuery: true);
-
-    private static bool QueryReadable(nint address, uint size, bool requireQuery)
+    /// <summary>
+    /// True if <paramref name="size"/> bytes at <paramref name="address"/> sit in a committed,
+    /// readable region. Wine's heap reports RegionSize 0 and sometimes fails VirtualQuery
+    /// outright, so small reads are allowed through in those cases.
+    /// </summary>
+    public static bool IsReadable(nint address, uint size)
     {
         if (!LooksLikeUserPointer(address) || size == 0)
             return false;
 
         var length = (nuint)Marshal.SizeOf<MemoryBasicInformation>();
         if (VirtualQuery(address, out var info, length) == 0)
-            return !requireQuery && size <= MaxLenientRead;
+            return size <= MaxLenientRead;
 
         if (info.State != 0 && info.State != MemCommit)
             return false;

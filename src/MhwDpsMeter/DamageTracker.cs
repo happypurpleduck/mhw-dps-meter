@@ -5,6 +5,17 @@ using SharpPluginLoader.Core.Memory;
 
 namespace MhwDpsMeter;
 
+/// <summary>One hit seen by the deal-damage hook, stamped with <see cref="Stopwatch.GetTimestamp"/>.</summary>
+internal readonly record struct HitRecord(
+    long Timestamp,
+    nint Target,
+    int Damage,
+    bool Crit,
+    bool Tenderized,
+    int AttackId,
+    int ActionSet,
+    int ActionId);
+
 /// <summary>
 /// Hooks the game's deal-damage function (HunterPie's FUN_DEAL_DAMAGE) to get the
 /// local hunter's hits in real time. Signature from HunterPie.Native
@@ -40,6 +51,13 @@ internal sealed class DamageTracker : IDisposable
     private int _lastDamage;
     private long _firstHitTimestamp;
     private bool _acceptAllTargets;
+    private bool _recordHits;
+    private List<HitRecord> _pending = [];
+    private int _actionSet;
+    private int _actionId;
+
+    /// <summary>Hits buffered between <see cref="DrainHits"/> calls; older ones are dropped past this.</summary>
+    private const int MaxPendingHits = 4096;
 
     public bool Hooked => _hook?.IsEnabled == true;
     public string Status { get; private set; } = "off";
@@ -55,6 +73,44 @@ internal sealed class DamageTracker : IDisposable
     {
         get { lock (_gate) return _acceptAllTargets; }
         set { lock (_gate) _acceptAllTargets = value; }
+    }
+
+    /// <summary>Buffer individual hits for the fight log (quests only; training just needs totals).</summary>
+    public bool RecordHits
+    {
+        get { lock (_gate) return _recordHits; }
+        set
+        {
+            lock (_gate)
+            {
+                _recordHits = value;
+                if (!value)
+                    _pending.Clear();
+            }
+        }
+    }
+
+    /// <summary>Local hunter's current action (from OnPlayerAction), attached to each recorded hit.</summary>
+    public void SetCurrentAction(int actionSet, int actionId)
+    {
+        lock (_gate)
+        {
+            _actionSet = actionSet;
+            _actionId = actionId;
+        }
+    }
+
+    /// <summary>Returns and clears the hits recorded since the last call.</summary>
+    public List<HitRecord> DrainHits()
+    {
+        lock (_gate)
+        {
+            if (_pending.Count == 0)
+                return [];
+            var drained = _pending;
+            _pending = [];
+            return drained;
+        }
     }
 
     /// <summary>Wall-clock time since the first counted hit after the last reset; zero if none yet.</summary>
@@ -114,6 +170,7 @@ internal sealed class DamageTracker : IDisposable
             _lastTarget = 0;
             _lastDamage = 0;
             _firstHitTimestamp = 0;
+            _pending.Clear();
         }
     }
 
@@ -190,7 +247,7 @@ internal sealed class DamageTracker : IDisposable
         {
             try
             {
-                Record(target, damage);
+                Record(target, damage, isTenderized != 0, isCrit != 0, attackId);
             }
             catch
             {
@@ -199,7 +256,7 @@ internal sealed class DamageTracker : IDisposable
         }
     }
 
-    private void Record(nint target, int damage)
+    private void Record(nint target, int damage, bool tenderized, bool crit, int attackId)
     {
         lock (_gate)
         {
@@ -221,9 +278,13 @@ internal sealed class DamageTracker : IDisposable
             var next = _localDamage + damage;
             if (next is >= 0 and <= 50_000_000)
                 _localDamage = next;
+            var now = Stopwatch.GetTimestamp();
             if (_hits == 0)
-                _firstHitTimestamp = Stopwatch.GetTimestamp();
+                _firstHitTimestamp = now;
             _hits++;
+
+            if (_recordHits && _pending.Count < MaxPendingHits)
+                _pending.Add(new HitRecord(now, target, damage, crit, tenderized, attackId, _actionSet, _actionId));
         }
     }
 }

@@ -7,7 +7,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <!-- Build stamp shown in the F9 panel / overlay so a stale DLL is obvious in-game. -->
     <BuildStamp>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd HH:mm"))Z</BuildStamp>
     <InformationalVersion>$(Version)+$(BuildStamp)</InformationalVersion>

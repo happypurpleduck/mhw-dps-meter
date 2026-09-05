@@ -1,42 +1,7 @@
-using System.Runtime.InteropServices;
 using System.Text;
 using SharpPluginLoader.Core.Entities;
 
 namespace MhwDpsMeter;
-
-internal sealed class PartyMemberSnapshot
-{
-    public int Slot { get; init; }
-    public string Name { get; init; } = "";
-    public int Damage { get; init; }
-    public bool IsLocal { get; init; }
-    public nint Instance { get; init; }
-    public float Dps { get; init; }
-    public float Percent { get; init; }
-
-    public PartyMemberSnapshot With(
-        string? name = null,
-        int? damage = null,
-        bool? isLocal = null,
-        nint? instance = null) => new()
-    {
-        Slot = Slot,
-        Name = name ?? Name,
-        Damage = damage ?? Damage,
-        IsLocal = isLocal ?? IsLocal,
-        Instance = instance ?? Instance,
-        Dps = Dps,
-        Percent = Percent
-    };
-}
-
-internal sealed class PartySnapshot
-{
-    public PartyMemberSnapshot[] Members { get; init; } = [];
-    public int TotalDamage { get; init; }
-    public int[] SlotDamage { get; init; } = new int[4];
-    public bool HasAwardTable { get; init; }
-}
 
 /// <summary>
 /// Party damage reader following HunterPie's MHWPlayer.GetParty layout:
@@ -65,7 +30,7 @@ internal sealed class PartyDamageReader
     }
 
     public string LastError { get; private set; } = "";
-    public string DamageSource { get; set; } = "";
+    public string DamageSource { get; private set; } = "";
     public int LastPartySize { get; private set; }
     public string LastLayout { get; private set; } = "none";
     public int[] LastRawDamage { get; private set; } = new int[PartySlots];
@@ -86,7 +51,7 @@ internal sealed class PartyDamageReader
         }
         catch (Exception ex)
         {
-            snapshot = LocalOnly(fallbackLocalDamage, ReadSaveNameSafe());
+            snapshot = PartySnapshot.LocalOnly(fallbackLocalDamage, ReadSaveNameSafe(), LocalPlayerInstance());
             LastError = $"read aborted ({ex.GetType().Name})";
             DamageSource = fallbackLocalDamage > 0 ? "monster HP" : "none";
             return true;
@@ -198,23 +163,8 @@ internal sealed class PartyDamageReader
                 members[0] = members[0].With(isLocal: true);
         }
 
-        var slotDamage = new int[PartySlots];
-        var total = 0;
-        foreach (var member in members)
-        {
-            if (member.Slot is >= 0 and < PartySlots)
-                slotDamage[member.Slot] = member.Damage;
-            total += member.Damage;
-        }
-
         var hasAwardValues = hasTable && rawDamage.Any(v => v > 0);
-        snapshot = new PartySnapshot
-        {
-            Members = members.ToArray(),
-            TotalDamage = total,
-            SlotDamage = slotDamage,
-            HasAwardTable = hasAwardValues
-        };
+        snapshot = PartySnapshot.From(members, hasAwardValues);
 
         var shown = members.ToDictionary(m => m.Slot, m => m);
         for (var slot = 0; slot < PartySlots; slot++)
@@ -422,29 +372,4 @@ internal sealed class PartyDamageReader
             return 0;
         }
     }
-
-    private static PartySnapshot LocalOnly(int damage, string localName)
-    {
-        damage = Math.Max(0, damage);
-        return new PartySnapshot
-        {
-            Members =
-            [
-                new PartyMemberSnapshot
-                {
-                    Slot = 0,
-                    Name = string.IsNullOrEmpty(localName) ? "You" : localName,
-                    Damage = damage,
-                    IsLocal = true,
-                    Instance = LocalPlayerInstance()
-                }
-            ],
-            TotalDamage = damage,
-            SlotDamage = [damage, 0, 0, 0],
-            HasAwardTable = false
-        };
-    }
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetModuleHandleW")]
-    public static extern nint GetModuleHandle(string moduleName);
 }

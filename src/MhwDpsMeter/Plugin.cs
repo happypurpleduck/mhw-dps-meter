@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using SharpPluginLoader.Core;
+using SharpPluginLoader.Core.Actions;
 using SharpPluginLoader.Core.Entities;
 using SharpPluginLoader.Core.IO;
 
@@ -11,23 +13,25 @@ public sealed class Plugin : IPlugin
     public string Name => "DPS Meter";
     public string Author => "mhw-dps-meter";
 
-    /// <summary>"0.3.0+2026-09-03 18:50Z": version plus build time, so a stale DLL is obvious.</summary>
+    /// <summary>"0.4.0+2026-09-05 18:50Z": version plus build time, so a stale DLL is obvious.</summary>
     public static readonly string BuildStamp =
         typeof(Plugin).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? typeof(Plugin).Assembly.GetName().Version?.ToString()
         ?? "unknown";
 
     private const float PollIntervalSeconds = 0.1f;
+    private const string TrainingHint = "Training  |  F7 resets  |  DPS since first hit";
 
     private readonly Overlay _overlay = new();
     private readonly Stopwatch _questTimer = new();
+    private readonly MonsterHpTracker _monsterHp = new();
+    private readonly DamageTracker _hits = new();
+    private readonly HuntRecorder _recorder;
 
     private AddressMap? _map;
     private PartyDamageReader? _reader;
     private FightLogStore? _logs;
     private LiveDebugStore? _liveDebug;
-    private readonly MonsterHpTracker _monsterHp = new();
-    private readonly DamageTracker _hits = new();
     private PartySnapshot? _snapshot;
     private bool _inQuest;
     private bool _showResults;
@@ -36,9 +40,10 @@ public sealed class Plugin : IPlugin
     private DateTimeOffset _questStartedAt;
     private float _pollAccumulator;
     private float _elapsedSeconds;
+    private string _timerSource = "local";
     private nint _moduleBase;
     private string _status = "not loaded";
-    private string? _pendingResult;
+    private string _damageSource = "n/a";
     private uint _questState;
     private int _stageId;
     private string _pluginDir = "";
@@ -58,6 +63,11 @@ public sealed class Plugin : IPlugin
     // the DPS clock starts at the first hit, and F7 resets without leaving the area.
     private bool _training;
 
+    public Plugin()
+    {
+        _recorder = new HuntRecorder(ResolveActionName);
+    }
+
     public PluginData Initialize()
     {
         return new PluginData
@@ -72,19 +82,7 @@ public sealed class Plugin : IPlugin
         var gameDir = ResolveGameDirectory();
         var pluginDir = ResolvePluginDirectory(gameDir);
 
-        _moduleBase = 0;
-        try
-        {
-            _moduleBase = Process.GetCurrentProcess().MainModule?.BaseAddress ?? 0;
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"MhwDpsMeter: MainModule base failed ({ex.Message}).");
-        }
-
-        if (_moduleBase == 0)
-            _moduleBase = PartyDamageReader.GetModuleHandle("MonsterHunterWorld.exe");
-
+        _moduleBase = ResolveModuleBase();
         if (_moduleBase == 0)
         {
             _status = "could not resolve MonsterHunterWorld.exe base address";
@@ -120,23 +118,46 @@ public sealed class Plugin : IPlugin
         _logs = new FightLogStore(pluginDir);
         _liveDebug = new LiveDebugStore(pluginDir);
 
-        _mapMatchesBuild = _map.SourceFile.Contains($".{build}.", StringComparison.Ordinal);
-        if (_mapMatchesBuild && _buildConfirmed)
-        {
-            _hits.Install(_moduleBase, _map);
-        }
-        else if (!_mapMatchesBuild)
-        {
+        ApplyMap(build);
+        if (!_mapMatchesBuild)
             Log.Warn($"MhwDpsMeter: map {Path.GetFileName(_map.SourceFile)} is for another build; hit hook disabled, party read may fail.");
-        }
-
-        _status = _mapMatchesBuild
-            ? $"loaded map {Path.GetFileName(_map.SourceFile)}"
-            : $"WARNING: build {build} has no map, using {Path.GetFileName(_map.SourceFile)}";
         Log.Info($"MhwDpsMeter: live debug -> {_liveDebug.LatestPath}");
     }
 
     public void OnUnload() => _hits.Uninstall();
+
+    /// <summary>Sets the status line and installs the hit hook when the loaded map is for this exact build.</summary>
+    private void ApplyMap(int build)
+    {
+        if (_map is null)
+            return;
+
+        _mapMatchesBuild = MapIsForBuild(_map, build);
+        _status = _mapMatchesBuild
+            ? $"loaded map {Path.GetFileName(_map.SourceFile)}"
+            : $"WARNING: build {build} has no map, using {Path.GetFileName(_map.SourceFile)}";
+        if (_mapMatchesBuild && _buildConfirmed)
+            _hits.Install(_moduleBase, _map);
+    }
+
+    private static bool MapIsForBuild(AddressMap map, int build) =>
+        map.SourceFile.Contains($".{build}.", StringComparison.Ordinal);
+
+    private static nint ResolveModuleBase()
+    {
+        try
+        {
+            var fromProcess = Process.GetCurrentProcess().MainModule?.BaseAddress ?? 0;
+            if (fromProcess != 0)
+                return fromProcess;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"MhwDpsMeter: MainModule base failed ({ex.Message}).");
+        }
+
+        return GetModuleHandle("MonsterHunterWorld.exe");
+    }
 
     private static string ResolveGameDirectory()
     {
@@ -202,30 +223,29 @@ public sealed class Plugin : IPlugin
 
         _pollAccumulator = 0;
         if (_training)
-        {
             PollTraining();
-            return;
-        }
+        else
+            PollHunt();
+    }
 
+    private void PollHunt()
+    {
         try
         {
-            var fallbackDamage = _monsterHp.Poll();
-            _hits.UpdateMonsters(_monsterHp.LiveInstances);
-            _lastFallbackDamage = fallbackDamage;
-            if (!_reader.TryRead(out var snapshot, fallbackDamage) || snapshot.Members.Length == 0)
-            {
-                if (_snapshot is { Members.Length: > 0 })
-                    return;
-                snapshot = LocalSnapshot(Math.Max(0, fallbackDamage));
-            }
+            var snapshot = ReadPartyWithFallbacks();
+            if (snapshot is null)
+                return;
 
-            _hits.UpdateParty(snapshot.Members);
-            snapshot = MergeLiveDamage(snapshot, fallbackDamage);
             _elapsedSeconds = HuntElapsedSeconds();
-            _snapshot = WithRates(snapshot, _elapsedSeconds);
-            _status = string.IsNullOrEmpty(_reader.LastError)
-                ? $"{snapshot.Members.Length} hunters ({_reader.DamageSource})"
+            _snapshot = snapshot.WithRates(_elapsedSeconds);
+            _status = string.IsNullOrEmpty(_reader!.LastError)
+                ? $"{snapshot.Members.Length} hunters ({_damageSource})"
                 : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
+
+            _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+            _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
+            _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
+            _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);
             _logs?.UpdateSamples(_elapsedSeconds, snapshot.SlotDamage);
             WriteLiveDebug(force: false);
         }
@@ -236,37 +256,47 @@ public sealed class Plugin : IPlugin
         }
     }
 
+    /// <summary>
+    /// Polls monsters and the party table, then layers the live fallbacks (hooked hits,
+    /// monster HP lost) over it. Returns null when nothing new could be read and the
+    /// previous snapshot should stay on screen.
+    /// </summary>
+    private PartySnapshot? ReadPartyWithFallbacks()
+    {
+        var fallbackDamage = _monsterHp.Poll();
+        _hits.UpdateMonsters(_monsterHp.LiveInstances);
+        _lastFallbackDamage = fallbackDamage;
+
+        if (!_reader!.TryRead(out var snapshot, fallbackDamage) || snapshot.Members.Length == 0)
+        {
+            if (_snapshot is { Members.Length: > 0 })
+                return null;
+            snapshot = PartySnapshot.LocalOnly(fallbackDamage, "You", LocalPlayerInstance());
+        }
+
+        _hits.UpdateParty(snapshot.Members);
+        return MergeLiveDamage(snapshot, fallbackDamage);
+    }
+
     private void PollTraining()
     {
         try
         {
             _monsterHp.Poll();
             var damage = _hits.LocalDamage;
-            PartySnapshot snapshot;
-            if (!_reader!.TryRead(out snapshot, 0) || snapshot.Members.Length == 0)
-                snapshot = LocalSnapshot(0);
+            if (!_reader!.TryRead(out var snapshot, 0) || snapshot.Members.Length == 0)
+                snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
 
             // Solo in the training area: keep the reader's name/slot, take damage from the hook.
             var members = snapshot.Members
                 .Select(member => member.With(damage: member.IsLocal ? damage : 0))
                 .ToArray();
-            var slotDamage = new int[PartyDamageReader.PartySlots];
-            foreach (var member in members)
-            {
-                if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
-                    slotDamage[member.Slot] = member.Damage;
-            }
 
             _hits.UpdateParty(members);
+            _hits.DrainHits();
             _elapsedSeconds = (float)_hits.SinceFirstHit.TotalSeconds;
-            _snapshot = WithRates(new PartySnapshot
-            {
-                Members = members,
-                TotalDamage = damage,
-                SlotDamage = slotDamage,
-                HasAwardTable = false
-            }, _elapsedSeconds);
-            _reader.DamageSource = "training hits";
+            _snapshot = PartySnapshot.From(members, hasAwardTable: false).WithRates(_elapsedSeconds);
+            _damageSource = "training hits";
             _status = _hits.Hooked
                 ? $"training area: {damage} dmg over {_elapsedSeconds:0}s ({_hits.Hits} hits)"
                 : "training area: hit hook is off, no damage can be counted";
@@ -290,6 +320,7 @@ public sealed class Plugin : IPlugin
         _pollAccumulator = 0;
         _monsterHp.Reset();
         _hits.AcceptAllTargets = true;
+        _hits.RecordHits = false;
         ResetTraining();
         Log.Info("MhwDpsMeter: entered training area; counting hooked hits, F7 resets.");
     }
@@ -315,7 +346,7 @@ public sealed class Plugin : IPlugin
 
         _hits.Reset();
         _elapsedSeconds = 0;
-        _snapshot = WithRates(LocalSnapshot(0), 0);
+        _snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance()).WithRates(0);
         _status = "training area: reset, waiting for first hit";
     }
 
@@ -363,11 +394,11 @@ public sealed class Plugin : IPlugin
         _gameBuild = build;
         Log.Info($"MhwDpsMeter: game build {build} confirmed from window title.");
 
-        if (!_map.SourceFile.Contains($".{build}.", StringComparison.Ordinal))
+        if (!MapIsForBuild(_map, build))
         {
             var dir = Path.GetDirectoryName(_map.SourceFile) ?? _pluginDir;
             var replacement = AddressMap.TryLoad([dir, _pluginDir], build);
-            if (replacement is not null && replacement.SourceFile.Contains($".{build}.", StringComparison.Ordinal))
+            if (replacement is not null && MapIsForBuild(replacement, build))
             {
                 _map = replacement;
                 _reader = new PartyDamageReader(_map, _moduleBase);
@@ -375,15 +406,15 @@ public sealed class Plugin : IPlugin
             }
         }
 
-        _mapMatchesBuild = _map.SourceFile.Contains($".{build}.", StringComparison.Ordinal);
-        _status = _mapMatchesBuild
-            ? $"loaded map {Path.GetFileName(_map.SourceFile)}"
-            : $"WARNING: build {build} has no map, using {Path.GetFileName(_map.SourceFile)}";
-        if (_mapMatchesBuild)
-            _hits.Install(_moduleBase, _map);
+        ApplyMap(build);
     }
 
     public void OnImGuiRender()
+    {
+        _overlay.DrawSettings(_logs, BuildDiagnosticsText(), DumpDiagnostics, _training ? ResetTraining : null);
+    }
+
+    private string BuildDiagnosticsText()
     {
         var slotLines = "";
         if (_reader?.LastSlots is { Length: > 0 } slots)
@@ -396,14 +427,15 @@ public sealed class Plugin : IPlugin
             }
         }
 
-        var diagnostics =
+        return
             $"Plugin build: {BuildStamp}\n" +
             $"Status: {_status}\n" +
             $"Game build: {_gameBuild}  map: {Path.GetFileName(_map?.SourceFile ?? "none")}{(_mapMatchesBuild ? "" : "  (MISMATCH)")}\n" +
-            $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}\n" +
+            $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}  timer {_timerSource}\n" +
             $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
-            $"Damage source: {_reader?.DamageSource ?? "n/a"}\n" +
+            $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
+            $"Recorder: {_recorder.HitCount} hits, weapon {_recorder.LocalWeapon ?? "-"}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
             $"Party size: {_reader?.LastPartySize ?? 0}\n" +
             $"Local name: {_reader?.LastLocalName ?? "-"}\n" +
@@ -417,7 +449,6 @@ public sealed class Plugin : IPlugin
             $"Live debug: {_liveDebug?.LatestPath ?? "n/a"}\n" +
             $"Module: 0x{_moduleBase:X}\n" +
             "F6 = force debug dump, F7 = reset training damage, F9 = this menu, F10 = toggle overlay";
-        _overlay.DrawSettings(_logs, diagnostics, DumpDiagnostics, _training ? ResetTraining : null);
     }
 
     private void WriteLiveDebug(bool force)
@@ -426,16 +457,6 @@ public sealed class Plugin : IPlugin
             return;
 
         var hooked = _hits.Snapshot();
-        var overlayDamage = new int[PartyDamageReader.PartySlots];
-        if (_snapshot is not null)
-        {
-            foreach (var member in _snapshot.Members)
-            {
-                if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
-                    overlayDamage[member.Slot] = member.Damage;
-            }
-        }
-
         var snapshot = new LiveDebugSnapshot
         {
             At = DateTimeOffset.Now.ToString("O"),
@@ -452,7 +473,7 @@ public sealed class Plugin : IPlugin
             HookIgnored = _hits.Ignored,
             HookLastHit = _hits.LastHit,
             Monsters = _monsterHp.LastMonsters,
-            DamageSource = _reader.DamageSource,
+            DamageSource = _damageSource,
             LastError = _reader.LastError,
             Layout = _reader.LastLayout,
             PartySize = _reader.LastPartySize,
@@ -470,27 +491,21 @@ public sealed class Plugin : IPlugin
             OverlayNames = _snapshot is null
                 ? ""
                 : string.Join(" | ", _snapshot.Members.Select(m => $"{m.Slot}:{m.Name}{(m.IsLocal ? "*" : "")}")),
-            OverlayDamage = overlayDamage,
+            OverlayDamage = _snapshot?.SlotDamage ?? new int[PartyDamageReader.PartySlots],
             Slots = _reader.LastSlots
         };
         _liveDebug.Write(snapshot, force);
     }
 
-    private static string FormatSlots(int[]? slots)
-    {
-        if (slots is not { Length: > 0 })
-            return "-";
-        return string.Join(" / ", slots);
-    }
+    private static string FormatSlots(int[]? slots) =>
+        slots is { Length: > 0 } ? string.Join(" / ", slots) : "-";
 
     public void OnImGuiFreeRender()
     {
-        _overlay.Draw(
-            _snapshot,
-            _elapsedSeconds,
-            _inQuest || _showResults || _training,
-            _training ? "Training  |  F7 resets  |  DPS since first hit" : null);
+        _overlay.Draw(_snapshot, _elapsedSeconds, _inQuest || _showResults || _training, _training ? TrainingHint : null);
     }
+
+    // ---- SPL quest callbacks -------------------------------------------------------
 
     public void OnQuestEnter(int questId)
     {
@@ -509,13 +524,13 @@ public sealed class Plugin : IPlugin
         BeginHunt(questId);
     }
 
-    public void OnQuestComplete(int questId) => EndHunt(questId, "complete");
+    public void OnQuestComplete(int questId) => EndHunt("complete");
 
-    public void OnQuestFail(int questId) => EndHunt(questId, "fail");
+    public void OnQuestFail(int questId) => EndHunt("fail");
 
-    public void OnQuestAbandon(int questId) => EndHunt(questId, "abandon");
+    public void OnQuestAbandon(int questId) => EndHunt("abandon");
 
-    public void OnQuestReturn(int questId) => EndHunt(questId, "return");
+    public void OnQuestReturn(int questId) => EndHunt("return");
 
     public void OnQuestLeave(int questId)
     {
@@ -532,8 +547,94 @@ public sealed class Plugin : IPlugin
             // use last known state
         }
 
-        EndHunt(questId, _pendingResult ?? ResultFromQuestState(state));
+        EndHunt(ResultFromQuestState(state));
     }
+
+    // ---- SPL monster / player callbacks (fight-log timeline) --------------------------
+
+    public void OnMonsterEnrage(Monster monster) => RecordMonsterEvent("enrage", monster);
+
+    public void OnMonsterUnenrage(Monster monster) => RecordMonsterEvent("unenrage", monster);
+
+    public void OnMonsterDeath(Monster monster) => RecordMonsterEvent("death", monster);
+
+    public bool OnMonsterFlinch(Monster monster, ref int actionId)
+    {
+        RecordMonsterEvent("flinch", monster, actionId.ToString());
+        return true;
+    }
+
+    /// <summary>Remember the local hunter's current action so each hooked hit can be tagged with the move.</summary>
+    public void OnPlayerAction(Player player, ref ActionInfo action)
+    {
+        if (!_inQuest || !_hits.Hooked)
+            return;
+
+        try
+        {
+            if (player.Instance == LocalPlayerInstance())
+                _hits.SetCurrentAction(action.ActionSet, action.ActionId);
+        }
+        catch
+        {
+            // player wrapper torn down mid-callback
+        }
+    }
+
+    private void RecordMonsterEvent(string type, Monster monster, string? detail = null)
+    {
+        if (!_inQuest)
+            return;
+
+        try
+        {
+            _recorder.AddMonsterEvent(_elapsedSeconds, type, monster.Instance, detail);
+        }
+        catch
+        {
+            // never let bookkeeping break a game callback
+        }
+    }
+
+    /// <summary>Looks up the internal action name ("Attack00" style) from the local hunter's action list.</summary>
+    private static string? ResolveActionName(int actionSet, int actionId)
+    {
+        var player = Player.MainPlayer;
+        if (player is null || actionId < 0)
+            return null;
+
+        var list = player.ActionController.GetActionList(actionSet);
+        if (actionId >= list.Count)
+            return null;
+
+        return list[actionId]?.Name;
+    }
+
+    private static WeaponType? ReadLocalWeapon()
+    {
+        try
+        {
+            return Player.MainPlayer?.CurrentWeaponType;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static nint LocalPlayerInstance()
+    {
+        try
+        {
+            return Player.MainPlayer?.Instance ?? 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    // ---- hunt state machine ----------------------------------------------------------
 
     private void SyncQuestState()
     {
@@ -590,7 +691,7 @@ public sealed class Plugin : IPlugin
             if (!terminal && IsHuntingStage((Stage)_stageId) && questId > 0)
                 return;
 
-            EndHunt(_questId, ResultFromQuestState(questState));
+            EndHunt(ResultFromQuestState(questState));
             return;
         }
 
@@ -627,8 +728,10 @@ public sealed class Plugin : IPlugin
         try
         {
             questName = Quest.CurrentQuestName;
-            if (string.IsNullOrWhiteSpace(questName))
+            if (IsPlaceholderName(questName))
                 questName = Quest.GetQuestName(questId);
+            if (IsPlaceholderName(questName))
+                questName = "";
         }
         catch
         {
@@ -649,27 +752,86 @@ public sealed class Plugin : IPlugin
         _questId = questId;
         _questName = string.IsNullOrWhiteSpace(questName) ? $"Quest {questId}" : questName;
         _questStartedAt = DateTimeOffset.UtcNow;
-        _pendingResult = null;
         _elapsedSeconds = 0;
-        _snapshot = new PartySnapshot
-        {
-            Members =
-            [
-                new PartyMemberSnapshot
-                {
-                    Slot = 0,
-                    Name = "You",
-                    Damage = 0,
-                    IsLocal = true
-                }
-            ]
-        };
+        _timerSource = "local";
+        _snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
         _pollAccumulator = 0;
         _questTimer.Restart();
         _monsterHp.Reset();
         _hits.Reset();
+        _hits.RecordHits = true;
+        _recorder.Reset();
         _logs?.BeginHunt();
         _status = $"in quest {questId}";
+    }
+
+    private void EndHunt(string result)
+    {
+        if (!_inQuest)
+            return;
+
+        _inQuest = false;
+        _finishedQuestId = _questId;
+        _finishedAt = DateTimeOffset.UtcNow;
+        _questTimer.Stop();
+        _elapsedSeconds = Math.Max(_elapsedSeconds, HuntElapsedSeconds());
+
+        try
+        {
+            if (_reader is not null)
+            {
+                var snapshot = ReadPartyWithFallbacks();
+                if (snapshot is not null)
+                    _snapshot = snapshot.WithRates(_elapsedSeconds);
+                _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+                _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), _snapshot?.LocalSlot ?? 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"MhwDpsMeter: final read failed ({ex.Message}).");
+        }
+
+        _hits.RecordHits = false;
+        var members = _snapshot?.Members ?? [];
+        _logs?.EndHunt(
+            new FightLogHeader(
+                _questId,
+                _questName,
+                result,
+                _stageId,
+                ((Stage)_stageId).ToString(),
+                _questStartedAt,
+                _elapsedSeconds,
+                _timerSource,
+                _gameBuild),
+            members,
+            _recorder);
+
+        _showResults = members.Length > 0;
+        if (!_showResults)
+            _snapshot = null;
+    }
+
+    /// <summary>In-game quest timer when it is running (shared by every hunter), else the plugin's own clock.</summary>
+    private float HuntElapsedSeconds()
+    {
+        try
+        {
+            var time = Quest.QuestEndTimer.Time;
+            if (time is > 0.25f and < 60_000f)
+            {
+                _timerSource = "quest";
+                return time;
+            }
+        }
+        catch
+        {
+            // fall through to local clock
+        }
+
+        _timerSource = "local";
+        return (float)_questTimer.Elapsed.TotalSeconds;
     }
 
     private enum QuestState : uint
@@ -689,7 +851,6 @@ public sealed class Plugin : IPlugin
         QuestState.Success or QuestState.Completed => "complete",
         QuestState.Failed => "fail",
         QuestState.Abandon => "abandon",
-        QuestState.Quit => "leave",
         _ => "leave"
     };
 
@@ -716,212 +877,67 @@ public sealed class Plugin : IPlugin
         _ => (uint)stage != 0
     };
 
-    private void EndHunt(int questId, string result)
-    {
-        if (!_inQuest)
-            return;
+    /// <summary>The game returns "Unavailable" for arena/challenge quest ids it has no text for.</summary>
+    private static bool IsPlaceholderName(string? name) =>
+        string.IsNullOrWhiteSpace(name) || name.Equals("Unavailable", StringComparison.OrdinalIgnoreCase);
 
-        _pendingResult = result;
-        _inQuest = false;
-        _finishedQuestId = _questId;
-        _finishedAt = DateTimeOffset.UtcNow;
-        _questTimer.Stop();
-        _elapsedSeconds = Math.Max(_elapsedSeconds, HuntElapsedSeconds());
-
-        try
-        {
-            if (_reader is not null)
-            {
-                var fallbackDamage = _monsterHp.Poll();
-                _hits.UpdateMonsters(_monsterHp.LiveInstances);
-                if (_reader.TryRead(out var snapshot, fallbackDamage) && snapshot.Members.Length > 0)
-                {
-                    _hits.UpdateParty(snapshot.Members);
-                    snapshot = MergeLiveDamage(snapshot, fallbackDamage);
-                    _snapshot = WithRates(snapshot, _elapsedSeconds);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"MhwDpsMeter: final read failed ({ex.Message}).");
-        }
-
-        var members = _snapshot?.Members ?? [];
-        _logs?.EndHunt(
-            questId == 0 ? _questId : questId,
-            _questName,
-            result,
-            _questStartedAt,
-            _elapsedSeconds,
-            members);
-
-        _pendingResult = null;
-        _showResults = members.Length > 0;
-        if (!_showResults)
-            _snapshot = null;
-    }
-
-    private float HuntElapsedSeconds()
-    {
-        try
-        {
-            var time = Quest.QuestEndTimer.Time;
-            if (time is > 0.25f and < 60_000f)
-                return time;
-        }
-        catch
-        {
-            // fall through to local clock
-        }
-
-        return (float)_questTimer.Elapsed.TotalSeconds;
-    }
+    /// <summary>Expeditions and the Guiding Lands never allocate the quest-award damage table.</summary>
+    private static readonly string[] UnsupportedQuestNameMarkers =
+    [
+        "Expedition", "Guiding Lands", "Expédition", "Expedición", "Spedizione", "Expedição",
+        "探検", "探索", "導きの地", "탐험", "안내하는 땅", "Экспедиция", "探险", "调查地点"
+    ];
 
     private static bool IsUnsupportedHunt(Stage stage, string questName)
     {
         if (stage is Stage.GuidingLands)
             return true;
 
-        return questName.Contains("Expedition", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("Guiding Lands", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("Expédition", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("Expedición", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("Spedizione", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("Expedição", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("探検", StringComparison.Ordinal)
-               || questName.Contains("探索", StringComparison.Ordinal)
-               || questName.Contains("導きの地", StringComparison.Ordinal)
-               || questName.Contains("탐험", StringComparison.Ordinal)
-               || questName.Contains("안내하는 땅", StringComparison.Ordinal)
-               || questName.Contains("Экспедиция", StringComparison.OrdinalIgnoreCase)
-               || questName.Contains("探险", StringComparison.Ordinal)
-               || questName.Contains("调查地点", StringComparison.Ordinal);
+        return UnsupportedQuestNameMarkers.Any(marker =>
+            questName.Contains(marker, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static PartySnapshot WithRates(PartySnapshot snapshot, float elapsedSeconds)
-    {
-        var duration = Math.Max(elapsedSeconds, 1f);
-        var total = Math.Max(snapshot.TotalDamage, 0);
-        var members = snapshot.Members.Select(member => new PartyMemberSnapshot
-        {
-            Slot = member.Slot,
-            Name = member.Name,
-            Damage = member.Damage,
-            IsLocal = member.IsLocal,
-            Instance = member.Instance,
-            Dps = member.Damage / duration,
-            Percent = total > 0 ? 100f * member.Damage / total : 0f
-        }).ToArray();
+    // ---- damage merging --------------------------------------------------------------
 
-        return new PartySnapshot
-        {
-            Members = members,
-            TotalDamage = snapshot.TotalDamage,
-            SlotDamage = snapshot.SlotDamage,
-            HasAwardTable = snapshot.HasAwardTable
-        };
-    }
-
+    /// <summary>
+    /// Award table wins once it has real totals (zero slots are still patched from the hook).
+    /// Otherwise the live fallbacks fill in: hooked hits per slot, and monster HP lost when solo.
+    /// Sets <see cref="_damageSource"/> to say which one the overlay is showing.
+    /// </summary>
     private PartySnapshot MergeLiveDamage(PartySnapshot snapshot, int fallbackLocalDamage)
     {
-        // Award table only wins once it has real totals. Otherwise keep live fallbacks.
-        if (snapshot.HasAwardTable && snapshot.TotalDamage > 0)
-            return MergeZeroSlots(snapshot, _hits.Snapshot());
-
         var hooked = _hits.Snapshot();
+        if (snapshot.HasAwardTable && snapshot.TotalDamage > 0)
+        {
+            _damageSource = _reader!.DamageSource;
+            return PartySnapshot.From(snapshot.Members.Select(member =>
+            {
+                if (member.Damage > 0 || member.Slot is < 0 or >= PartyDamageReader.PartySlots)
+                    return member;
+                var hookedDamage = hooked[member.Slot];
+                return hookedDamage > 0 ? member.With(damage: hookedDamage) : member;
+            }), hasAwardTable: true);
+        }
+
+        var solo = snapshot.Members.Length == 1;
         var members = snapshot.Members.Select(member =>
         {
             var damage = member.Damage;
             if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
                 damage = Math.Max(damage, hooked[member.Slot]);
-            if (member.IsLocal && snapshot.Members.Length == 1)
+            if (member.IsLocal && solo)
                 damage = Math.Max(damage, Math.Max(0, fallbackLocalDamage));
-
             return member.With(damage: damage);
         }).ToArray();
 
-        var hookTotal = hooked.Sum();
         var tableTotal = snapshot.Members.Sum(member => member.Damage);
-        if (tableTotal == 0 && members.Length > 0)
-            _reader!.DamageSource = hookTotal > 0
-                ? "live hits"
-                : snapshot.Members.Length == 1 ? "monster HP" : "party list";
+        _damageSource = tableTotal > 0 || members.Length == 0
+            ? _reader!.DamageSource
+            : hooked.Sum() > 0 ? "live hits" : solo ? "monster HP" : "party list";
 
-        var slotDamage = new int[PartyDamageReader.PartySlots];
-        var total = 0;
-        foreach (var member in members)
-        {
-            if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
-                slotDamage[member.Slot] = member.Damage;
-            total += member.Damage;
-        }
-
-        return new PartySnapshot
-        {
-            Members = members,
-            TotalDamage = total,
-            SlotDamage = slotDamage,
-            HasAwardTable = false
-        };
+        return PartySnapshot.From(members, hasAwardTable: false);
     }
 
-    private static PartySnapshot MergeZeroSlots(PartySnapshot snapshot, int[] hooked)
-    {
-        var members = snapshot.Members.Select(member =>
-        {
-            if (member.Damage > 0 || member.Slot is < 0 or >= PartyDamageReader.PartySlots)
-                return member;
-            var hookedDamage = hooked[member.Slot];
-            return hookedDamage > 0 ? member.With(damage: hookedDamage) : member;
-        }).ToArray();
-
-        var slotDamage = new int[PartyDamageReader.PartySlots];
-        var total = 0;
-        foreach (var member in members)
-        {
-            if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
-                slotDamage[member.Slot] = member.Damage;
-            total += member.Damage;
-        }
-
-        return new PartySnapshot
-        {
-            Members = members,
-            TotalDamage = total,
-            SlotDamage = slotDamage,
-            HasAwardTable = true
-        };
-    }
-
-    private static PartySnapshot LocalSnapshot(int damage)
-    {
-        nint instance = 0;
-        try
-        {
-            instance = Player.MainPlayer?.Instance ?? 0;
-        }
-        catch
-        {
-            // menus
-        }
-
-        return new PartySnapshot
-        {
-            Members =
-            [
-                new PartyMemberSnapshot
-                {
-                    Slot = 0,
-                    Name = "You",
-                    Damage = damage,
-                    IsLocal = true,
-                    Instance = instance
-                }
-            ],
-            TotalDamage = damage,
-            SlotDamage = [damage, 0, 0, 0],
-            HasAwardTable = false
-        };
-    }
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetModuleHandleW")]
+    private static extern nint GetModuleHandle(string moduleName);
 }

@@ -136,6 +136,8 @@ internal sealed class Overlay
             return;
         }
 
+        ImGui.TextDisabled(logs.LogsDirectory);
+
         for (var i = 0; i < logs.History.Count; i++)
         {
             var log = logs.History[i];
@@ -150,8 +152,16 @@ internal sealed class Overlay
 
             ImGui.Indent();
             ImGui.TextDisabled(log.FileName);
+            if (log.Monsters.Length > 0)
+                ImGui.TextDisabled(string.Join(", ", log.Monsters.Select(monster => monster.Name).Distinct()));
             foreach (var player in log.Players)
-                ImGui.TextUnformatted($"{player.Name,-16} {player.Damage,7:N0}  {player.Dps,6:0.0}  {player.Percent,5:0.0}%");
+            {
+                var weapon = player.Weapon is null ? "" : $"  {player.Weapon}";
+                ImGui.TextUnformatted($"{player.Name,-16} {player.Damage,7:N0}  {player.Dps,6:0.0}  {player.Percent,5:0.0}%{weapon}");
+            }
+
+            if (log.Hits.Length > 0)
+                ImGui.TextDisabled($"{log.Hits.Length} hits, {log.Events.Length} events recorded");
             ImGui.Unindent();
         }
     }
