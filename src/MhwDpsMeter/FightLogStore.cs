@@ -37,19 +37,36 @@ internal sealed class FightLogStore
     private readonly string _logsDirectory;
     private readonly List<FightLogSample> _samples = [];
     private readonly List<FightLog> _history = [];
+    private List<FightLogIndexEntry> _index = [];
     private bool _logsAvailable = true;
 
     public IReadOnlyList<FightLog> History => _history;
     public int? ExpandedHistoryIndex { get; set; }
     public string LogsDirectory => _logsDirectory;
 
+    /// <summary>Every saved hunt and trial, newest first (mirrors index.json).</summary>
+    public IReadOnlyList<FightLogIndexEntry> Index => _index;
+
     public FightLogStore(string pluginDirectory)
     {
         _logsDirectory = Path.Combine(pluginDirectory, "logs");
         TryEnsureLogDirectory();
         LoadHistory();
-        EnsureIndex();
+        _index = ReadIndex();
+        // Missing, or written by 0.4.0 before totalDamage/kind existed (a logged hunt never has 0 damage).
+        if (_index.Count == 0 || _index.Any(entry => entry.TotalDamage == 0))
+            BuildIndexFromFiles();
     }
+
+    /// <summary>Highest-damage saved trial for this weapon and duration, if any.</summary>
+    public FightLogIndexEntry? BestTrial(string? weapon, int durationSeconds) =>
+        Trials()
+            .Where(entry => Math.Abs(entry.DurationSeconds - durationSeconds) < 0.5f
+                            && string.Equals(entry.Weapon, weapon, StringComparison.Ordinal))
+            .MaxBy(entry => entry.TotalDamage);
+
+    public IEnumerable<FightLogIndexEntry> Trials() =>
+        _index.Where(entry => entry.Kind == FightLog.KindTrial);
 
     public void BeginHunt()
     {
@@ -126,15 +143,21 @@ internal sealed class FightLogStore
             Events = recorder.Events()
         };
 
-        if (!TryWrite(log))
-            return null;
+        return Save(log) ? log : null;
+    }
+
+    /// <summary>Writes a finished log, adds it to the F9 history and to index.json.</summary>
+    public bool Save(FightLog log)
+    {
+        if (!_logsAvailable || !TryWrite(log))
+            return false;
 
         _history.Insert(0, log);
         while (_history.Count > HistoryLimit)
             _history.RemoveAt(_history.Count - 1);
 
         UpdateIndex(log);
-        return log;
+        return true;
     }
 
     private bool TryWrite(FightLog log)
@@ -143,7 +166,8 @@ internal sealed class FightLogStore
             return false;
 
         var stamp = log.StartedAt.ToLocalTime().ToString("yyyy-MM-dd_HHmmss");
-        var fileName = $"{stamp}_{log.QuestId}_{Sanitize(log.Result)}.json";
+        var middle = log.Kind == FightLog.KindTrial ? $"trial{log.DurationSeconds:0}s" : log.QuestId.ToString();
+        var fileName = $"{stamp}_{middle}_{Sanitize(log.Result)}.json";
         var path = Path.Combine(_logsDirectory, fileName);
 
         try
@@ -164,23 +188,15 @@ internal sealed class FightLogStore
     /// <summary>Prepends the new hunt to index.json; a viewer reading mid-write sees the old or new file, never a torn one.</summary>
     private void UpdateIndex(FightLog log)
     {
-        try
-        {
-            var entries = ReadIndex();
-            entries.RemoveAll(entry => entry.File == log.FileName);
-            entries.Insert(0, FightLogIndexEntry.From(log));
-            WriteAtomic(IndexPath, JsonSerializer.Serialize(entries, JsonOptions));
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"MhwDpsMeter: could not update {IndexFileName} ({ex.Message}).");
-        }
+        _index.RemoveAll(entry => entry.File == log.FileName);
+        _index.Insert(0, FightLogIndexEntry.From(log));
+        WriteIndex();
     }
 
-    /// <summary>First run after upgrading: build the index from every existing log file.</summary>
-    private void EnsureIndex()
+    /// <summary>First run after upgrading (or a lost index): rebuild from every existing log file.</summary>
+    private void BuildIndexFromFiles()
     {
-        if (!_logsAvailable || File.Exists(IndexPath))
+        if (!_logsAvailable || !Directory.Exists(_logsDirectory))
             return;
 
         try
@@ -197,12 +213,25 @@ internal sealed class FightLogStore
                 return;
 
             entries.Sort((a, b) => b.StartedAt.CompareTo(a.StartedAt));
-            WriteAtomic(IndexPath, JsonSerializer.Serialize(entries, JsonOptions));
+            _index = entries;
+            WriteIndex();
             Log.Info($"MhwDpsMeter: built {IndexFileName} from {entries.Count} existing fight logs.");
         }
         catch (Exception ex)
         {
             Log.Warn($"MhwDpsMeter: could not build {IndexFileName} ({ex.Message}).");
+        }
+    }
+
+    private void WriteIndex()
+    {
+        try
+        {
+            WriteAtomic(IndexPath, JsonSerializer.Serialize(_index, JsonOptions));
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"MhwDpsMeter: could not write {IndexFileName} ({ex.Message}).");
         }
     }
 

@@ -122,12 +122,27 @@ internal sealed class HuntRecorder
         }
     }
 
+    /// <summary>Hunt hits: <paramref name="elapsed"/> is the hunt clock now; each hit's age puts it on that clock.</summary>
     public void AddHits(float elapsed, IReadOnlyList<HitRecord> hits, int localSlot)
     {
         if (hits.Count == 0)
             return;
 
         var now = Stopwatch.GetTimestamp();
+        AddHitsCore(hits, localSlot, hit => elapsed - (float)Stopwatch.GetElapsedTime(hit.Timestamp, now).TotalSeconds);
+    }
+
+    /// <summary>Trial hits: exact offset from the trial's first-hit timestamp.</summary>
+    public void AddHitsRelativeTo(long startTimestamp, IReadOnlyList<HitRecord> hits, int localSlot)
+    {
+        if (hits.Count == 0)
+            return;
+
+        AddHitsCore(hits, localSlot, hit => (float)Stopwatch.GetElapsedTime(startTimestamp, hit.Timestamp).TotalSeconds);
+    }
+
+    private void AddHitsCore(IReadOnlyList<HitRecord> hits, int localSlot, Func<HitRecord, float> timeOf)
+    {
         lock (_gate)
         {
             foreach (var hit in hits)
@@ -135,11 +150,10 @@ internal sealed class HuntRecorder
                 if (_hits.Count >= MaxHits)
                     return;
 
-                var age = (float)Stopwatch.GetElapsedTime(hit.Timestamp, now).TotalSeconds;
                 _monsters.TryGetValue(hit.Target, out var monster);
                 _hits.Add(new FightLogHit
                 {
-                    T = Math.Max(0f, elapsed - age),
+                    T = Math.Max(0f, timeOf(hit)),
                     Slot = Math.Max(0, localSlot),
                     Monster = monster?.Id,
                     Damage = hit.Damage,

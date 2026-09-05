@@ -20,13 +20,15 @@ public sealed class Plugin : IPlugin
         ?? "unknown";
 
     private const float PollIntervalSeconds = 0.1f;
-    private const string TrainingHint = "Training  |  F7 resets  |  DPS since first hit";
+    private const string TrainingHint = "Training  |  F7 resets  |  F8 time trial  |  DPS since first hit";
 
     private readonly Overlay _overlay = new();
     private readonly Stopwatch _questTimer = new();
     private readonly MonsterHpTracker _monsterHp = new();
     private readonly DamageTracker _hits = new();
     private readonly HuntRecorder _recorder;
+    private readonly TimeTrial _trial;
+    private PluginSettings _settings = new();
 
     private AddressMap? _map;
     private PartyDamageReader? _reader;
@@ -66,6 +68,7 @@ public sealed class Plugin : IPlugin
     public Plugin()
     {
         _recorder = new HuntRecorder(ResolveActionName);
+        _trial = new TimeTrial(ResolveActionName);
     }
 
     public PluginData Initialize()
@@ -114,6 +117,9 @@ public sealed class Plugin : IPlugin
 
         Log.Info($"MhwDpsMeter: loaded {_map.SourceFile} (build {build}, base 0x{_moduleBase:X}).");
         _pluginDir = pluginDir;
+        _settings = PluginSettings.Load(pluginDir);
+        _overlay.Visible = _settings.OverlayVisible;
+        _overlay.Opacity = _settings.OverlayOpacity;
         _reader = new PartyDamageReader(_map, _moduleBase);
         _logs = new FightLogStore(pluginDir);
         _liveDebug = new LiveDebugStore(pluginDir);
@@ -203,13 +209,20 @@ public sealed class Plugin : IPlugin
     public void OnUpdate(float deltaTime)
     {
         if (Input.IsPressed(Key.F10))
+        {
             _overlay.Visible = !_overlay.Visible;
+            _settings.OverlayVisible = _overlay.Visible;
+            _settings.Save();
+        }
 
         if (Input.IsPressed(Key.F6))
             DumpDiagnostics();
 
         if (Input.IsPressed(Key.F7))
             ResetTraining();
+
+        if (Input.IsPressed(Key.F8))
+            ToggleTrial();
 
         RetryBuildDetection(deltaTime);
         SyncQuestState();
@@ -283,7 +296,13 @@ public sealed class Plugin : IPlugin
         try
         {
             _monsterHp.Poll();
-            var damage = _hits.LocalDamage;
+            if (_trial.Update(_hits.DrainHits(), ReadLocalWeapon()))
+                FinishTrial();
+
+            // While a trial is armed/running/finished the overlay shows the trial window only.
+            var damage = _trial.Active ? _trial.Damage : _hits.LocalDamage;
+            _elapsedSeconds = _trial.Active ? _trial.Elapsed : (float)_hits.SinceFirstHit.TotalSeconds;
+
             if (!_reader!.TryRead(out var snapshot, 0) || snapshot.Members.Length == 0)
                 snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
 
@@ -293,13 +312,17 @@ public sealed class Plugin : IPlugin
                 .ToArray();
 
             _hits.UpdateParty(members);
-            _hits.DrainHits();
-            _elapsedSeconds = (float)_hits.SinceFirstHit.TotalSeconds;
             _snapshot = PartySnapshot.From(members, hasAwardTable: false).WithRates(_elapsedSeconds);
-            _damageSource = "training hits";
-            _status = _hits.Hooked
-                ? $"training area: {damage} dmg over {_elapsedSeconds:0}s ({_hits.Hits} hits)"
-                : "training area: hit hook is off, no damage can be counted";
+            _damageSource = _trial.Active ? "time trial" : "training hits";
+            _status = !_hits.Hooked
+                ? "training area: hit hook is off, no damage can be counted"
+                : _trial.State switch
+                {
+                    TimeTrialState.Armed => $"time trial {_trial.DurationSeconds}s armed, waiting for first hit",
+                    TimeTrialState.Running => $"time trial: {damage} dmg, {_trial.Remaining:0.0}s left",
+                    TimeTrialState.Finished => $"time trial done: {damage} dmg in {_trial.DurationSeconds}s ({_trial.Dps:0.0} DPS)",
+                    _ => $"training area: {damage} dmg over {_elapsedSeconds:0}s ({_hits.Hits} hits)"
+                };
             WriteLiveDebug(force: false);
         }
         catch (Exception ex)
@@ -331,6 +354,8 @@ public sealed class Plugin : IPlugin
             return;
 
         _training = false;
+        _trial.Cancel();
+        _hits.RecordHits = false;
         _hits.AcceptAllTargets = false;
         _hits.Reset();
         _snapshot = null;
@@ -338,16 +363,66 @@ public sealed class Plugin : IPlugin
         _status = "left training area";
     }
 
-    /// <summary>F7 or the F9 button: zero the training damage and restart the DPS clock at the next hit.</summary>
+    /// <summary>F7 or the F9 button: zero the training damage, drop any trial, and restart the DPS clock at the next hit.</summary>
     private void ResetTraining()
     {
         if (!_training)
             return;
 
+        _trial.Cancel();
+        _hits.RecordHits = false;
         _hits.Reset();
         _elapsedSeconds = 0;
         _snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance()).WithRates(0);
         _status = "training area: reset, waiting for first hit";
+    }
+
+    /// <summary>F8 or the F9 button: arm a trial with the configured duration, or cancel the one in progress.</summary>
+    private void ToggleTrial()
+    {
+        if (!_training)
+        {
+            _status = "time trial only works in the training area";
+            return;
+        }
+
+        if (_trial.State is TimeTrialState.Armed or TimeTrialState.Running)
+        {
+            _trial.Cancel();
+            _hits.RecordHits = false;
+            _status = "time trial cancelled";
+            return;
+        }
+
+        if (!_hits.Hooked)
+        {
+            _status = "time trial needs the hit hook (address map mismatch)";
+            return;
+        }
+
+        _hits.RecordHits = true;
+        _trial.Arm(_settings.TrialDurationSeconds);
+        _trial.PreviousBest = _logs?.BestTrial(ReadLocalWeapon()?.ToString(), _trial.DurationSeconds)?.TotalDamage;
+        _status = $"time trial {_trial.DurationSeconds}s armed, waiting for first hit";
+        Log.Info($"MhwDpsMeter: time trial {_trial.DurationSeconds}s armed.");
+    }
+
+    /// <summary>Deadline reached: compare with the saved best for this weapon/duration and write the trial log.</summary>
+    private void FinishTrial()
+    {
+        _hits.RecordHits = false;
+        var best = _logs?.BestTrial(_trial.Weapon, _trial.DurationSeconds);
+        _trial.PreviousBest = best?.TotalDamage;
+        _trial.IsPersonalBest = best is null || _trial.Damage > best.TotalDamage;
+
+        if (_trial.Damage <= 0 || _logs is null)
+            return;
+
+        var name = _reader?.LastLocalName is { Length: > 0 } local ? local : "You";
+        var log = _trial.BuildLog(name, _stageId, ((Stage)_stageId).ToString(), _gameBuild);
+        if (_logs.Save(log))
+            _trial.SavedFileName = log.FileName;
+        Log.Info($"MhwDpsMeter: time trial {_trial.DurationSeconds}s finished: {_trial.Damage} dmg, {_trial.Hits} hits{(_trial.IsPersonalBest ? ", personal best" : "")}.");
     }
 
     /// <summary>
@@ -411,7 +486,14 @@ public sealed class Plugin : IPlugin
 
     public void OnImGuiRender()
     {
-        _overlay.DrawSettings(_logs, BuildDiagnosticsText(), DumpDiagnostics, _training ? ResetTraining : null);
+        _overlay.DrawSettings(
+            _logs,
+            BuildDiagnosticsText(),
+            DumpDiagnostics,
+            _training ? ResetTraining : null,
+            _settings,
+            _training ? _trial : null,
+            _training ? ToggleTrial : null);
     }
 
     private string BuildDiagnosticsText()
@@ -448,7 +530,7 @@ public sealed class Plugin : IPlugin
             $"Slots:\n{slotLines}" +
             $"Live debug: {_liveDebug?.LatestPath ?? "n/a"}\n" +
             $"Module: 0x{_moduleBase:X}\n" +
-            "F6 = force debug dump, F7 = reset training damage, F9 = this menu, F10 = toggle overlay";
+            "F6 = force debug dump, F7 = reset training damage, F8 = time trial, F9 = this menu, F10 = toggle overlay";
     }
 
     private void WriteLiveDebug(bool force)
@@ -502,7 +584,12 @@ public sealed class Plugin : IPlugin
 
     public void OnImGuiFreeRender()
     {
-        _overlay.Draw(_snapshot, _elapsedSeconds, _inQuest || _showResults || _training, _training ? TrainingHint : null);
+        _overlay.Draw(
+            _snapshot,
+            _elapsedSeconds,
+            _inQuest || _showResults || _training,
+            _training ? TrainingHint : null,
+            _training ? _trial : null);
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------

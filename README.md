@@ -2,7 +2,7 @@
 
 In-game damage overlay for Monster Hunter World: Iceborne. It is a [SharpPluginLoader](https://fexty12573.github.io/SharpPluginLoader/) C# plugin, so it draws on the game’s own swapchain and works under Proton on Linux. There is no external overlay process.
 
-During a quest it shows each hunter’s **name**, **total damage**, **DPS**, and **% of party damage**. When the quest ends it writes a JSON fight log (summary plus a 2-second damage sample). In the **training area** it shows your own damage and DPS against the pole, with **F7** to reset without leaving.
+During a quest it shows each hunter’s **name**, **total damage**, **DPS**, and **% of party damage**. When the quest ends it writes a JSON fight log with every one of your hits, the monsters, and a timeline. In the **training area** it shows your own damage and DPS against the pole, with **F7** to reset and **F8** to run a fixed-length **time trial** with per-move results and personal bests.
 
 ## Requirements
 
@@ -109,9 +109,24 @@ The training area is not a quest, so there is no quest timer and no quest-award 
 - Damage is your hooked hits on the pole / wagon (`Damage source: training hits` in the F9 panel).
 - The DPS clock starts at your **first hit** after a reset, not when you enter.
 - **F7** (or the **Reset training damage** button in the F9 panel) zeroes the damage and re-arms the clock. Leaving the area also resets.
-- No fight log is written for training sessions.
+- No fight log is written for free training; time trials are saved (below).
+
+### Time trial
+
+A time trial measures how much damage you do in a fixed window, so different combos or builds can be compared on the pole.
+
+1. Set the duration in the F9 panel under **Time trial** (5–600 s; presets 30 / 60 / 90 / 120 / 180). The value is remembered in `settings.json`.
+2. Press **F8** (or **Start trial** in the F9 panel). The overlay shows *armed*; the clock has not started yet.
+3. The window starts on your **first hit** after arming and ends exactly `duration` seconds later, measured on the hits' own timestamps, so a hit that lands after the deadline never counts. While running, the overlay shows the countdown, a progress bar (turns red in the last 5 s), running damage / DPS / hits / crits, and your previous best for this weapon and duration.
+4. When the window closes the numbers freeze: total damage, DPS, hits, crits, the top five moves with their share, and whether this is a **new personal best** (delta shown). **F8** arms another run with the same settings; **F7** clears it and returns to free training. Leaving the area cancels an unfinished trial.
+
+Every finished trial is saved as a normal fight-log file (`kind: "trial"`, see below) and listed in the F9 **Fight logs** history. **Personal bests** in the F9 panel are per weapon type and duration and come from `index.json`, so they survive restarts.
 
 This needs the hit hook, which is only enabled when the address map matches the game build (`Hit hook: hook 0x…` in the F9 panel). If the panel shows `Hit hook: off`, the training overlay shows a status line explaining that no damage can be counted.
+
+## Settings
+
+`nativePC/plugins/CSharp/MhwDpsMeter/settings.json` stores overlay visibility, opacity, and the time-trial duration. It is written whenever you change one of them in the F9 panel (or toggle the overlay with F10).
 
 ## Diagnostics
 
@@ -122,11 +137,12 @@ This needs the hit hook, which is only enabled when the address map matches the 
 Every quest (not training sessions, expeditions, or the Guiding Lands) is written as one JSON file next to the plugin, plus a listing file:
 
 ```text
-nativePC/plugins/CSharp/MhwDpsMeter/logs/YYYY-MM-DD_HHmmss_<questId>_<result>.json
+nativePC/plugins/CSharp/MhwDpsMeter/logs/YYYY-MM-DD_HHmmss_<questId>_<result>.json      # quests
+nativePC/plugins/CSharp/MhwDpsMeter/logs/YYYY-MM-DD_HHmmss_trial<seconds>s_trial.json   # training time trials
 nativePC/plugins/CSharp/MhwDpsMeter/logs/index.json
 ```
 
-`index.json` is a newest-first array of `{file, questId, questName, result, startedAt, durationSeconds, players[], monsters[]}` so a viewer can list hunts without opening every file. It is rebuilt from the existing files the first time the plugin starts without one. Recent hunts are also listed under **Fight logs** in the F9 menu.
+`index.json` is a newest-first array of `{file, kind, questId, questName, result, startedAt, durationSeconds, totalDamage, weapon, players[], monsters[]}` so a viewer can list hunts without opening every file. It is rebuilt from the existing files when missing or written by an older version. Recent hunts are also listed under **Fight logs** in the F9 menu.
 
 If the `logs` folder cannot be created, the overlay still runs and a warning is printed to the SharpPluginLoader console.
 
@@ -137,8 +153,9 @@ The files are meant to be consumed by an external viewer (a web UI in the style 
 | Field | Meaning |
 | --- | --- |
 | `schemaVersion`, `pluginVersion`, `gameBuild` | `2`, the plugin build stamp, and the game build the addresses came from |
+| `kind` | `quest` (default when absent) or `trial`. Trials have `questId` 0, `questName` `Time trial 60s`, `result` `trial`, `timerSource` `trial`, a single local player, no monsters, and `samples` rebuilt from the hits |
 | `questId`, `questName`, `result`, `stageId`, `stage` | Quest identity. `result` is `complete`, `fail`, `abandon`, `return`, or `leave` |
-| `startedAt`, `endedAt`, `durationSeconds`, `timerSource` | UTC timestamps; duration is the plugin's own clock from the in-quest transition (`"local"`). `"quest"` is reserved for a future read of the on-screen quest timer |
+| `startedAt`, `endedAt`, `durationSeconds`, `timerSource` | UTC timestamps; duration is the plugin's own clock from the in-quest transition (`"local"`), or the configured window for a trial (`"trial"`). `"quest"` is reserved for a future read of the on-screen quest timer |
 | `hitCoverage` | Always `"local"`: the `hits` array only contains the local hunter (see below) |
 | `players[]` | `slot` (0–3, matches HUD colour), `name`, `isLocal`, `weapon` (local hunter only), `damage`, `dps`, `percent`. Sorted by damage |
 | `monsters[]` | Large monsters seen: `id` (`m1`, `m2`, … referenced by hits/events), `type`, `name`, `variant`, `maxHealth`, `lastHealth`, `firstSeenT`, `diedT` |

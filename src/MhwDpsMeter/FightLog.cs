@@ -10,9 +10,15 @@ namespace MhwDpsMeter;
 internal sealed class FightLog
 {
     public const int CurrentSchemaVersion = 2;
+    public const string KindQuest = "quest";
+    public const string KindTrial = "trial";
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = 1;
+
+    /// <summary>"quest" (default when absent) or "trial" for a training-area time trial.</summary>
+    [JsonPropertyName("kind")]
+    public string Kind { get; set; } = KindQuest;
 
     [JsonPropertyName("pluginVersion")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -215,6 +221,9 @@ internal sealed class FightLogIndexEntry
     [JsonPropertyName("file")]
     public string File { get; set; } = "";
 
+    [JsonPropertyName("kind")]
+    public string Kind { get; set; } = FightLog.KindQuest;
+
     [JsonPropertyName("questId")]
     public int QuestId { get; set; }
 
@@ -230,6 +239,14 @@ internal sealed class FightLogIndexEntry
     [JsonPropertyName("durationSeconds")]
     public float DurationSeconds { get; set; }
 
+    [JsonPropertyName("totalDamage")]
+    public int TotalDamage { get; set; }
+
+    /// <summary>Local hunter's weapon type, when known.</summary>
+    [JsonPropertyName("weapon")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Weapon { get; set; }
+
     [JsonPropertyName("players")]
     public string[] Players { get; set; } = [];
 
@@ -239,6 +256,9 @@ internal sealed class FightLogIndexEntry
     public static FightLogIndexEntry From(FightLog log) => new()
     {
         File = log.FileName,
+        Kind = log.Kind,
+        TotalDamage = log.Players.Sum(player => player.Damage),
+        Weapon = log.Players.FirstOrDefault(player => player.IsLocal)?.Weapon,
         QuestId = log.QuestId,
         QuestName = log.QuestName,
         Result = log.Result,
