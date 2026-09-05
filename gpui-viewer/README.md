@@ -1,0 +1,61 @@
+# MHW Fight Logs — GPUI viewer
+
+Desktop and browser viewer for the fight logs written by the [MHW DPS Meter](../README.md) plugin, built on [GPUI](https://www.gpui.rs/) (Zed's UI framework) through [gpui-kit](https://github.com/longbridge/gpui-kit) 0.6, which bundles GPUI, its platform layer, the `gpui_web` browser backend and the styled component library (DataTable, Tabs, Buttons, Tags, plot primitives).
+
+The same crate produces both targets:
+
+- **Native**: `cargo run --release -- <logs folder>`; a real window on Linux (Wayland/X11), macOS or Windows.
+- **Browser**: `wasm32-unknown-unknown` via wasm-bindgen, rendered on WebGPU (WebGL2 fallback) inside a canvas. Served by the tiny Vite shell in `www/`.
+
+## Native
+
+```bash
+cd gpui-viewer
+cargo run --release -- "/path/to/Monster Hunter World/nativePC/plugins/CSharp/MhwDpsMeter/logs"
+# or:  MHW_LOGS=/path/to/logs cargo run --release
+# or:  cargo run --release            # looks in the usual Steam locations, else shows the empty state
+cargo test                            # parser + analysis tests against sample-logs/
+```
+
+The toolbar has **Open logs folder…** (native file dialog), **Sample** (the bundled `sample-logs/`), **Time trials**, and a light/dark toggle. A folder URL (`http://…/logs/`) also works as the argument.
+
+Linux needs the usual GPUI system libraries: Vulkan, xkbcommon, wayland-client, X11, fontconfig.
+
+## Browser
+
+```bash
+rustup toolchain install nightly -t wasm32-unknown-unknown -c rust-src
+cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | cut -d'"' -f2)"
+scripts/build-wasm.sh            # nightly wasm build + bindgen into www/src/wasm
+cd www && pnpm install && pnpm dev   # http://localhost:3000
+```
+
+`?logs=<url>` loads any served folder containing an `index.json`; without it the sample logs load. The dev server sends the COOP/COEP headers WebGPU wants. The nightly toolchain is required by `gpui_web`'s `parking_lot` nightly feature; the app itself uses the single-threaded web runtime, so no shared-memory flags are needed (see `.cargo/config.toml`).
+
+The browser build bundles Inter and IBM Plex Sans (`fonts/`, SIL OFL) because the canvas has no system fonts, and serves gpui-kit's icon set from `www/public/assets/icons`.
+
+## What it shows
+
+- **Hunt list** (left): every quest and time trial from `index.json`, text filter, All/Quests/Trials toggle, sortable columns; click a row to open it.
+- **Overview**: party table with damage, DPS and share; cumulative damage per hunter as a multi-series plot with red (monster death) and orange (enrage) markers; rolling DPS with a selectable window.
+- **Moves**: per-move breakdown of *your* hits (damage bar, share, hits, crit rate, avg, max, tenderized), with a toggle to hide `Common::` actions (hits registered after the move ended).
+- **Monsters**: HP lost per large monster and how much of it was yours.
+- **Timeline**: enrage, unenrage, death, weapon swaps, joins and leaves; flinches on request.
+- **Time trials**: personal bests per weapon and window (same rule as the plugin's F9 panel), every run, and a two-run comparison (click two rows) with overlaid damage curves and top moves.
+
+Per-move data exists only for the local hunter: the game runs its deal-damage function only for hits simulated on your client. Teammates get their award total and the 2-second damage curve.
+
+## Layout
+
+```
+src/model.rs      serde mirror of FightLog.cs (schema 1 and 2)
+src/analysis.rs   pure computations + unit tests (moves, curves, PBs, formatting)
+src/loader.rs     folder / URL loading (index.json + every log)
+src/ui/           ViewerApp root, hunt list DataTable, detail tabs, trials page, LinesPlot
+src/lib.rs        launch() shared by both targets; wasm entry `run()`
+src/main.rs       native entry
+www/              Vite shell for the wasm build; scripts/build-wasm.sh produces www/src/wasm
+sample-logs/      anonymised real logs used by tests, the Sample button and the web dev server
+```
+
+`LinesPlot` is a custom `Plot` (gpui-component's `Plot` trait + `ScaleLinear`, `Line`, `Grid`, `PlotAxis`) because the stock `LineChart` draws a single series and a hunt has up to four hunters.

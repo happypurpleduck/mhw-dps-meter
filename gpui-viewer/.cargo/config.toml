@@ -1,0 +1,4 @@
+# The browser build follows gpui-kit's story-web recipe: a single-threaded web
+# runtime, so no atomics / shared-memory flags are needed.
+[target.wasm32-unknown-unknown]
+rustflags = []

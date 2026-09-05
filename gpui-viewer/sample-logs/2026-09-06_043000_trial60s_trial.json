@@ -1,0 +1,1231 @@
+{
+ "schemaVersion": 2,
+ "pluginVersion": "0.4.0+sample",
+ "gameBuild": 421810,
+ "kind": "trial",
+ "questId": 0,
+ "questName": "Time trial 60s",
+ "result": "trial",
+ "stageId": 504,
+ "stage": "TrainingCamp",
+ "startedAt": "2026-09-06T01:30:00+00:00",
+ "endedAt": "2026-09-06T01:31:00+00:00",
+ "durationSeconds": 60,
+ "timerSource": "trial",
+ "hitCoverage": "local",
+ "players": [
+  {
+   "slot": 0,
+   "name": "Hunter A",
+   "isLocal": true,
+   "weapon": "DualBlades",
+   "damage": 692,
+   "dps": 11.533333333333333,
+   "percent": 100
+  }
+ ],
+ "monsters": [],
+ "samples": [
+  {
+   "t": 0,
+   "damage": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 2,
+   "damage": [
+    45,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 4,
+   "damage": [
+    60,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 6,
+   "damage": [
+    60,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 8,
+   "damage": [
+    60,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 10,
+   "damage": [
+    60,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 12,
+   "damage": [
+    60,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 14,
+   "damage": [
+    83,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 16,
+   "damage": [
+    125,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 18,
+   "damage": [
+    164,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 20,
+   "damage": [
+    184,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 22,
+   "damage": [
+    184,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 24,
+   "damage": [
+    291,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 26,
+   "damage": [
+    291,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 28,
+   "damage": [
+    349,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 30,
+   "damage": [
+    359,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 32,
+   "damage": [
+    392,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 34,
+   "damage": [
+    392,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 36,
+   "damage": [
+    411,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 38,
+   "damage": [
+    440,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 40,
+   "damage": [
+    497,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 42,
+   "damage": [
+    520,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 44,
+   "damage": [
+    583,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 46,
+   "damage": [
+    607,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 48,
+   "damage": [
+    630,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 50,
+   "damage": [
+    653,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 52,
+   "damage": [
+    653,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 54,
+   "damage": [
+    653,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 56,
+   "damage": [
+    653,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 58,
+   "damage": [
+    653,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "t": 60,
+   "damage": [
+    692,
+    0,
+    0,
+    0
+   ]
+  }
+ ],
+ "hits": [
+  {
+   "t": 0.0,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 0.017,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 0.483,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 0.889,
+   "slot": 0,
+   "monster": null,
+   "damage": 9,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 69,
+   "action": "WP_02::AIR_SPIN"
+  },
+  {
+   "t": 3.501,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 3.601,
+   "slot": 0,
+   "monster": null,
+   "damage": 6,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 3.718,
+   "slot": 0,
+   "monster": null,
+   "damage": 4,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 13.589,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 13.773,
+   "slot": 0,
+   "monster": null,
+   "damage": 12,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 14.369,
+   "slot": 0,
+   "monster": null,
+   "damage": 4,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 14.369,
+   "slot": 0,
+   "monster": null,
+   "damage": 4,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 14.479,
+   "slot": 0,
+   "monster": null,
+   "damage": 6,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 14.479,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 14.963,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 75,
+   "action": "WP_02::UPPER"
+  },
+  {
+   "t": 15.444,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 15.633,
+   "slot": 0,
+   "monster": null,
+   "damage": 9,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 16.207,
+   "slot": 0,
+   "monster": null,
+   "damage": 3,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 16.208,
+   "slot": 0,
+   "monster": null,
+   "damage": 3,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 16.313,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 16.313,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 16.8,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 75,
+   "action": "WP_02::UPPER"
+  },
+  {
+   "t": 17.302,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 17.452,
+   "slot": 0,
+   "monster": null,
+   "damage": 9,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 18.02,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 73,
+   "action": "WP_02::TWICE_SLASH_REVERSE"
+  },
+  {
+   "t": 18.294,
+   "slot": 0,
+   "monster": null,
+   "damage": 9,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 73,
+   "action": "WP_02::TWICE_SLASH_REVERSE"
+  },
+  {
+   "t": 22.601,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 22.617,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 22.963,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 22.964,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 23.467,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 69,
+   "action": "WP_02::AIR_SPIN"
+  },
+  {
+   "t": 23.732,
+   "slot": 0,
+   "monster": null,
+   "damage": 23,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 12,
+   "actionSet": 3,
+   "actionId": 127,
+   "action": "WP_02::EM_CONST_SPIN_FINISH"
+  },
+  {
+   "t": 23.733,
+   "slot": 0,
+   "monster": null,
+   "damage": 23,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 12,
+   "actionSet": 3,
+   "actionId": 127,
+   "action": "WP_02::EM_CONST_SPIN_FINISH"
+  },
+  {
+   "t": 26.277,
+   "slot": 0,
+   "monster": null,
+   "damage": 4,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 26.404,
+   "slot": 0,
+   "monster": null,
+   "damage": 4,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 26.572,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 26.573,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 26.958,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 76,
+   "action": "WP_02::KIJIN_UPPER"
+  },
+  {
+   "t": 27.574,
+   "slot": 0,
+   "monster": null,
+   "damage": 15,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 80,
+   "action": "WP_02::KIJIN_ATTACK2"
+  },
+  {
+   "t": 27.707,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 80,
+   "action": "WP_02::KIJIN_ATTACK2"
+  },
+  {
+   "t": 28.186,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 28.286,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 94,
+   "action": "WP_02::KIJIN_RUSH"
+  },
+  {
+   "t": 30.895,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 31.11,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 31.578,
+   "slot": 0,
+   "monster": null,
+   "damage": 12,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 73,
+   "action": "WP_02::TWICE_SLASH_REVERSE"
+  },
+  {
+   "t": 35.298,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 35.487,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 36.811,
+   "slot": 0,
+   "monster": null,
+   "damage": 16,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 84,
+   "action": "WP_02::L_SPIN"
+  },
+  {
+   "t": 36.944,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 84,
+   "action": "WP_02::L_SPIN"
+  },
+  {
+   "t": 37.089,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 84,
+   "action": "WP_02::L_SPIN"
+  },
+  {
+   "t": 38.203,
+   "slot": 0,
+   "monster": null,
+   "damage": 3,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 38.203,
+   "slot": 0,
+   "monster": null,
+   "damage": 3,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 38.308,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 38.308,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 38.861,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 75,
+   "action": "WP_02::UPPER"
+  },
+  {
+   "t": 39.502,
+   "slot": 0,
+   "monster": null,
+   "damage": 9,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 39.702,
+   "slot": 0,
+   "monster": null,
+   "damage": 22,
+   "crit": false,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 40.318,
+   "slot": 0,
+   "monster": null,
+   "damage": 4,
+   "crit": false,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 40.318,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": true,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 40.451,
+   "slot": 0,
+   "monster": null,
+   "damage": 8,
+   "crit": true,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 40.451,
+   "slot": 0,
+   "monster": null,
+   "damage": 6,
+   "crit": false,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 68,
+   "action": "WP_02::SWEEP_LEVER"
+  },
+  {
+   "t": 42.519,
+   "slot": 0,
+   "monster": null,
+   "damage": 22,
+   "crit": false,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 43.043,
+   "slot": 0,
+   "monster": null,
+   "damage": 20,
+   "crit": false,
+   "tenderized": true,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 73,
+   "action": "WP_02::TWICE_SLASH_REVERSE"
+  },
+  {
+   "t": 43.326,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 73,
+   "action": "WP_02::TWICE_SLASH_REVERSE"
+  },
+  {
+   "t": 43.881,
+   "slot": 0,
+   "monster": null,
+   "damage": 10,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 74,
+   "action": "WP_02::WHEEL"
+  },
+  {
+   "t": 44.38,
+   "slot": 0,
+   "monster": null,
+   "damage": 12,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 74,
+   "action": "WP_02::WHEEL"
+  },
+  {
+   "t": 44.38,
+   "slot": 0,
+   "monster": null,
+   "damage": 12,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 74,
+   "action": "WP_02::WHEEL"
+  },
+  {
+   "t": 47.21,
+   "slot": 0,
+   "monster": null,
+   "damage": 3,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 47.21,
+   "slot": 0,
+   "monster": null,
+   "damage": 3,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 47.31,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 47.31,
+   "slot": 0,
+   "monster": null,
+   "damage": 5,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 7,
+   "action": "WP_02::WALK_ON"
+  },
+  {
+   "t": 47.824,
+   "slot": 0,
+   "monster": null,
+   "damage": 7,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 75,
+   "action": "WP_02::UPPER"
+  },
+  {
+   "t": 48.409,
+   "slot": 0,
+   "monster": null,
+   "damage": 9,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 48.609,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": true,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 72,
+   "action": "WP_02::TWICE_SLASH"
+  },
+  {
+   "t": 59.115,
+   "slot": 0,
+   "monster": null,
+   "damage": 11,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 59.485,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  },
+  {
+   "t": 59.485,
+   "slot": 0,
+   "monster": null,
+   "damage": 14,
+   "crit": false,
+   "tenderized": false,
+   "attackId": 0,
+   "actionSet": 3,
+   "actionId": 137,
+   "action": "WP_02::KIJIN_SLIDING_ON"
+  }
+ ],
+ "events": [
+  {
+   "t": 0,
+   "type": "weapon",
+   "slot": 0,
+   "detail": "DualBlades"
+  }
+ ]
+}

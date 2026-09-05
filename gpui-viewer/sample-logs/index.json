@@ -1,0 +1,105 @@
+[
+ {
+  "file": "2026-09-06_043000_trial60s_trial.json",
+  "kind": "trial",
+  "questId": 0,
+  "questName": "Time trial 60s",
+  "result": "trial",
+  "startedAt": "2026-09-06T01:30:00+00:00",
+  "durationSeconds": 60,
+  "totalDamage": 692,
+  "weapon": "DualBlades",
+  "players": [
+   "Hunter A"
+  ],
+  "monsters": []
+ },
+ {
+  "file": "2026-09-06_000927_66801_complete.json",
+  "kind": "quest",
+  "questId": 66801,
+  "questName": "Trophy Fishin'",
+  "result": "complete",
+  "startedAt": "2026-09-05T21:09:27.8029225+00:00",
+  "durationSeconds": 1394.6973,
+  "totalDamage": 17959,
+  "weapon": "DualBlades",
+  "players": [
+   "Hunter A",
+   "Hunter B"
+  ],
+  "monsters": [
+   "Beotodus"
+  ]
+ },
+ {
+  "file": "2026-09-05_224949_652_complete.json",
+  "kind": "quest",
+  "questId": 652,
+  "questName": "Googly-eyed Green Monster",
+  "result": "complete",
+  "startedAt": "2026-09-05T19:49:49.6321243+00:00",
+  "durationSeconds": 439.12662,
+  "totalDamage": 6195,
+  "weapon": "DualBlades",
+  "players": [
+   "Hunter A",
+   "Hunter B"
+  ],
+  "monsters": [
+   "Anjanath",
+   "Pukei-Pukei",
+   "Rathalos"
+  ]
+ },
+ {
+  "file": "2026-09-05_221312_30006_complete.json",
+  "kind": "quest",
+  "questId": 30006,
+  "questName": "Unavailable",
+  "result": "complete",
+  "startedAt": "2026-09-05T19:13:12.4082079+00:00",
+  "durationSeconds": 900.4461,
+  "totalDamage": 11566,
+  "weapon": "DualBlades",
+  "players": [
+   "Hunter A"
+  ],
+  "monsters": [
+   "Beotodus"
+  ]
+ },
+ {
+  "file": "2026-09-05_164300_1123_complete.json",
+  "kind": "quest",
+  "questId": 1123,
+  "questName": "Ice Catch!",
+  "result": "complete",
+  "startedAt": "2026-09-05T13:43:00.8120455+00:00",
+  "durationSeconds": 914.6803,
+  "totalDamage": 7397,
+  "weapon": "DualBlades",
+  "players": [
+   "Hunter A"
+  ],
+  "monsters": [
+   "Banbaro",
+   "Beotodus"
+  ]
+ },
+ {
+  "file": "2026-09-05_140329_30008_complete.json",
+  "kind": "quest",
+  "questId": 30008,
+  "questName": "Unavailable",
+  "result": "complete",
+  "startedAt": "2026-09-05T11:03:29.2656341+00:00",
+  "durationSeconds": 818.0664,
+  "totalDamage": 8745,
+  "weapon": null,
+  "players": [
+   "Hunter A"
+  ],
+  "monsters": []
+ }
+]

@@ -1,0 +1,38 @@
+[package]
+name = "mhw-log-viewer"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "MHW DPS Meter fight-log viewer built on GPUI (native desktop + browser via WebAssembly)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "mhw-log-viewer"
+path = "src/main.rs"
+
+[dependencies]
+gpui-kit = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+log = "0.4"
+futures = "0.3"
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+env_logger = "0.11"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+console_log = "1"
+web-sys = { version = "0.3", features = ["Window", "Location", "Url"] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
