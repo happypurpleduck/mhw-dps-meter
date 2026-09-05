@@ -53,6 +53,10 @@ public sealed class Plugin : IPlugin
     private bool _buildConfirmed;
     private float _buildRetryAccumulator;
     private int _buildRetries;
+    // Training area (stage 504). Not a quest: no quest timer, no award table, and the
+    // pole/wagon are not large monsters. Damage comes from the deal-damage hook only,
+    // the DPS clock starts at the first hit, and F7 resets without leaving the area.
+    private bool _training;
 
     public PluginData Initialize()
     {
@@ -183,10 +187,13 @@ public sealed class Plugin : IPlugin
         if (Input.IsPressed(Key.F6))
             DumpDiagnostics();
 
+        if (Input.IsPressed(Key.F7))
+            ResetTraining();
+
         RetryBuildDetection(deltaTime);
         SyncQuestState();
 
-        if (!_inQuest || _reader is null)
+        if (!(_inQuest || _training) || _reader is null)
             return;
 
         _pollAccumulator += deltaTime;
@@ -194,6 +201,12 @@ public sealed class Plugin : IPlugin
             return;
 
         _pollAccumulator = 0;
+        if (_training)
+        {
+            PollTraining();
+            return;
+        }
+
         try
         {
             var fallbackDamage = _monsterHp.Poll();
@@ -223,6 +236,89 @@ public sealed class Plugin : IPlugin
         }
     }
 
+    private void PollTraining()
+    {
+        try
+        {
+            _monsterHp.Poll();
+            var damage = _hits.LocalDamage;
+            PartySnapshot snapshot;
+            if (!_reader!.TryRead(out snapshot, 0) || snapshot.Members.Length == 0)
+                snapshot = LocalSnapshot(0);
+
+            // Solo in the training area: keep the reader's name/slot, take damage from the hook.
+            var members = snapshot.Members
+                .Select(member => member.With(damage: member.IsLocal ? damage : 0))
+                .ToArray();
+            var slotDamage = new int[PartyDamageReader.PartySlots];
+            foreach (var member in members)
+            {
+                if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
+                    slotDamage[member.Slot] = member.Damage;
+            }
+
+            _hits.UpdateParty(members);
+            _elapsedSeconds = (float)_hits.SinceFirstHit.TotalSeconds;
+            _snapshot = WithRates(new PartySnapshot
+            {
+                Members = members,
+                TotalDamage = damage,
+                SlotDamage = slotDamage,
+                HasAwardTable = false
+            }, _elapsedSeconds);
+            _reader.DamageSource = "training hits";
+            _status = _hits.Hooked
+                ? $"training area: {damage} dmg over {_elapsedSeconds:0}s ({_hits.Hits} hits)"
+                : "training area: hit hook is off, no damage can be counted";
+            WriteLiveDebug(force: false);
+        }
+        catch (Exception ex)
+        {
+            _status = $"training read failed ({ex.GetType().Name})";
+            Log.Warn($"MhwDpsMeter: {_status}: {ex.Message}");
+        }
+    }
+
+    private void BeginTraining()
+    {
+        if (_training)
+            return;
+
+        _training = true;
+        _inQuest = false;
+        _showResults = false;
+        _pollAccumulator = 0;
+        _monsterHp.Reset();
+        _hits.AcceptAllTargets = true;
+        ResetTraining();
+        Log.Info("MhwDpsMeter: entered training area; counting hooked hits, F7 resets.");
+    }
+
+    private void EndTraining()
+    {
+        if (!_training)
+            return;
+
+        _training = false;
+        _hits.AcceptAllTargets = false;
+        _hits.Reset();
+        _snapshot = null;
+        _elapsedSeconds = 0;
+        _status = "left training area";
+    }
+
+    /// <summary>F7 or the F9 button: zero the training damage and restart the DPS clock at the next hit.</summary>
+    private void ResetTraining()
+    {
+        if (!_training)
+            return;
+
+        _hits.Reset();
+        _elapsedSeconds = 0;
+        _snapshot = WithRates(LocalSnapshot(0), 0);
+        _status = "training area: reset, waiting for first hit";
+    }
+
     /// <summary>
     /// Manual probe (F6 or the F9 button): re-read the party even outside a quest so
     /// the roster can be verified from the hub, then write live-debug.json.
@@ -231,7 +327,7 @@ public sealed class Plugin : IPlugin
     {
         try
         {
-            if (_reader is not null && !_inQuest)
+            if (_reader is not null && !_inQuest && !_training)
                 _reader.TryRead(out _, 0);
         }
         catch (Exception ex)
@@ -305,7 +401,7 @@ public sealed class Plugin : IPlugin
             $"Status: {_status}\n" +
             $"Game build: {_gameBuild}  map: {Path.GetFileName(_map?.SourceFile ?? "none")}{(_mapMatchesBuild ? "" : "  (MISMATCH)")}\n" +
             $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}\n" +
-            $"Stage: {(Stage)_stageId} ({_stageId})\n" +
+            $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
             $"Damage source: {_reader?.DamageSource ?? "n/a"}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
@@ -320,8 +416,8 @@ public sealed class Plugin : IPlugin
             $"Slots:\n{slotLines}" +
             $"Live debug: {_liveDebug?.LatestPath ?? "n/a"}\n" +
             $"Module: 0x{_moduleBase:X}\n" +
-            "F6 = force debug dump, F9 = this menu, F10 = toggle overlay";
-        _overlay.DrawSettings(_logs, diagnostics, DumpDiagnostics);
+            "F6 = force debug dump, F7 = reset training damage, F9 = this menu, F10 = toggle overlay";
+        _overlay.DrawSettings(_logs, diagnostics, DumpDiagnostics, _training ? ResetTraining : null);
     }
 
     private void WriteLiveDebug(bool force)
@@ -389,7 +485,11 @@ public sealed class Plugin : IPlugin
 
     public void OnImGuiFreeRender()
     {
-        _overlay.Draw(_snapshot, _elapsedSeconds, _inQuest || _showResults);
+        _overlay.Draw(
+            _snapshot,
+            _elapsedSeconds,
+            _inQuest || _showResults || _training,
+            _training ? "Training  |  F7 resets  |  DPS since first hit" : null);
     }
 
     public void OnQuestEnter(int questId)
@@ -454,6 +554,21 @@ public sealed class Plugin : IPlugin
 
         if (questId <= 0 || questState is (uint)QuestState.None or (uint)QuestState.Ready)
             _finishedQuestId = 0;
+
+        if ((Stage)_stageId == Stage.TrainingCamp && !_inQuest)
+        {
+            if (_showResults)
+            {
+                _showResults = false;
+                _snapshot = null;
+            }
+
+            BeginTraining();
+            return;
+        }
+
+        if (_training)
+            EndTraining();
 
         var hunting = questId > 0 && questState == (uint)QuestState.InQuest && IsHuntingStage((Stage)_stageId);
 

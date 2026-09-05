@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using SharpPluginLoader.Core;
 using SharpPluginLoader.Core.Memory;
@@ -37,12 +38,36 @@ internal sealed class DamageTracker : IDisposable
     private int _ignored;
     private nint _lastTarget;
     private int _lastDamage;
+    private long _firstHitTimestamp;
+    private bool _acceptAllTargets;
 
     public bool Hooked => _hook?.IsEnabled == true;
     public string Status { get; private set; } = "off";
     public int Hits => _hits;
     public int Calls => _calls;
     public int Ignored => _ignored;
+
+    /// <summary>
+    /// Training area: the pole and wagon are not large monsters, so count every hit
+    /// the game reports instead of filtering on the tracked-monster set.
+    /// </summary>
+    public bool AcceptAllTargets
+    {
+        get { lock (_gate) return _acceptAllTargets; }
+        set { lock (_gate) _acceptAllTargets = value; }
+    }
+
+    /// <summary>Wall-clock time since the first counted hit after the last reset; zero if none yet.</summary>
+    public TimeSpan SinceFirstHit
+    {
+        get
+        {
+            long first;
+            lock (_gate)
+                first = _firstHitTimestamp;
+            return first == 0 ? TimeSpan.Zero : Stopwatch.GetElapsedTime(first);
+        }
+    }
     public string LastHit
     {
         get
@@ -88,6 +113,7 @@ internal sealed class DamageTracker : IDisposable
             _ignored = 0;
             _lastTarget = 0;
             _lastDamage = 0;
+            _firstHitTimestamp = 0;
         }
     }
 
@@ -186,7 +212,7 @@ internal sealed class DamageTracker : IDisposable
                 return;
             }
 
-            if (!_largeMonsters.Contains(target))
+            if (!_acceptAllTargets && !_largeMonsters.Contains(target))
             {
                 _ignored++;
                 return;
@@ -195,6 +221,8 @@ internal sealed class DamageTracker : IDisposable
             var next = _localDamage + damage;
             if (next is >= 0 and <= 50_000_000)
                 _localDamage = next;
+            if (_hits == 0)
+                _firstHitTimestamp = Stopwatch.GetTimestamp();
             _hits++;
         }
     }

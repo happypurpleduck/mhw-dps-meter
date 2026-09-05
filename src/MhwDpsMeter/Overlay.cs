@@ -15,7 +15,7 @@ internal sealed class Overlay
     public bool Visible { get; set; } = true;
     public float Opacity { get; set; } = 0.92f;
 
-    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest)
+    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null)
     {
         if (!Visible || !inQuest)
             return;
@@ -98,15 +98,24 @@ internal sealed class Overlay
 
         ImGui.Separator();
         ImGui.TextUnformatted($"Total  {total:N0}   {total / duration:0.0} DPS");
+        if (!string.IsNullOrEmpty(hint))
+            ImGui.TextDisabled(hint);
 
         ImGui.End();
     }
 
-    public void DrawSettings(FightLogStore? logs, string diagnostics, Action onDumpDiagnostics)
+    public void DrawSettings(FightLogStore? logs, string diagnostics, Action onDumpDiagnostics, Action? onResetTraining)
     {
         ImGui.TextWrapped(diagnostics);
         if (ImGui.Button("Dump diagnostics (F6)"))
             onDumpDiagnostics();
+
+        if (onResetTraining is not null)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Reset training damage (F7)"))
+                onResetTraining();
+        }
 
         var visible = Visible;
         if (ImGui.Checkbox("Show overlay", ref visible))
@@ -116,8 +125,8 @@ internal sealed class Overlay
         if (ImGui.SliderFloat("Opacity", ref opacity, 0.25f, 1f))
             Opacity = opacity;
 
-        ImGui.TextUnformatted("Toggle overlay: F10   Dump diagnostics: F6");
-        ImGui.TextDisabled("Overlay after depart. Name / damage / DPS / % of party total.");
+        ImGui.TextUnformatted("Toggle overlay: F10   Dump diagnostics: F6   Reset training damage: F7");
+        ImGui.TextDisabled("Overlay after depart, or in the training area (DPS clock starts at your first hit).");
         ImGui.Separator();
         ImGui.TextUnformatted("Fight logs");
 
