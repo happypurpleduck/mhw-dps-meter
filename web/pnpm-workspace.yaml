@@ -1,0 +1,6 @@
+# pnpm 10+ keeps install settings here. esbuild needs its postinstall to fetch the
+# platform binary; workerd is a transitive optional dependency this project never runs.
+onlyBuiltDependencies:
+  - esbuild
+ignoredBuiltDependencies:
+  - workerd

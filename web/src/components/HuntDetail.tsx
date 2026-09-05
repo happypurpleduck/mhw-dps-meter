@@ -1,0 +1,345 @@
+import { For, Match, Show, Switch, createMemo, createSignal } from 'solid-js'
+import { createColumnHelper } from '@tanstack/table-core'
+import type { FightLog, FightLogEvent, FightLogPlayer } from '../schema/fightlog'
+import { slotColor } from '../schema/fightlog'
+import { logStore } from '../data/store'
+import {
+  formatDate,
+  formatDuration,
+  formatInt,
+  hitStats,
+  localPlayer,
+  monsterBreakdown,
+  moveBreakdown,
+  pct,
+  totalDamage,
+  type MonsterRow,
+  type MoveRow,
+} from '../data/analysis'
+import { moveDisplayName } from '../moves/names'
+import { createSolidTable, type Features } from '../lib/table'
+import { Chart } from '../lib/Chart'
+import { damageCurveChart, dpsCurveChart, eventMarkers, movesBarChart } from '../charts/definitions'
+import { ResultBadge, StatTile, TableView } from './TableView'
+
+type Tab = 'overview' | 'moves' | 'monsters' | 'timeline' | 'raw'
+
+export function HuntDetail() {
+  // Async memo: inside <Loading> this read resolves to the loaded log.
+  const log = () => logStore.selectedLog() as unknown as FightLog | undefined
+  const initialTab = new URLSearchParams(location.search).get('tab') as Tab | null
+  const [tab, setTab] = createSignal<Tab>(initialTab && ['overview', 'moves', 'monsters', 'timeline', 'raw'].includes(initialTab) ? initialTab : 'overview')
+
+  return (
+    <Show when={log()} fallback={<div class="text-base-content/60">No hunt selected.</div>}>
+      {(l) => (
+        <div class="flex flex-col gap-4">
+          <Header log={l()} />
+          <div role="tablist" class="tabs tabs-box w-fit">
+            <For each={[['overview', 'Overview'], ['moves', 'Moves'], ['monsters', 'Monsters'], ['timeline', 'Timeline'], ['raw', 'Raw']] as const}>
+              {([value, label]) => (
+                <button role="tab" class={['tab', { 'tab-active': tab() === value }]} onClick={() => setTab(value)}>
+                  {label}
+                </button>
+              )}
+            </For>
+          </div>
+          <Switch>
+            <Match when={tab() === 'overview'}><Overview log={l()} /></Match>
+            <Match when={tab() === 'moves'}><Moves log={l()} /></Match>
+            <Match when={tab() === 'monsters'}><Monsters log={l()} /></Match>
+            <Match when={tab() === 'timeline'}><Timeline log={l()} /></Match>
+            <Match when={tab() === 'raw'}><Raw log={l()} /></Match>
+          </Switch>
+        </div>
+      )}
+    </Show>
+  )
+}
+
+function Header(props: { log: FightLog }) {
+  const me = () => localPlayer(props.log)
+  const stats = () => hitStats(props.log.hits)
+  const total = () => totalDamage(props.log)
+  const duration = () => Math.max(props.log.durationSeconds, 1)
+  return (
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-baseline gap-3">
+        <h1 class="text-2xl font-semibold">{props.log.questName}</h1>
+        <ResultBadge result={props.log.result} />
+        <Show when={props.log.kind === 'trial'}><span class="badge badge-info badge-outline badge-sm">time trial</span></Show>
+        <span class="text-sm text-base-content/60">
+          {formatDate(props.log.startedAt)} · {props.log.stage ?? `stage ${props.log.stageId}`} · schema {props.log.schemaVersion}
+        </span>
+      </div>
+      <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
+        <StatTile title="Total damage" value={formatInt(total())} desc={`${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
+        <StatTile title="Party DPS" value={(total() / duration()).toFixed(1)} desc={`over ${formatDuration(props.log.durationSeconds)}`} />
+        <Show when={me()}>
+          {(p) => (
+            <>
+              <StatTile title="Your damage" value={formatInt(p().damage)} desc={`${p().percent.toFixed(1)}% of party · ${p().weapon ?? 'weapon ?'}`} accent="text-primary" />
+              <StatTile title="Your hits" value={String(stats().hits)} desc={stats().hits ? `crit ${pct(stats().critRate)} · avg ${stats().avg.toFixed(0)} · max ${stats().max}` : 'no per-hit data (schema 1)'} />
+              <Show when={stats().hits > 0}>
+                <StatTile title="Active DPS" value={stats().activeDps.toFixed(1)} desc={`first→last hit ${formatDuration(stats().activeSeconds)}`} />
+              </Show>
+            </>
+          )}
+        </Show>
+      </div>
+    </div>
+  )
+}
+
+// ---- Overview ----------------------------------------------------------------
+
+const playerCol = createColumnHelper<Features, FightLogPlayer>()
+const playerColumns = [
+  playerCol.accessor('name', {
+    header: 'Hunter',
+    sortFn: 'alphanumeric',
+    cell: (info) => (
+      <span class="flex items-center gap-2">
+        <span class="inline-block size-3 rounded-full" style={{ background: slotColor(info.row.original.slot) }} />
+        <span class="font-medium">{info.getValue()}</span>
+        <Show when={info.row.original.isLocal}><span class="badge badge-xs badge-primary">you</span></Show>
+      </span>
+    ),
+  }),
+  playerCol.accessor('weapon', { header: 'Weapon', sortFn: 'alphanumeric', cell: (info) => info.getValue() ?? <span class="opacity-40">—</span> }),
+  playerCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
+  playerCol.accessor('dps', { header: 'DPS', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => info.getValue().toFixed(1) }),
+  playerCol.accessor('percent', {
+    header: 'Share',
+    sortFn: 'basic',
+    meta: { class: 'w-48' },
+    cell: (info) => (
+      <div class="flex items-center gap-2">
+        <progress class="progress progress-primary w-24" value={info.getValue()} max="100" />
+        <span class="text-xs">{info.getValue().toFixed(1)}%</span>
+      </div>
+    ),
+  }),
+]
+
+function Overview(props: { log: FightLog }) {
+  const players = () => props.log.players
+  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns, initialSorting: [{ id: 'damage', desc: true }] })
+  const [windowSeconds, setWindowSeconds] = createSignal(20)
+  const hasSamples = () => props.log.samples.length > 1
+  return (
+    <div class="flex flex-col gap-4">
+      <TableView table={table} />
+      <Show when={hasSamples()} fallback={<div class="text-sm text-base-content/60">This log has no damage samples.</div>}>
+        <section class="card bg-base-200">
+          <div class="card-body p-4 gap-2">
+            <h3 class="card-title text-base">Cumulative damage</h3>
+            <p class="text-xs text-base-content/60">Dashed lines: red = large monster death, orange = enrage.</p>
+            <Chart definition={damageCurveChart(props.log, eventMarkers(props.log))} height={320} ariaLabel="Cumulative damage per hunter" />
+          </div>
+        </section>
+        <section class="card bg-base-200">
+          <div class="card-body p-4 gap-2">
+            <div class="flex items-center justify-between">
+              <h3 class="card-title text-base">Rolling DPS</h3>
+              <div class="join">
+                <For each={[10, 20, 30, 60]}>
+                  {(w) => (
+                    <button class={['btn btn-xs join-item', { 'btn-active': windowSeconds() === w }]} onClick={() => setWindowSeconds(w)}>
+                      {w}s
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+            <Chart definition={dpsCurveChart(props.log, windowSeconds())} height={260} ariaLabel="Rolling DPS per hunter" />
+          </div>
+        </section>
+      </Show>
+    </div>
+  )
+}
+
+// ---- Moves -------------------------------------------------------------------
+
+const moveCol = createColumnHelper<Features, MoveRow>()
+const moveColumns = [
+  moveCol.accessor('name', {
+    header: 'Move',
+    sortFn: 'alphanumeric',
+    cell: (info) => (
+      <div>
+        <div class="font-medium">{info.getValue()}</div>
+        <div class="text-[10px] text-base-content/50 font-mono">{info.row.original.key}</div>
+      </div>
+    ),
+  }),
+  moveCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
+  moveCol.accessor('share', {
+    header: 'Share',
+    sortFn: 'basic',
+    meta: { class: 'w-44' },
+    cell: (info) => (
+      <div class="flex items-center gap-2">
+        <progress class="progress progress-secondary w-20" value={info.getValue() * 100} max="100" />
+        <span class="text-xs">{pct(info.getValue())}</span>
+      </div>
+    ),
+  }),
+  moveCol.accessor('hits', { header: 'Hits', sortFn: 'basic', meta: { class: 'text-right' } }),
+  moveCol.accessor('critRate', { header: 'Crit', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => pct(info.getValue(), 0) }),
+  moveCol.accessor('avg', { header: 'Avg', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => info.getValue().toFixed(1) }),
+  moveCol.accessor('max', { header: 'Max', sortFn: 'basic', meta: { class: 'text-right' } }),
+  moveCol.accessor('tenderized', { header: 'Tenderized', sortFn: 'basic', meta: { class: 'text-right' } }),
+]
+
+function Moves(props: { log: FightLog }) {
+  const [hideCommon, setHideCommon] = createSignal(false)
+  const weapon = () => localPlayer(props.log)?.weapon ?? null
+  const rows = createMemo(() => {
+    const all = moveBreakdown(props.log.hits, (key) => moveDisplayName(weapon(), key))
+    return hideCommon() ? all.filter((r) => !r.isCommon) : all
+  })
+  const table = createSolidTable<MoveRow>({ data: rows, columns: moveColumns, getRowId: (r) => r.key, initialSorting: [{ id: 'damage', desc: true }] })
+  return (
+    <Show when={props.log.hits.length} fallback={<div class="text-sm text-base-content/60">This log has no per-hit data. Logs written by plugin 0.4.0 or later include every hit of the local hunter.</div>}>
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-center gap-4 text-sm">
+          <span class="text-base-content/70">
+            Per-move breakdown of <b>your</b> {props.log.hits.length} hits ({weapon() ?? 'unknown weapon'}). Teammates' hits are not visible to the plugin.
+          </span>
+          <label class="label cursor-pointer gap-2">
+            <input type="checkbox" class="toggle toggle-sm" checked={hideCommon()} onChange={(e) => setHideCommon(e.currentTarget.checked)} />
+            <span class="label-text">Hide Common:: actions (hits that landed after the move ended)</span>
+          </label>
+        </div>
+        <section class="card bg-base-200">
+          <div class="card-body p-4">
+            <Chart definition={movesBarChart(rows())} height={Math.max(160, Math.min(rows().length, 15) * 26 + 60)} ariaLabel="Damage per move" />
+          </div>
+        </section>
+        <TableView table={table} />
+      </div>
+    </Show>
+  )
+}
+
+// ---- Monsters ------------------------------------------------------------------
+
+const monsterCol = createColumnHelper<Features, MonsterRow>()
+const monsterColumns = [
+  monsterCol.accessor('name', { header: 'Monster', sortFn: 'alphanumeric', cell: (info) => <span class="font-medium">{info.getValue()} <span class="text-xs text-base-content/50">{info.row.original.id}</span></span> }),
+  monsterCol.accessor('maxHealth', { header: 'Max HP', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
+  monsterCol.accessor('hpLost', {
+    header: 'HP lost',
+    sortFn: 'basic',
+    meta: { class: 'w-52' },
+    cell: (info) => (
+      <div class="flex items-center gap-2">
+        <progress class="progress progress-error w-24" value={info.getValue()} max={info.row.original.maxHealth || 1} />
+        <span class="text-xs">{formatInt(info.getValue())} ({pct(info.row.original.maxHealth ? info.getValue() / info.row.original.maxHealth : 0, 0)})</span>
+      </div>
+    ),
+  }),
+  monsterCol.accessor('yourDamage', { header: 'Your damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
+  monsterCol.accessor('yourHits', { header: 'Your hits', sortFn: 'basic', meta: { class: 'text-right' } }),
+  monsterCol.accessor('firstSeenT', { header: 'Seen at', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatDuration(info.getValue()) }),
+  monsterCol.accessor('diedT', { header: 'Died at', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => (info.getValue() == null ? <span class="opacity-40">—</span> : formatDuration(info.getValue()!)) }),
+]
+
+function Monsters(props: { log: FightLog }) {
+  const rows = () => monsterBreakdown(props.log)
+  const table = createSolidTable<MonsterRow>({ data: rows, columns: monsterColumns, getRowId: (m) => m.id })
+  return (
+    <Show when={props.log.monsters.length} fallback={<div class="text-sm text-base-content/60">No large monsters were recorded for this log.</div>}>
+      <TableView table={table} />
+    </Show>
+  )
+}
+
+// ---- Timeline ------------------------------------------------------------------
+
+const EVENT_KINDS = ['enrage', 'unenrage', 'death', 'flinch', 'weapon', 'join', 'leave'] as const
+const EVENT_BADGE: Record<string, string> = {
+  death: 'badge-error',
+  enrage: 'badge-warning',
+  unenrage: 'badge-ghost',
+  flinch: 'badge-neutral',
+  weapon: 'badge-secondary',
+  join: 'badge-success',
+  leave: 'badge-success badge-outline',
+}
+
+const eventCol = createColumnHelper<Features, FightLogEvent & { who: string }>()
+const eventColumns = [
+  eventCol.accessor('t', { header: 'Time', sortFn: 'basic', meta: { class: 'text-right w-20' }, cell: (info) => formatDuration(info.getValue()) }),
+  eventCol.accessor('type', { header: 'Event', sortFn: 'alphanumeric', cell: (info) => <span class={['badge badge-sm', EVENT_BADGE[info.getValue()] ?? 'badge-ghost']}>{info.getValue()}</span> }),
+  eventCol.accessor('who', { header: 'Who / what', sortFn: 'alphanumeric' }),
+  eventCol.accessor('detail', { header: 'Detail', sortFn: 'alphanumeric', cell: (info) => info.getValue() ?? '' }),
+]
+
+function Timeline(props: { log: FightLog }) {
+  const [enabled, setEnabled] = createSignal<Set<string>>(new Set(EVENT_KINDS.filter((k) => k !== 'flinch')))
+  const toggle = (k: string) =>
+    setEnabled((prev) => {
+      const next = new Set(prev)
+      next.has(k) ? next.delete(k) : next.add(k)
+      return next
+    })
+  const monsterNames = () => new Map(props.log.monsters.map((m) => [m.id, m.name]))
+  const playerNames = () => new Map(props.log.players.map((p) => [p.slot, p.name]))
+  const rows = createMemo(() =>
+    props.log.events
+      .filter((e) => enabled().has(e.type))
+      .map((e) => ({
+        ...e,
+        who: e.monster ? monsterNames().get(e.monster) ?? e.monster : e.slot != null ? playerNames().get(e.slot) ?? `slot ${e.slot + 1}` : '',
+      })),
+  )
+  const table = createSolidTable<FightLogEvent & { who: string }>({ data: rows, columns: eventColumns, initialSorting: [{ id: 't', desc: false }] })
+  const counts = createMemo(() => {
+    const c: Record<string, number> = {}
+    for (const e of props.log.events) c[e.type] = (c[e.type] ?? 0) + 1
+    return c
+  })
+  return (
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap gap-2">
+        <For each={EVENT_KINDS}>
+          {(k) => (
+            <button class={['btn btn-xs', enabled().has(k) ? 'btn-active' : 'btn-ghost']} onClick={() => toggle(k)}>
+              {k} <span class="opacity-60">{counts()[k] ?? 0}</span>
+            </button>
+          )}
+        </For>
+      </div>
+      <TableView table={table} empty="No events of the selected kinds." />
+    </div>
+  )
+}
+
+// ---- Raw -----------------------------------------------------------------------
+
+function Raw(props: { log: FightLog }) {
+  const summary = () => {
+    const { hits, samples, events, ...rest } = props.log
+    return JSON.stringify({ ...rest, hits: `${hits.length} hits`, samples: `${samples.length} samples`, events: `${events.length} events` }, null, 2)
+  }
+  const download = () => {
+    const blob = new Blob([JSON.stringify(props.log, null, 1)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${props.log.questName.replace(/[^\w-]+/g, '_')}_${props.log.startedAt.slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+  return (
+    <div class="flex flex-col gap-2">
+      <div class="flex gap-2 items-center text-sm text-base-content/60">
+        Header fields (arrays collapsed).
+        <button class="btn btn-xs" onClick={download}>Download full JSON</button>
+      </div>
+      <pre class="bg-base-200 rounded-box p-4 text-xs overflow-x-auto">{summary()}</pre>
+    </div>
+  )
+}

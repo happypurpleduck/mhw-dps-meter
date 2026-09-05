@@ -5,3 +5,12 @@ dist/
 *.user
 *.suo
 tools/
+
+# viewers
+web/node_modules/
+web/dist/
+gpui-viewer/target/
+gpui-viewer/www/node_modules/
+gpui-viewer/www/dist/
+gpui-viewer/www/src/wasm/
+gpui-viewer/www/public/sample-logs/

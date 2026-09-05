@@ -128,6 +128,17 @@ This needs the hit hook, which is only enabled when the address map matches the 
 
 `nativePC/plugins/CSharp/MhwDpsMeter/settings.json` stores overlay visibility, opacity, and the time-trial duration. It is written whenever you change one of them in the F9 panel (or toggle the overlay with F10).
 
+## Viewers for the logs
+
+Two independent viewers read the `logs/` folder. Both show the hunt list, party table, cumulative damage and rolling DPS curves with enrage/death markers, your per-move breakdown, monsters, the event timeline, and time-trial personal bests with two-run comparison.
+
+| | [`web/`](web/README.md) | [`gpui-viewer/`](gpui-viewer/README.md) |
+| --- | --- | --- |
+| Stack | SolidJS 2, TanStack Table + Charts, daisyUI 5, Vite | Rust, GPUI via gpui-kit 0.6 (DataTable, Tabs, plot primitives) |
+| Runs as | Static web page | Native desktop app **and** in the browser (WebAssembly + WebGPU) |
+| Reads logs from | Folder picker (Chromium), drag and drop, `?logs=<url>` | Native folder dialog, CLI argument, `MHW_LOGS`, `?logs=<url>` |
+| Start | `cd web && pnpm install && pnpm dev` | `cd gpui-viewer && cargo run --release -- <logs dir>`; browser: `scripts/build-wasm.sh` then `cd www && pnpm dev` |
+
 ## Diagnostics
 
 **F6** (or the **Dump diagnostics** button in the F9 panel) re-reads the party (even in the hub) and writes `logs/live-debug.json` plus a one-line-per-second `logs/live-debug.log` while in a quest. The F9 panel shows the same data: detected game build and map, party size, per-slot names and raw award damage, the hit-hook call counter, and the monsters the game reports. `scripts/watch-live-debug.sh` tails these from a terminal.
