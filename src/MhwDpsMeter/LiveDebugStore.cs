@@ -18,6 +18,8 @@ internal sealed class LiveDebugSlot
     public bool IsLocal { get; init; }
     public string Why { get; init; } = "";
     public long MemberPtr { get; init; }
+    /// <summary>First 0x80 bytes of the party-member struct, to find the weapon / entity offsets by comparing hunts.</summary>
+    public string StructHex { get; init; } = "";
 }
 
 internal sealed class LiveDebugSnapshot

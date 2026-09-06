@@ -54,7 +54,19 @@ internal sealed class MonsterHpTracker
                 seen.Add(state.Instance);
                 var dealt = (int)Math.Clamp(state.MaxHealth - Math.Max(state.Health, 0f), 0f, state.MaxHealth);
                 if (_live.TryGetValue(state.Instance, out var prev))
-                    dealt = Math.Max(prev, dealt);
+                {
+                    // HP went back up by a lot: the game re-used this instance for a new monster
+                    // (second Beotodus after the first died). Bank the old damage, start over.
+                    if (dealt + 0.25f * state.MaxHealth < prev)
+                    {
+                        _completed += prev;
+                        _names.Remove(state.Instance);
+                    }
+                    else
+                    {
+                        dealt = Math.Max(prev, dealt);
+                    }
+                }
                 _live[state.Instance] = dealt;
                 tracked.Add(state);
             }

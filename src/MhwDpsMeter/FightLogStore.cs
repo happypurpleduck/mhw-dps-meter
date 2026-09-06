@@ -13,7 +13,8 @@ internal sealed record FightLogHeader(
     DateTimeOffset StartedAt,
     float DurationSeconds,
     string TimerSource,
-    int GameBuild);
+    int GameBuild,
+    FightLogRewards? Rewards = null);
 
 /// <summary>
 /// Writes one JSON file per hunt to <c>logs/</c>, keeps <c>logs/index.json</c> as a
@@ -122,7 +123,8 @@ internal sealed class FightLogStore
             EndedAt = DateTimeOffset.UtcNow,
             DurationSeconds = header.DurationSeconds,
             TimerSource = header.TimerSource,
-            HitCoverage = "local",
+            HitCoverage = recorder.HitCoverage,
+            Rewards = header.Rewards,
             Players = members
                 .OrderByDescending(member => member.Damage)
                 .ThenBy(member => member.Slot)
@@ -131,7 +133,7 @@ internal sealed class FightLogStore
                     Slot = member.Slot,
                     Name = member.Name,
                     IsLocal = member.IsLocal,
-                    Weapon = member.IsLocal ? recorder.LocalWeapon : null,
+                    Weapon = recorder.WeaponOf(member.Slot) ?? (member.IsLocal ? recorder.LocalWeapon : null),
                     Damage = member.Damage,
                     Dps = member.Damage / safeDuration,
                     Percent = 100f * member.Damage / total

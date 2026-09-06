@@ -27,7 +27,10 @@ public sealed class Plugin : IPlugin
     private readonly MonsterHpTracker _monsterHp = new();
     private readonly DamageTracker _hits = new();
     private readonly HuntRecorder _recorder;
+    private readonly PartyActionTracker _party;
     private readonly TimeTrial _trial;
+    /// <summary>Award-table damage per slot at the previous poll; deltas feed teammate move attribution.</summary>
+    private int[]? _prevSlotDamage;
     private PluginSettings _settings = new();
 
     private AddressMap? _map;
@@ -68,6 +71,7 @@ public sealed class Plugin : IPlugin
     public Plugin()
     {
         _recorder = new HuntRecorder(ResolveActionName);
+        _party = new PartyActionTracker(ResolveEntityActionName);
         _trial = new TimeTrial(ResolveActionName);
     }
 
@@ -259,6 +263,7 @@ public sealed class Plugin : IPlugin
             _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
             _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);
+            AttributeTeammateDamage(snapshot);
             _logs?.UpdateSamples(_elapsedSeconds, snapshot.SlotDamage);
             WriteLiveDebug(force: false);
         }
@@ -267,6 +272,40 @@ public sealed class Plugin : IPlugin
             _status = $"read failed ({ex.GetType().Name})";
             Log.Warn($"MhwDpsMeter: {_status}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Teammates' per-move damage: credit each slot's award-table increase since the last poll
+    /// to the action that hunter's entity is performing. Only while the award table drives the
+    /// numbers; the solo fallbacks (hook, monster HP) have no per-slot meaning for others.
+    /// </summary>
+    private void AttributeTeammateDamage(PartySnapshot snapshot)
+    {
+        _party.SetLocal(LocalPlayerInstance(), snapshot.LocalSlot);
+        if (!snapshot.HasAwardTable)
+        {
+            _prevSlotDamage = null;
+            return;
+        }
+
+        if (_prevSlotDamage is not null)
+        {
+            var deltas = new int[PartyDamageReader.PartySlots];
+            for (var slot = 0; slot < deltas.Length; slot++)
+                deltas[slot] = snapshot.SlotDamage[slot] - _prevSlotDamage[slot];
+
+            var elapsed = _elapsedSeconds;
+            var estimated = _party.Attribute(
+                elapsed,
+                deltas,
+                snapshot.Members,
+                _recorder.SingleLiveMonsterId(),
+                (slot, how) => _recorder.AddEvent(elapsed, "slotmatch", slot, how));
+            _recorder.AddEstimatedHits(estimated);
+        }
+
+        _prevSlotDamage = (int[])snapshot.SlotDamage.Clone();
+        _recorder.ObserveSlotWeapons(_elapsedSeconds, _party.SlotWeapons());
     }
 
     /// <summary>
@@ -517,7 +556,8 @@ public sealed class Plugin : IPlugin
             $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
-            $"Recorder: {_recorder.HitCount} hits, weapon {_recorder.LocalWeapon ?? "-"}\n" +
+            $"Recorder: {_recorder.HitCount} hits ({_recorder.HitCoverage}), weapon {_recorder.LocalWeapon ?? "-"}\n" +
+            $"Hunter entities: {_party.Diagnostics()}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
             $"Party size: {_reader?.LastPartySize ?? 0}\n" +
             $"Local name: {_reader?.LastLocalName ?? "-"}\n" +
@@ -651,6 +691,22 @@ public sealed class Plugin : IPlugin
         return true;
     }
 
+    /// <summary>Every hunter's actions (the game runs teammates' action controllers locally too).</summary>
+    public void OnEntityAction(Entity entity, ref ActionInfo action)
+    {
+        if (!_inQuest)
+            return;
+
+        try
+        {
+            _party.OnAction(entity, action);
+        }
+        catch
+        {
+            // never let bookkeeping break a game callback
+        }
+    }
+
     /// <summary>Remember the local hunter's current action so each hooked hit can be tagged with the move.</summary>
     public void OnPlayerAction(Player player, ref ActionInfo action)
     {
@@ -691,6 +747,19 @@ public sealed class Plugin : IPlugin
             return null;
 
         var list = player.ActionController.GetActionList(actionSet);
+        if (actionId >= list.Count)
+            return null;
+
+        return list[actionId]?.Name;
+    }
+
+    /// <summary>Action name for any hunter entity, read from that entity's own action list.</summary>
+    private static string? ResolveEntityActionName(nint instance, int actionSet, int actionId)
+    {
+        if (instance == 0 || actionId < 0)
+            return null;
+
+        var list = new Entity(instance).ActionController.GetActionList(actionSet);
         if (actionId >= list.Count)
             return null;
 
@@ -848,6 +917,8 @@ public sealed class Plugin : IPlugin
         _hits.Reset();
         _hits.RecordHits = true;
         _recorder.Reset();
+        _party.Reset();
+        _prevSlotDamage = null;
         _logs?.BeginHunt();
         _status = $"in quest {questId}";
     }
@@ -891,13 +962,32 @@ public sealed class Plugin : IPlugin
                 _questStartedAt,
                 _elapsedSeconds,
                 _timerSource,
-                _gameBuild),
+                _gameBuild,
+                ReadRewards()),
             members,
             _recorder);
 
         _showResults = members.Length > 0;
         if (!_showResults)
             _snapshot = null;
+    }
+
+    /// <summary>Base quest rewards the game exposes; item drops need a hook that does not exist yet.</summary>
+    private static FightLogRewards? ReadRewards()
+    {
+        try
+        {
+            return new FightLogRewards
+            {
+                Zenny = (int)Quest.CurrentQuestRewardMoney,
+                HunterRankPoints = (int)Quest.CurrentQuestRewardHrp,
+                Stars = Quest.CurrentQuestStarcount
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>In-game quest timer when it is running (shared by every hunter), else the plugin's own clock.</summary>

@@ -59,12 +59,19 @@ internal sealed class FightLog
     public string? TimerSource { get; set; }
 
     /// <summary>
-    /// "local": <see cref="Hits"/> only contain the local hunter's hits (the game never runs
-    /// the deal-damage function for other hunters). Other players only have totals + samples.
+    /// "local": <see cref="Hits"/> only contain the local hunter's exact hits (the game never
+    /// runs the deal-damage function for other hunters). "party-estimated": teammates also
+    /// have rows, marked <see cref="FightLogHit.Estimated"/>, built from award-table damage
+    /// deltas attributed to the action they were performing (see PartyActionTracker).
     /// </summary>
     [JsonPropertyName("hitCoverage")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? HitCoverage { get; set; }
+
+    /// <summary>Quest rewards the game exposes (zenny, hunter rank points, star rank). Item drops are not readable yet.</summary>
+    [JsonPropertyName("rewards")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public FightLogRewards? Rewards { get; set; }
 
     [JsonPropertyName("players")]
     public FightLogPlayer[] Players { get; set; } = [];
@@ -97,7 +104,7 @@ internal sealed class FightLogPlayer
     [JsonPropertyName("isLocal")]
     public bool IsLocal { get; set; }
 
-    /// <summary>Weapon type name (SharpPluginLoader <c>WeaponType</c>); only known for the local hunter.</summary>
+    /// <summary>Weapon type name (SharpPluginLoader <c>WeaponType</c>). Teammates' weapons come from their hunter entity once it is matched to their slot.</summary>
     [JsonPropertyName("weapon")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Weapon { get; set; }
@@ -188,11 +195,32 @@ internal sealed class FightLogHit
     [JsonPropertyName("action")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Action { get; set; }
+
+    /// <summary>
+    /// True for teammate rows: damage is an award-table delta over one poll (~0.1 s) credited
+    /// to the action the hunter was in, not an individual hit. Crit/tenderized are unknown.
+    /// </summary>
+    [JsonPropertyName("estimated")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Estimated { get; set; }
+}
+
+internal sealed class FightLogRewards
+{
+    [JsonPropertyName("zenny")]
+    public int Zenny { get; set; }
+
+    [JsonPropertyName("hunterRankPoints")]
+    public int HunterRankPoints { get; set; }
+
+    [JsonPropertyName("stars")]
+    public int Stars { get; set; }
 }
 
 /// <summary>
 /// Timeline event. Types: enrage, unenrage, death, flinch (detail = flinch action id),
-/// weapon (detail = weapon type name), join, leave (detail = hunter name).
+/// weapon (detail = weapon type name), join, leave (detail = hunter name),
+/// slotmatch (detail = how a teammate entity was matched to its slot).
 /// </summary>
 internal sealed class FightLogEvent
 {

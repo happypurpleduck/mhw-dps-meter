@@ -189,7 +189,8 @@ internal sealed class PartyDamageReader
                 ShownName = member?.Name ?? "",
                 IsLocal = member?.IsLocal ?? false,
                 Why = why.Count == 0 ? "empty" : string.Join("+", why),
-                MemberPtr = p.MemberPtr
+                MemberPtr = p.MemberPtr,
+                StructHex = p.StructHex
             };
         }
 
@@ -233,6 +234,7 @@ internal sealed class PartyDamageReader
             var ptrOk = false;
             var name = "";
             var hex = "";
+            var structHex = "";
             if (partyArray != 0
                 && SafeMemory.TryRead<nint>(partyArray + slot * PartyMemberStride, out memberPtr)
                 && SafeMemory.LooksLikeUserPointer(memberPtr))
@@ -244,6 +246,9 @@ internal sealed class PartyDamageReader
                     if (TryDecodeUtf8Name(bytes, out var decoded))
                         name = decoded;
                 }
+
+                if (SafeMemory.TryReadBytes(memberPtr, 0x80, out var raw))
+                    structHex = Convert.ToHexString(raw);
             }
 
             probes[slot] = new LiveDebugSlot
@@ -254,7 +259,8 @@ internal sealed class PartyDamageReader
                 PartyName = name,
                 PartyNameHex = hex,
                 RawDamage = rawDamage[slot],
-                MemberPtr = ptrOk ? (long)memberPtr : 0
+                MemberPtr = ptrOk ? (long)memberPtr : 0,
+                StructHex = structHex
             };
         }
 

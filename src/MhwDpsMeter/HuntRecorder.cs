@@ -17,7 +17,12 @@ internal sealed class HuntRecorder
     private readonly object _gate = new();
     private readonly List<FightLogHit> _hits = [];
     private readonly List<FightLogEvent> _events = [];
+    /// <summary>Latest monster entry per instance; the game reuses instances, so a second
+    /// Beotodus spawning after the first died gets its own entry ("m2") under the same pointer.</summary>
     private readonly Dictionary<nint, FightLogMonster> _monsters = [];
+    private readonly List<FightLogMonster> _allMonsters = [];
+    private readonly Dictionary<int, string> _weaponBySlot = [];
+    private int _estimatedHits;
     private readonly Dictionary<(int Set, int Id), string?> _actionNames = [];
     private readonly Dictionary<int, string> _roster = [];
     private readonly Func<int, int, string?> _resolveActionName;
@@ -45,6 +50,9 @@ internal sealed class HuntRecorder
             _hits.Clear();
             _events.Clear();
             _monsters.Clear();
+            _allMonsters.Clear();
+            _weaponBySlot.Clear();
+            _estimatedHits = 0;
             _actionNames.Clear();
             _roster.Clear();
             _localWeapon = null;
@@ -57,11 +65,17 @@ internal sealed class HuntRecorder
         {
             foreach (var state in monsters)
             {
-                if (!_monsters.TryGetValue(state.Instance, out var entry))
+                var exists = _monsters.TryGetValue(state.Instance, out var entry);
+                // Same pointer, but HP jumped back up (after a death or a large heal-from-zero):
+                // the game re-used the instance for a new monster.
+                var respawned = exists && entry!.MaxHealth > 0
+                    && (entry.DiedT.HasValue || state.Health > entry.LastHealth + 0.25f * entry.MaxHealth)
+                    && state.Health > 0.5f * state.MaxHealth;
+                if (!exists || respawned)
                 {
                     entry = new FightLogMonster
                     {
-                        Id = $"m{_monsters.Count + 1}",
+                        Id = $"m{_allMonsters.Count + 1}",
                         Type = (int)state.Type,
                         Name = state.Name,
                         Variant = state.Variant,
@@ -69,9 +83,10 @@ internal sealed class HuntRecorder
                         FirstSeenT = elapsed
                     };
                     _monsters[state.Instance] = entry;
+                    _allMonsters.Add(entry);
                 }
 
-                entry.LastHealth = state.Health;
+                entry!.LastHealth = state.Health;
                 if (entry.MaxHealth <= 0 && state.MaxHealth > 0)
                     entry.MaxHealth = state.MaxHealth;
                 if (string.IsNullOrEmpty(entry.Name) && !string.IsNullOrEmpty(state.Name))
@@ -115,6 +130,8 @@ internal sealed class HuntRecorder
         var name = weapon.Value.ToString();
         lock (_gate)
         {
+            if (localSlot >= 0)
+                _weaponBySlot[localSlot] = name;
             if (_localWeapon == name)
                 return;
             _localWeapon = name;
@@ -184,13 +201,73 @@ internal sealed class HuntRecorder
     public FightLogMonster[] Monsters()
     {
         lock (_gate)
-            return _monsters.Values.OrderBy(monster => monster.FirstSeenT).ToArray();
+            return _allMonsters.OrderBy(monster => monster.FirstSeenT).ToArray();
+    }
+
+    /// <summary>Id of the only large monster currently alive, or null when zero or several are.</summary>
+    public string? SingleLiveMonsterId()
+    {
+        lock (_gate)
+        {
+            var alive = _monsters.Values.Where(m => !m.DiedT.HasValue && m.LastHealth > 0).ToList();
+            return alive.Count == 1 ? alive[0].Id : null;
+        }
+    }
+
+    /// <summary>Teammate weapons come from their hunter entity once matched to a slot.</summary>
+    public void ObserveSlotWeapons(float elapsed, IReadOnlyList<(int Slot, string Weapon)> weapons)
+    {
+        lock (_gate)
+        {
+            foreach (var (slot, weapon) in weapons)
+            {
+                if (_weaponBySlot.TryGetValue(slot, out var known) && known == weapon)
+                    continue;
+                _weaponBySlot[slot] = weapon;
+                AddEventLocked(elapsed, "weapon", slot: slot, detail: weapon);
+            }
+        }
+    }
+
+    public string? WeaponOf(int slot)
+    {
+        lock (_gate)
+            return _weaponBySlot.TryGetValue(slot, out var weapon) ? weapon : null;
+    }
+
+    /// <summary>Teammate rows from <see cref="PartyActionTracker"/>; already carry their time and slot.</summary>
+    public void AddEstimatedHits(IReadOnlyList<FightLogHit> hits)
+    {
+        if (hits.Count == 0)
+            return;
+        lock (_gate)
+        {
+            foreach (var hit in hits)
+            {
+                if (_hits.Count >= MaxHits)
+                    return;
+                _hits.Add(hit);
+                _estimatedHits++;
+            }
+        }
+    }
+
+    public void AddEvent(float elapsed, string type, int? slot = null, string? detail = null)
+    {
+        lock (_gate)
+            AddEventLocked(elapsed, type, slot: slot, detail: detail);
+    }
+
+    /// <summary>"party-estimated" once any teammate rows exist, else "local".</summary>
+    public string HitCoverage
+    {
+        get { lock (_gate) return _estimatedHits > 0 ? "party-estimated" : "local"; }
     }
 
     public FightLogHit[] Hits()
     {
         lock (_gate)
-            return _hits.ToArray();
+            return _hits.OrderBy(hit => hit.T).ToArray();
     }
 
     public FightLogEvent[] Events()
