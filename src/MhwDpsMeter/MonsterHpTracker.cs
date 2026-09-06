@@ -47,6 +47,8 @@ internal sealed class MonsterHpTracker
         {
             foreach (var monster in Monster.GetAllMonsters())
             {
+                // A failed HP/type read does not mean this instance despawned.
+                seen.Add(monster.Instance);
                 described.Add(Describe(monster));
                 if (!TryState(monster, out var state))
                     continue;
@@ -73,13 +75,15 @@ internal sealed class MonsterHpTracker
         }
         catch
         {
-            // Monster list can tear while entities despawn.
+            // An incomplete enumeration cannot establish which monsters despawned.
+            return _completed + _live.Values.Sum();
         }
 
         foreach (var instance in _live.Keys.Where(key => !seen.Contains(key)).ToArray())
         {
             _completed += _live[instance];
             _live.Remove(instance);
+            _names.Remove(instance);
         }
 
         LastTracked = tracked;
@@ -138,8 +142,8 @@ internal sealed class MonsterHpTracker
             name = null;
         }
 
-        if (string.IsNullOrWhiteSpace(name))
-            name = type.ToString();
+        if (GameNames.IsPlaceholder(name))
+            name = GameNames.Monster((int)type);
         _names[instance] = name;
         return name;
     }

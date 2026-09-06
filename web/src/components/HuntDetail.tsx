@@ -1,3 +1,5 @@
+import { weaponDisplayName, stageDisplayName } from '../data/names'
+import { WeaponIcon } from './WeaponIcon'
 import { For, Match, Show, Switch, createMemo, createSignal } from 'solid-js'
 import { createColumnHelper } from '@tanstack/table-core'
 import type { FightLog, FightLogEvent, FightLogPlayer } from '../schema/fightlog'
@@ -72,7 +74,7 @@ function Header(props: { log: FightLog }) {
         <ResultBadge result={props.log.result} />
         <Show when={props.log.kind === 'trial'}><span class="badge badge-info badge-outline badge-sm">time trial</span></Show>
         <span class="text-sm text-base-content/60">
-          {formatDate(props.log.startedAt)} · {props.log.stage ?? `stage ${props.log.stageId}`} · schema {props.log.schemaVersion}
+          {formatDate(props.log.startedAt)} · {stageDisplayName(props.log.stageId, props.log.stage)} · schema {props.log.schemaVersion}
         </span>
         <Show when={props.log.rewards}>
           {(r) => (
@@ -88,7 +90,7 @@ function Header(props: { log: FightLog }) {
         <Show when={me()}>
           {(p) => (
             <>
-              <StatTile title="Your damage" value={formatInt(p().damage)} desc={`${p().percent.toFixed(1)}% of party · ${p().weapon ?? 'weapon ?'}`} accent="text-primary" />
+              <StatTile title="Your damage" value={formatInt(p().damage)} desc={`${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
               <StatTile title="Your hits" value={String(stats().hits)} desc={stats().hits ? `crit ${pct(stats().critRate)} · avg ${stats().avg.toFixed(0)} · max ${stats().max}` : 'no per-hit data (schema 1)'} />
               <Show when={stats().hits > 0}>
                 <StatTile title="Active DPS" value={stats().activeDps.toFixed(1)} desc={`first→last hit ${formatDuration(stats().activeSeconds)}`} />
@@ -109,24 +111,24 @@ const playerColumns = [
     header: 'Hunter',
     sortFn: 'alphanumeric',
     cell: (info) => (
-      <span class="flex items-center gap-2">
-        <span class="inline-block size-3 rounded-full" style={{ background: slotColor(info.row.original.slot) }} />
-        <span class="font-medium">{info.getValue()}</span>
-        <Show when={info.row.original.isLocal}><span class="badge badge-xs badge-primary">you</span></Show>
+      <span class="flex items-center gap-2 min-w-0">
+        <span class="inline-block size-3 rounded-full shrink-0" style={{ background: slotColor(info.row.original.slot) }} />
+        <WeaponIcon weapon={info.row.original.weapon} />
+        <span class="font-medium truncate">{info.getValue()}</span>
+        <Show when={info.row.original.isLocal}><span class="badge badge-xs badge-primary shrink-0">you</span></Show>
       </span>
     ),
   }),
-  playerCol.accessor('weapon', { header: 'Weapon', sortFn: 'alphanumeric', cell: (info) => info.getValue() ?? <span class="opacity-40">—</span> }),
-  playerCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
-  playerCol.accessor('dps', { header: 'DPS', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => info.getValue().toFixed(1) }),
+  playerCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right whitespace-nowrap' }, cell: (info) => formatInt(info.getValue()) }),
+  playerCol.accessor('dps', { header: 'DPS', sortFn: 'basic', meta: { class: 'text-right w-16 whitespace-nowrap' }, cell: (info) => info.getValue().toFixed(1) }),
   playerCol.accessor('percent', {
     header: 'Share',
     sortFn: 'basic',
-    meta: { class: 'w-48' },
+    meta: { class: 'w-52' },
     cell: (info) => (
-      <div class="flex items-center gap-2">
-        <progress class="progress progress-primary w-24" value={info.getValue()} max="100" />
-        <span class="text-xs">{info.getValue().toFixed(1)}%</span>
+      <div class="flex items-center gap-2 min-w-0">
+        <progress class="progress progress-primary flex-1 min-w-16 max-w-28" value={info.getValue()} max="100" />
+        <span class="text-xs shrink-0 tabular-nums">{info.getValue().toFixed(1)}%</span>
       </div>
     ),
   }),
@@ -178,21 +180,21 @@ const moveColumns = [
     header: 'Move',
     sortFn: 'alphanumeric',
     cell: (info) => (
-      <div>
-        <div class="font-medium">{info.getValue()}</div>
-        <div class="text-[10px] text-base-content/50 font-mono">{info.row.original.key}</div>
+      <div class="min-w-0 overflow-hidden">
+        <div class="font-medium truncate">{info.getValue()}</div>
+        <div class="text-[10px] text-base-content/50 font-mono truncate">{info.row.original.key}</div>
       </div>
     ),
   }),
-  moveCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
+  moveCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right whitespace-nowrap' }, cell: (info) => formatInt(info.getValue()) }),
   moveCol.accessor('share', {
     header: 'Share',
     sortFn: 'basic',
     meta: { class: 'w-44' },
     cell: (info) => (
-      <div class="flex items-center gap-2">
-        <progress class="progress progress-secondary w-20" value={info.getValue() * 100} max="100" />
-        <span class="text-xs">{pct(info.getValue())}</span>
+      <div class="flex items-center gap-2 min-w-0">
+        <progress class="progress progress-secondary flex-1 min-w-12 max-w-24" value={info.getValue() * 100} max="100" />
+        <span class="text-xs shrink-0 tabular-nums">{pct(info.getValue())}</span>
       </div>
     ),
   }),
@@ -227,7 +229,8 @@ function Moves(props: { log: FightLog }) {
                 const p = props.log.players.find((x) => x.slot === s)
                 return (
                   <button role="tab" class={['tab gap-2', { 'tab-active': activeSlot() === s }]} onClick={() => setSlot(s)}>
-                    <span class="inline-block size-2.5 rounded-full" style={{ background: slotColor(s) }} />
+                    <span class="inline-block size-2.5 rounded-full shrink-0" style={{ background: slotColor(s) }} />
+                    <WeaponIcon weapon={p?.weapon} size="sm" />
                     {p?.name ?? `Slot ${s + 1}`}
                     <Show when={isEstimated(hitsForSlot(props.log, s))}><span class="badge badge-xs badge-warning badge-outline">est.</span></Show>
                   </button>
@@ -242,12 +245,12 @@ function Moves(props: { log: FightLog }) {
               when={!estimated()}
               fallback={
                 <>
-                  <b>Estimated</b> per-move damage for {player()?.name ?? 'teammate'} ({weapon() ?? 'unknown weapon'}): {hits().length} award-table
+                  <b>Estimated</b> per-move damage for {player()?.name ?? 'teammate'} ({weaponDisplayName(weapon())}): {hits().length} award-table
                   increments credited to the move they were performing. Crit and tenderize are unknown for teammates.
                 </>
               }
             >
-              Per-move breakdown of <b>{player()?.isLocal ? 'your' : `${player()?.name}'s`}</b> {hits().length} hits ({weapon() ?? 'unknown weapon'}).
+              Per-move breakdown of <b>{player()?.isLocal ? 'your' : `${player()?.name}'s`}</b> {hits().length} hits ({weaponDisplayName(weapon())}).
             </Show>
           </span>
           <label class="label cursor-pointer gap-2">
@@ -317,7 +320,15 @@ const eventColumns = [
   eventCol.accessor('t', { header: 'Time', sortFn: 'basic', meta: { class: 'text-right w-20' }, cell: (info) => formatDuration(info.getValue()) }),
   eventCol.accessor('type', { header: 'Event', sortFn: 'alphanumeric', cell: (info) => <span class={['badge badge-sm', EVENT_BADGE[info.getValue()] ?? 'badge-ghost']}>{info.getValue()}</span> }),
   eventCol.accessor('who', { header: 'Who / what', sortFn: 'alphanumeric' }),
-  eventCol.accessor('detail', { header: 'Detail', sortFn: 'alphanumeric', cell: (info) => info.getValue() ?? '' }),
+  eventCol.accessor('detail', {
+    header: 'Detail',
+    sortFn: 'alphanumeric',
+    cell: (info) => {
+      const detail = info.getValue()
+      if (!detail) return ''
+      return info.row.original.type === 'weapon' ? weaponDisplayName(detail) : detail
+    },
+  }),
 ]
 
 function Timeline(props: { log: FightLog }) {

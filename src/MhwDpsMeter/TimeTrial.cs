@@ -82,6 +82,9 @@ internal sealed class TimeTrial
             return false;
 
         var now = Stopwatch.GetTimestamp();
+        // Resolve this batch's action IDs against the current weapon, as hunt polls do.
+        if (State == TimeTrialState.Running)
+            _recorder.ObserveWeapon(Elapsed, weapon, 0);
         foreach (var hit in hits)
         {
             if (State == TimeTrialState.Armed)
@@ -105,7 +108,6 @@ internal sealed class TimeTrial
 
         if (State == TimeTrialState.Running)
         {
-            _recorder.ObserveWeapon(Elapsed, weapon, 0);
             if (now >= _cutoffTimestamp)
             {
                 State = TimeTrialState.Finished;

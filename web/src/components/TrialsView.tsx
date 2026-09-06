@@ -1,3 +1,5 @@
+import { weaponDisplayName } from '../data/names'
+import { WeaponIcon, WeaponLabel } from './WeaponIcon'
 import { For, Loading, Show, createMemo, createSignal } from 'solid-js'
 import { createColumnHelper } from '@tanstack/table-core'
 import type { FightLog, IndexEntry } from '../schema/fightlog'
@@ -13,7 +15,7 @@ const COMPARE_COLORS = ['#52b8ff', '#ff9e2e']
 
 const bestCol = createColumnHelper<Features, TrialBest>()
 const bestColumns = [
-  bestCol.accessor('weapon', { header: 'Weapon', sortFn: 'alphanumeric' }),
+  bestCol.accessor('weapon', { header: 'Weapon', sortFn: 'alphanumeric', cell: (info) => <WeaponLabel weapon={info.getValue()} /> }),
   bestCol.accessor('durationSeconds', { header: 'Window', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => `${info.getValue()}s` }),
   bestCol.accessor((b): number => b.best.totalDamage, { id: 'damage', header: 'Best damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => <span class="font-semibold text-primary">{formatInt(info.getValue())}</span> }),
   bestCol.accessor((b): number => b.best.totalDamage / Math.max(1, b.durationSeconds), { id: 'dps', header: 'DPS', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => info.getValue().toFixed(1) }),
@@ -45,7 +47,7 @@ export function TrialsView() {
       ),
     }),
     trialCol.accessor('startedAt', { header: 'Date', sortFn: 'alphanumeric', cell: (info) => formatDate(info.getValue()) }),
-    trialCol.accessor('weapon', { header: 'Weapon', sortFn: 'alphanumeric', cell: (info) => info.getValue() ?? '?' }),
+    trialCol.accessor('weapon', { header: 'Weapon', sortFn: 'alphanumeric', cell: (info) => <WeaponLabel weapon={info.getValue()} /> }),
     trialCol.accessor('durationSeconds', { header: 'Window', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => `${Math.round(info.getValue())}s` }),
     trialCol.accessor('totalDamage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => formatInt(info.getValue()) }),
     trialCol.accessor((e): number => e.totalDamage / Math.max(1, e.durationSeconds), { id: 'dps', header: 'DPS', sortFn: 'basic', meta: { class: 'text-right' }, cell: (info) => info.getValue().toFixed(1) }),
@@ -119,7 +121,10 @@ function Comparison(props: { logs: FightLog[] }) {
                 <div class="flex items-center gap-2 text-sm">
                   <span class="inline-block size-3 rounded-full" style={{ background: COMPARE_COLORS[i()] }} />
                   <span>{formatDate(log.startedAt)}</span>
-                  <span class="badge badge-sm">{log.players[0]?.weapon ?? '?'}</span>
+                  <span class="badge badge-sm gap-1.5 pl-1">
+                    <WeaponIcon weapon={log.players[0]?.weapon} size="sm" />
+                    {weaponDisplayName(log.players[0]?.weapon)}
+                  </span>
                   <span class="font-semibold">{formatInt(log.players[0]?.damage ?? 0)}</span>
                   <span class="text-base-content/60">{stats().hits} hits · crit {pct(stats().critRate, 0)}</span>
                 </div>

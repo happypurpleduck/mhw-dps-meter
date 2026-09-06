@@ -1,3 +1,4 @@
+import { WeaponLabel } from './WeaponIcon'
 import { For, createMemo, createSignal } from 'solid-js'
 import { createColumnHelper } from '@tanstack/table-core'
 import type { IndexEntry, LogKind } from '../schema/fightlog'
@@ -24,7 +25,7 @@ const columns = [
         <div class="min-w-0">
           <div class="font-medium truncate max-w-44">{e.questName}</div>
           <div class="text-xs text-base-content/60 truncate max-w-44">
-            {e.kind === 'trial' ? e.weapon ?? 'trial' : [...e.monsters, ...e.players].join(' · ')}
+            {e.kind === 'trial' ? <WeaponLabel weapon={e.weapon} /> : [...e.monsters, ...e.players].join(' · ')}
           </div>
         </div>
       )
@@ -38,13 +39,13 @@ const columns = [
   col.accessor('durationSeconds', {
     header: 'Time',
     sortFn: 'basic',
-    meta: { class: 'text-right' },
+    meta: { class: 'text-right whitespace-nowrap' },
     cell: (info) => formatDuration(info.getValue()),
   }),
   col.accessor('totalDamage', {
     header: 'Dmg',
     sortFn: 'basic',
-    meta: { class: 'text-right' },
+    meta: { class: 'text-right whitespace-nowrap' },
     cell: (info) => formatInt(info.getValue()),
   }),
 ]

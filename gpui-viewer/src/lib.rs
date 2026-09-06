@@ -4,6 +4,7 @@
 pub mod analysis;
 pub mod loader;
 pub mod model;
+pub mod names;
 pub mod ui;
 
 use gpui_kit::component::Root;

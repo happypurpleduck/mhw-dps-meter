@@ -1,5 +1,6 @@
 //! Left pane: sortable, filterable DataTable of every hunt and trial in the index.
 
+use super::detail::weapon_label;
 use gpui_kit::component::{
     ActiveTheme as _, Sizable as _,
     table::{Column, ColumnSort, TableDelegate, TableState},
@@ -27,11 +28,11 @@ impl HuntListDelegate {
     fn columns() -> Vec<Column> {
         vec![
             // Sums to the default 460 px panel width so no column is cut off.
-            Column::new("date", "Date").width(118.).sortable().descending(),
-            Column::new("hunt", "Hunt").width(150.).sortable(),
+            Column::new("date", "Date").width(110.).sortable().descending(),
+            Column::new("hunt", "Hunt").width(146.).sortable(),
             Column::new("result", "Result").width(76.).sortable(),
-            Column::new("time", "Time").width(52.).sortable().text_right(),
-            Column::new("damage", "Dmg").width(64.).sortable().text_right(),
+            Column::new("time", "Time").width(58.).sortable().text_right(),
+            Column::new("damage", "Dmg").width(70.).sortable().text_right(),
         ]
     }
 
@@ -142,15 +143,17 @@ impl TableDelegate for HuntListDelegate {
                         .text_color(cx.theme().muted_foreground)
                         .truncate()
                         .child(if entry.kind == LogKind::Trial {
-                            entry.weapon.clone().unwrap_or_else(|| "trial".into())
+                            weapon_label(entry.weapon.as_deref(), cx.theme().foreground).into_any_element()
                         } else {
-                            entry.monsters.iter().chain(entry.players.iter()).cloned().collect::<Vec<_>>().join(" · ")
+                            div()
+                                .child(entry.monsters.iter().chain(entry.players.iter()).cloned().collect::<Vec<_>>().join(" · "))
+                                .into_any_element()
                         }),
                 )
                 .into_any_element(),
             "result" => result_tag(&entry.result).into_any_element(),
-            "time" => div().w_full().text_right().child(format_duration(entry.duration_seconds)).into_any_element(),
-            "damage" => div().w_full().text_right().child(format_int(entry.total_damage)).into_any_element(),
+            "time" => div().w_full().text_right().whitespace_nowrap().child(format_duration(entry.duration_seconds)).into_any_element(),
+            "damage" => div().w_full().text_right().whitespace_nowrap().child(format_int(entry.total_damage)).into_any_element(),
             _ => div().into_any_element(),
         }
     }

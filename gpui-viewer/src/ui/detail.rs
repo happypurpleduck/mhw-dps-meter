@@ -1,5 +1,7 @@
 //! Right pane for one hunt: header + stat tiles, then Overview / Moves / Monsters / Timeline.
 
+use crate::names::{weapon_display_name, weapon_icon_svg};
+use crate::names::stage_display_name;
 use std::sync::Arc;
 
 use gpui_kit::component::{
@@ -140,11 +142,11 @@ impl ViewerApp {
             format!(
                 "Estimated per-move damage for {} ({}): {} award-table increments credited to the move being performed. Crit and tenderize are unknown for teammates.",
                 player.map(|p| p.name.clone()).unwrap_or_else(|| "teammate".into()),
-                weapon.clone().unwrap_or_else(|| "unknown weapon".into()),
+                weapon_display_name(weapon.as_deref()),
                 hits.len()
             )
         } else {
-            format!("Per-move breakdown of {who} {} hits ({}).", hits.len(), weapon.clone().unwrap_or_else(|| "unknown weapon".into()))
+            format!("Per-move breakdown of {who} {} hits ({}).", hits.len(), weapon_display_name(weapon.as_deref()))
         };
 
         v_flex()
@@ -195,16 +197,17 @@ impl ViewerApp {
                             TableRow::new()
                                 .child(TableHead::new().w(px(260.)).child("Move"))
                                 .child(TableHead::new().w(px(220.)).child("Damage"))
-                                .child(TableHead::new().text_right().child("Share"))
-                                .child(TableHead::new().text_right().child("Hits"))
-                                .child(TableHead::new().text_right().child("Crit"))
-                                .child(TableHead::new().text_right().child("Avg"))
-                                .child(TableHead::new().text_right().child("Max"))
-                                .child(TableHead::new().text_right().child("Tenderized")),
+                                .child(TableHead::new().w(px(64.)).text_right().child("Share"))
+                                .child(TableHead::new().w(px(48.)).text_right().child("Hits"))
+                                .child(TableHead::new().w(px(48.)).text_right().child("Crit"))
+                                .child(TableHead::new().w(px(48.)).text_right().child("Avg"))
+                                .child(TableHead::new().w(px(48.)).text_right().child("Max"))
+                                .child(TableHead::new().w(px(72.)).text_right().child("Tenderized")),
                         ),
                     )
                     .child(TableBody::new().children(rows.iter().enumerate().map(|(ix, r)| {
                         let fill = if r.is_common { cx.theme().muted_foreground } else { bar_color };
+                        let frac = (r.damage as f32 / top).clamp(0.0, 1.0);
                         TableRow::new()
                             .when(ix % 2 == 1, |row| row.bg(cx.theme().table_even))
                             .child(
@@ -212,29 +215,33 @@ impl ViewerApp {
                                     div()
                                         .flex()
                                         .flex_col()
-                                        .child(div().child(r.name.clone()))
-                                        .child(div().text_xs().text_color(cx.theme().muted_foreground).child(r.key.clone())),
+                                        .w_full()
+                                        .min_w_0()
+                                        .overflow_hidden()
+                                        .child(div().truncate().child(r.name.clone()))
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(cx.theme().muted_foreground)
+                                                .truncate()
+                                                .child(r.key.clone()),
+                                        ),
                                 ),
                             )
                             .child(
-                                TableCell::new().w(px(220.)).child(
-                                    h_flex()
-                                        .gap_2()
-                                        .items_center()
-                                        .child(
-                                            div().h(px(10.)).w(px(130.)).rounded_sm().bg(cx.theme().border).child(
-                                                div().h_full().rounded_sm().bg(fill).w(px(130.0 * r.damage as f32 / top)),
-                                            ),
-                                        )
-                                        .child(div().text_xs().child(format_int(r.damage))),
-                                ),
+                                TableCell::new().w(px(220.)).child(meter_bar(
+                                    frac,
+                                    fill,
+                                    cx.theme().border,
+                                    format_int(r.damage),
+                                )),
                             )
-                            .child(TableCell::new().text_right().child(pct(r.share, 1)))
-                            .child(TableCell::new().text_right().child(r.hits.to_string()))
-                            .child(TableCell::new().text_right().child(pct(r.crit_rate(), 0)))
-                            .child(TableCell::new().text_right().child(format!("{:.1}", r.avg())))
-                            .child(TableCell::new().text_right().child(r.max.to_string()))
-                            .child(TableCell::new().text_right().child(r.tenderized.to_string()))
+                            .child(TableCell::new().w(px(64.)).text_right().child(pct(r.share, 1)))
+                            .child(TableCell::new().w(px(48.)).text_right().child(r.hits.to_string()))
+                            .child(TableCell::new().w(px(48.)).text_right().child(pct(r.crit_rate(), 0)))
+                            .child(TableCell::new().w(px(48.)).text_right().child(format!("{:.1}", r.avg())))
+                            .child(TableCell::new().w(px(48.)).text_right().child(r.max.to_string()))
+                            .child(TableCell::new().w(px(72.)).text_right().child(r.tenderized.to_string()))
                     }))),
             )
     }
@@ -283,7 +290,11 @@ impl ViewerApp {
                             .child(TableCell::new().w(px(80.)).text_right().child(format_duration(e.t)))
                             .child(TableCell::new().w(px(110.)).child(event_tag(&e.r#type)))
                             .child(TableCell::new().w(px(220.)).child(who))
-                            .child(TableCell::new().child(e.detail.clone().unwrap_or_default()))
+                            .child(TableCell::new().child(match (e.r#type.as_str(), e.detail.as_deref()) {
+                                ("weapon", Some(detail)) => weapon_display_name(Some(detail)),
+                                (_, Some(detail)) => detail.to_string(),
+                                _ => String::new(),
+                            }))
                     }))),
             )
     }
@@ -307,7 +318,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                 .child(div().text_sm().text_color(cx.theme().muted_foreground).child(format!(
                     "{} · {} · schema {}",
                     format_date(&log.started_at),
-                    log.stage.clone().unwrap_or_else(|| format!("stage {}", log.stage_id)),
+                    stage_display_name(log.stage_id, log.stage.as_deref()),
                     log.schema_version
                 )))
                 .when_some(log.rewards.as_ref(), |this, r| {
@@ -331,7 +342,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                     this.child(stat_tile(
                         "Your damage",
                         format_int(p.damage),
-                        format!("{:.1}% of party · {}", p.percent, p.weapon.clone().unwrap_or_else(|| "weapon ?".into())),
+                        format!("{:.1}% of party · {}", p.percent, weapon_display_name(p.weapon.as_deref())),
                         Some(cx.theme().primary),
                         cx,
                     ))
@@ -369,9 +380,8 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
             TableHeader::new().child(
                 TableRow::new()
                     .child(TableHead::new().w(px(280.)).child("Hunter"))
-                    .child(TableHead::new().w(px(140.)).child("Weapon"))
-                    .child(TableHead::new().text_right().child("Damage"))
-                    .child(TableHead::new().text_right().child("DPS"))
+                    .child(TableHead::new().w(px(88.)).text_right().child("Damage"))
+                    .child(TableHead::new().w(px(56.)).text_right().child("DPS"))
                     .child(TableHead::new().w(px(220.)).child("Share")),
             ),
         )
@@ -385,27 +395,60 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
                             .items_center()
                             .overflow_hidden()
                             .child(div().size_2p5().flex_shrink_0().rounded_full().bg(slot_color(p.slot)))
+                            .child(weapon_icon(p.weapon.as_deref(), px(20.), cx.theme().foreground))
                             .child(div().font_medium().truncate().child(p.name.clone()))
                             .when(p.is_local, |this| this.child(gpui_kit::component::tag::Tag::primary().xsmall().child("you"))),
                     ),
                 )
-                .child(TableCell::new().w(px(140.)).child(p.weapon.clone().unwrap_or_else(|| "—".into())))
-                .child(TableCell::new().text_right().child(format_int(p.damage)))
-                .child(TableCell::new().text_right().child(format!("{:.1}", p.dps)))
-                .child(
-                    TableCell::new().w(px(220.)).child(
-                        h_flex()
-                            .gap_2()
-                            .items_center()
-                            .child(
-                                div().h(px(10.)).w(px(120.)).rounded_sm().bg(cx.theme().border).child(
-                                    div().h_full().rounded_sm().bg(slot_color(p.slot)).w(px(120.0 * (p.percent / 100.0).clamp(0.0, 1.0))),
-                                ),
-                            )
-                            .child(div().text_xs().child(format!("{:.1}%", p.percent))),
-                    ),
-                )
+                .child(TableCell::new().w(px(88.)).text_right().child(format_int(p.damage)))
+                .child(TableCell::new().w(px(56.)).text_right().child(format!("{:.1}", p.dps)))
+                .child(TableCell::new().w(px(220.)).child(meter_bar(
+                    (p.percent / 100.0).clamp(0.0, 1.0),
+                    slot_color(p.slot),
+                    cx.theme().border,
+                    format!("{:.1}%", p.percent),
+                )))
         })))
+}
+
+/// Horizontal share/damage meter that clips to its cell instead of painting over neighbors.
+fn meter_bar(frac: f32, fill: Hsla, track: Hsla, label: impl Into<SharedString>) -> impl IntoElement {
+    h_flex()
+        .w_full()
+        .min_w_0()
+        .gap_2()
+        .items_center()
+        .overflow_hidden()
+        .child(
+            div()
+                .h(px(10.))
+                .flex_1()
+                .min_w_0()
+                .rounded_sm()
+                .bg(track)
+                .overflow_hidden()
+                .child(div().h_full().rounded_sm().bg(fill).w(relative(frac.clamp(0.0, 1.0)))),
+        )
+        .child(div().text_xs().flex_shrink_0().whitespace_nowrap().child(label.into()))
+}
+
+/// Class glyph sized for inline use next to a hunter or weapon label.
+///
+/// GPUI only paints `svg().data(...)` when a text color is set (monochrome alpha mask).
+pub(super) fn weapon_icon(key: Option<&str>, size: Pixels, color: Hsla) -> impl IntoElement {
+    match weapon_icon_svg(key) {
+        Some(data) => svg().data(data).size(size).flex_shrink_0().text_color(color).into_any_element(),
+        None => div().size(size).flex_shrink_0().into_any_element(),
+    }
+}
+
+pub(super) fn weapon_label(key: Option<&str>, color: Hsla) -> impl IntoElement {
+    h_flex()
+        .gap(px(6.))
+        .items_center()
+        .overflow_hidden()
+        .child(weapon_icon(key, px(18.), color))
+        .child(div().truncate().child(weapon_display_name(key)))
 }
 
 fn render_monsters(log: &FightLog, cx: &App) -> impl IntoElement {
@@ -437,19 +480,12 @@ fn render_monsters(log: &FightLog, cx: &App) -> impl IntoElement {
                     .when(ix % 2 == 1, |row| row.bg(cx.theme().table_even))
                     .child(TableCell::new().w(px(200.)).child(format!("{} {}", r.monster.name, r.monster.id)))
                     .child(TableCell::new().text_right().child(format_int(r.monster.max_health as i64)))
-                    .child(
-                        TableCell::new().w(px(240.)).child(
-                            h_flex()
-                                .gap_2()
-                                .items_center()
-                                .child(
-                                    div().h(px(10.)).w(px(120.)).rounded_sm().bg(cx.theme().border).child(
-                                        div().h_full().rounded_sm().bg(cx.theme().danger).w(px(120.0 * frac)),
-                                    ),
-                                )
-                                .child(div().text_xs().child(format!("{} ({})", format_int(r.hp_lost as i64), pct(frac, 0)))),
-                        ),
-                    )
+                    .child(TableCell::new().w(px(240.)).child(meter_bar(
+                        frac,
+                        cx.theme().danger,
+                        cx.theme().border,
+                        format!("{} ({})", format_int(r.hp_lost as i64), pct(frac, 0)),
+                    )))
                     .child(TableCell::new().text_right().child(format_int(r.your_damage)))
                     .child(TableCell::new().text_right().child(r.your_hits.to_string()))
                     .child(TableCell::new().text_right().child(format_duration(r.monster.first_seen_t)))

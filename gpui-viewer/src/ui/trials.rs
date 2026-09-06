@@ -11,7 +11,7 @@ use gpui_kit::*;
 
 use super::{
     ViewerApp,
-    detail::{card, muted, section_title},
+    detail::{card, muted, section_title, weapon_icon, weapon_label},
     plots::{LinesPlot, Series, legend},
 };
 use crate::analysis::{cumulative_from_hits, format_date, format_int, hit_stats, move_breakdown, move_display_name, pct, trial_bests};
@@ -33,7 +33,7 @@ impl TrialsDelegate {
             self.columns = vec![
                 Column::new("pick", "Compare").width(70.).text_center(),
                 Column::new("date", "Date").width(130.).sortable().descending(),
-                Column::new("weapon", "Weapon").width(120.).sortable(),
+                Column::new("weapon", "Weapon").width(150.).sortable(),
                 Column::new("window", "Window").width(70.).sortable().text_right(),
                 Column::new("damage", "Damage").width(90.).sortable().text_right(),
                 Column::new("dps", "DPS").width(70.).sortable().text_right(),
@@ -98,7 +98,7 @@ impl TableDelegate for TrialsDelegate {
                 .child(if self.compare.contains(&e.file) { "✓" } else { "" })
                 .into_any_element(),
             "date" => div().text_xs().child(format_date(&e.started_at)).into_any_element(),
-            "weapon" => div().child(e.weapon.clone().unwrap_or_else(|| "?".into())).into_any_element(),
+            "weapon" => weapon_label(e.weapon.as_deref(), cx.theme().foreground).into_any_element(),
             "window" => div().w_full().text_right().child(format!("{}s", e.duration_seconds.round())).into_any_element(),
             "damage" => div().w_full().text_right().child(format_int(e.total_damage)).into_any_element(),
             "dps" => div().w_full().text_right().child(format!("{:.1}", e.total_damage as f32 / e.duration_seconds.max(1.0))).into_any_element(),
@@ -142,7 +142,7 @@ impl ViewerApp {
                         .child(
                             TableHeader::new().child(
                                 TableRow::new()
-                                    .child(TableHead::new().w(px(140.)).child("Weapon"))
+                                    .child(TableHead::new().w(px(160.)).child("Weapon"))
                                     .child(TableHead::new().text_right().child("Window"))
                                     .child(TableHead::new().text_right().child("Best damage"))
                                     .child(TableHead::new().text_right().child("DPS"))
@@ -152,7 +152,7 @@ impl ViewerApp {
                         )
                         .child(TableBody::new().children(bests.iter().map(|b| {
                             TableRow::new()
-                                .child(TableCell::new().w(px(140.)).child(b.weapon.clone()))
+                                .child(TableCell::new().w(px(160.)).child(weapon_label(Some(&b.weapon), cx.theme().foreground)))
                                 .child(TableCell::new().text_right().child(format!("{}s", b.duration_seconds)))
                                 .child(TableCell::new().text_right().child(div().font_semibold().text_color(cx.theme().primary).child(format_int(b.best.total_damage))))
                                 .child(TableCell::new().text_right().child(format!("{:.1}", b.best.total_damage as f32 / b.duration_seconds.max(1) as f32)))
@@ -188,7 +188,8 @@ impl ViewerApp {
                                 .text_sm()
                                 .child(div().size_2p5().rounded_full().bg(Hsla::from(rgb(COMPARE_COLORS[i]))))
                                 .child(format_date(&log.started_at))
-                                .child(div().text_color(cx.theme().muted_foreground).child(log.players.first().and_then(|p| p.weapon.clone()).unwrap_or_else(|| "?".into())))
+                                .child(weapon_icon(log.players.first().and_then(|p| p.weapon.as_deref()), px(16.), cx.theme().foreground))
+                                .child(div().text_color(cx.theme().muted_foreground).child(crate::names::weapon_display_name(log.players.first().and_then(|p| p.weapon.as_deref()))))
                                 .child(div().font_semibold().child(format_int(log.players.first().map(|p| p.damage).unwrap_or(0))))
                                 .child(div().text_color(cx.theme().muted_foreground).child(format!("{} hits · crit {}", stats.hits, pct(stats.crit_rate(), 0))))
                         })))

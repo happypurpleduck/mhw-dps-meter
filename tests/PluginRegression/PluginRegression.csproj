@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <!-- Exercise production tracking code with simulated game entities; no game or native loader required. -->
+  <ItemGroup>
+    <Compile Include="../../src/MhwDpsMeter/MonsterHpTracker.cs" Link="MonsterHpTracker.cs" />
+    <Compile Include="../../src/MhwDpsMeter/PartyActionTracker.cs" Link="PartyActionTracker.cs" />
+    <Compile Include="../../src/MhwDpsMeter/HuntRecorder.cs" Link="HuntRecorder.cs" />
+    <Compile Include="../../src/MhwDpsMeter/TimeTrial.cs" Link="TimeTrial.cs" />
+    <Compile Include="../../src/MhwDpsMeter/PartySnapshot.cs" Link="PartySnapshot.cs" />
+    <Compile Include="../../src/MhwDpsMeter/FightLog.cs" Link="FightLog.cs" />
+    <Compile Include="../../src/MhwDpsMeter/AddressMap.cs" Link="AddressMap.cs" />
+    <Compile Include="../../src/MhwDpsMeter/GameNames.cs" Link="GameNames.cs" />
+    <EmbeddedResource Include="../../data/game-names.json" LogicalName="MhwDpsMeter.GameNames.json" />
+    <EmbeddedResource Include="../../src/MhwDpsMeter/Addresses/*.map" />
+  </ItemGroup>
+</Project>

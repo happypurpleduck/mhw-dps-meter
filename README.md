@@ -130,6 +130,8 @@ This needs the hit hook, which is only enabled when the address map matches the 
 
 ## Viewers for the logs
 
+See the [mapping audit](data/README.md) for area, weapon-class and monster-name coverage, and the remaining quest, equipment and move-name gaps.
+
 Two independent viewers read the `logs/` folder. Both show the hunt list, party table, cumulative damage and rolling DPS curves with enrage/death markers, your per-move breakdown, monsters, the event timeline, and time-trial personal bests with two-run comparison.
 
 | | [`web/`](web/README.md) | [`gpui-viewer/`](gpui-viewer/README.md) |

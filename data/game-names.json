@@ -1,0 +1,616 @@
+{
+  "stages": {
+    "100": {
+      "key": "InfinityOfNothingHandler",
+      "name": "Infinity Of Nothing Handler"
+    },
+    "101": {
+      "key": "AncientForest",
+      "name": "Ancient Forest"
+    },
+    "102": {
+      "key": "WildspireWaste",
+      "name": "Wildspire Waste"
+    },
+    "103": {
+      "key": "CoralHighlands",
+      "name": "Coral Highlands"
+    },
+    "104": {
+      "key": "RottenVale",
+      "name": "Rotten Vale"
+    },
+    "105": {
+      "key": "ElderRecess",
+      "name": "Elder's Recess"
+    },
+    "106": {
+      "key": "GreatRavine",
+      "name": "Great Ravine"
+    },
+    "107": {
+      "key": "GreatRavineStory",
+      "name": "Great Ravine Story"
+    },
+    "108": {
+      "key": "HoarfrostReach",
+      "name": "Hoarfrost Reach"
+    },
+    "109": {
+      "key": "GuidingLands",
+      "name": "Guiding Lands"
+    },
+    "200": {
+      "key": "InfinityOfNothing",
+      "name": "Infinity Of Nothing"
+    },
+    "201": {
+      "key": "SpecialArena",
+      "name": "Special Arena"
+    },
+    "202": {
+      "key": "ChallengeArena",
+      "name": "Challenge Arena"
+    },
+    "301": {
+      "key": "Astera",
+      "name": "Astera"
+    },
+    "302": {
+      "key": "AsteraHub",
+      "name": "Astera Gathering Hub"
+    },
+    "303": {
+      "key": "ResearchBase",
+      "name": "Research Base"
+    },
+    "305": {
+      "key": "Seliana",
+      "name": "Seliana"
+    },
+    "306": {
+      "key": "SelianaHub",
+      "name": "Seliana Gathering Hub"
+    },
+    "403": {
+      "key": "Everstream",
+      "name": "Everstream"
+    },
+    "405": {
+      "key": "ConfluenceOfFates",
+      "name": "Confluence Of Fates"
+    },
+    "407": {
+      "key": "CharacterCreation",
+      "name": "Character Creation"
+    },
+    "408": {
+      "key": "DebugMap",
+      "name": "Debug Map"
+    },
+    "409": {
+      "key": "ElDorado",
+      "name": "El Dorado"
+    },
+    "411": {
+      "key": "SelianaSupplyCache",
+      "name": "Seliana Supply Cache"
+    },
+    "412": {
+      "key": "OriginIsleNergigante",
+      "name": "Origin Isle"
+    },
+    "413": {
+      "key": "OriginIsleSharaIshvalda",
+      "name": "Origin Isle"
+    },
+    "415": {
+      "key": "SecludedValley",
+      "name": "Secluded Valley"
+    },
+    "416": {
+      "key": "AlatreonStage",
+      "name": "Secluded Valley"
+    },
+    "417": {
+      "key": "CastleSchrade",
+      "name": "Castle Schrade"
+    },
+    "501": {
+      "key": "LivingQuarters",
+      "name": "Living Quarters"
+    },
+    "502": {
+      "key": "PrivateQuarters",
+      "name": "Private Quarters"
+    },
+    "503": {
+      "key": "PrivateSuite",
+      "name": "Private Suite"
+    },
+    "504": {
+      "key": "TrainingCamp",
+      "name": "Training Area"
+    },
+    "505": {
+      "key": "ChamberOfFive",
+      "name": "Chamber Of Five"
+    },
+    "506": {
+      "key": "SelianaRoom",
+      "name": "Seliana Room"
+    }
+  },
+  "weapons": {
+    "0": {
+      "key": "GreatSword",
+      "name": "Great Sword"
+    },
+    "1": {
+      "key": "SwordAndShield",
+      "name": "Sword & Shield"
+    },
+    "2": {
+      "key": "DualBlades",
+      "name": "Dual Blades"
+    },
+    "3": {
+      "key": "LongSword",
+      "name": "Long Sword"
+    },
+    "4": {
+      "key": "Hammer",
+      "name": "Hammer"
+    },
+    "5": {
+      "key": "HuntingHorn",
+      "name": "Hunting Horn"
+    },
+    "6": {
+      "key": "Lance",
+      "name": "Lance"
+    },
+    "7": {
+      "key": "GunLance",
+      "name": "Gunlance"
+    },
+    "8": {
+      "key": "SwitchAxe",
+      "name": "Switch Axe"
+    },
+    "9": {
+      "key": "ChargeBlade",
+      "name": "Charge Blade"
+    },
+    "10": {
+      "key": "InsectGlaive",
+      "name": "Insect Glaive"
+    },
+    "11": {
+      "key": "Bow",
+      "name": "Bow"
+    },
+    "12": {
+      "key": "LightBowgun",
+      "name": "Light Bowgun"
+    },
+    "13": {
+      "key": "HeavyBowgun",
+      "name": "Heavy Bowgun"
+    },
+    "255": {
+      "key": "None",
+      "name": "None"
+    }
+  },
+  "monsters": {
+    "0": {
+      "key": "Anjanath",
+      "name": "Anjanath"
+    },
+    "1": {
+      "key": "Rathalos",
+      "name": "Rathalos"
+    },
+    "2": {
+      "key": "Aptonoth",
+      "name": "Aptonoth"
+    },
+    "3": {
+      "key": "Jagras",
+      "name": "Jagras"
+    },
+    "4": {
+      "key": "ZorahMagdaros",
+      "name": "Zorah Magdaros"
+    },
+    "5": {
+      "key": "Mosswine",
+      "name": "Mosswine"
+    },
+    "6": {
+      "key": "Gajau",
+      "name": "Gajau"
+    },
+    "7": {
+      "key": "GreatJagras",
+      "name": "Great Jagras"
+    },
+    "8": {
+      "key": "KestodonM",
+      "name": "Kestodon (male)"
+    },
+    "9": {
+      "key": "Rathian",
+      "name": "Rathian"
+    },
+    "10": {
+      "key": "PinkRathian",
+      "name": "Pink Rathian"
+    },
+    "11": {
+      "key": "AzureRathalos",
+      "name": "Azure Rathalos"
+    },
+    "12": {
+      "key": "Diablos",
+      "name": "Diablos"
+    },
+    "13": {
+      "key": "BlackDiablos",
+      "name": "Black Diablos"
+    },
+    "14": {
+      "key": "Kirin",
+      "name": "Kirin"
+    },
+    "15": {
+      "key": "Behemoth",
+      "name": "Behemoth"
+    },
+    "16": {
+      "key": "KushalaDaora",
+      "name": "Kushala Daora"
+    },
+    "17": {
+      "key": "Lunastra",
+      "name": "Lunastra"
+    },
+    "18": {
+      "key": "Teostra",
+      "name": "Teostra"
+    },
+    "19": {
+      "key": "Lavasioth",
+      "name": "Lavasioth"
+    },
+    "20": {
+      "key": "Deviljho",
+      "name": "Deviljho"
+    },
+    "21": {
+      "key": "Barroth",
+      "name": "Barroth"
+    },
+    "22": {
+      "key": "Uragaan",
+      "name": "Uragaan"
+    },
+    "23": {
+      "key": "Leshen",
+      "name": "Leshen"
+    },
+    "24": {
+      "key": "Pukei",
+      "name": "Pukei-Pukei"
+    },
+    "25": {
+      "key": "Nergigante",
+      "name": "Nergigante"
+    },
+    "26": {
+      "key": "XenoJiiva",
+      "name": "Xeno'jiiva"
+    },
+    "27": {
+      "key": "KuluYaKu",
+      "name": "Kulu-Ya-Ku"
+    },
+    "28": {
+      "key": "TzitziYaKu",
+      "name": "Tzitzi-Ya-Ku"
+    },
+    "29": {
+      "key": "Jyuratodus",
+      "name": "Jyuratodus"
+    },
+    "30": {
+      "key": "TobiKadachi",
+      "name": "Tobi-Kadachi"
+    },
+    "31": {
+      "key": "Paolumu",
+      "name": "Paolumu"
+    },
+    "32": {
+      "key": "Legiana",
+      "name": "Legiana"
+    },
+    "33": {
+      "key": "GreatGirros",
+      "name": "Great Girros"
+    },
+    "34": {
+      "key": "Odogaron",
+      "name": "Odogaron"
+    },
+    "35": {
+      "key": "Radobaan",
+      "name": "Radobaan"
+    },
+    "36": {
+      "key": "VaalHazak",
+      "name": "Vaal Hazak"
+    },
+    "37": {
+      "key": "Dodogama",
+      "name": "Dodogama"
+    },
+    "38": {
+      "key": "KulveTaroth",
+      "name": "Kulve Taroth"
+    },
+    "39": {
+      "key": "Bazelgeuse",
+      "name": "Bazelgeuse"
+    },
+    "40": {
+      "key": "Apceros",
+      "name": "Apceros"
+    },
+    "41": {
+      "key": "KelbiM",
+      "name": "Kelbi (male)"
+    },
+    "42": {
+      "key": "KelbiF",
+      "name": "Kelbi (female)"
+    },
+    "43": {
+      "key": "Hornetaur",
+      "name": "Hornetaur"
+    },
+    "44": {
+      "key": "Vespoid",
+      "name": "Vespoid"
+    },
+    "45": {
+      "key": "Mernos",
+      "name": "Mernos"
+    },
+    "46": {
+      "key": "KestodonF",
+      "name": "Kestodon (female)"
+    },
+    "47": {
+      "key": "Raphinos",
+      "name": "Raphinos"
+    },
+    "48": {
+      "key": "Shamos",
+      "name": "Shamos"
+    },
+    "49": {
+      "key": "Barnos",
+      "name": "Barnos"
+    },
+    "50": {
+      "key": "Girros",
+      "name": "Girros"
+    },
+    "51": {
+      "key": "AncientLeshen",
+      "name": "Ancient Leshen"
+    },
+    "52": {
+      "key": "Gastodon",
+      "name": "Gastodon"
+    },
+    "53": {
+      "key": "Noios",
+      "name": "Noios"
+    },
+    "54": {
+      "key": "Magmacore",
+      "name": "Magmacore"
+    },
+    "55": {
+      "key": "Magmacore2",
+      "name": "Magmacore2"
+    },
+    "56": {
+      "key": "Gajalaka",
+      "name": "Gajalaka"
+    },
+    "57": {
+      "key": "SmallBarrel",
+      "name": "Small Barrel"
+    },
+    "58": {
+      "key": "LargeBarrel",
+      "name": "Large Barrel"
+    },
+    "59": {
+      "key": "TrainingPole",
+      "name": "Training Pole"
+    },
+    "60": {
+      "key": "TrainingWagon",
+      "name": "Training Wagon"
+    },
+    "61": {
+      "key": "Tigrex",
+      "name": "Tigrex"
+    },
+    "62": {
+      "key": "Nargacuga",
+      "name": "Nargacuga"
+    },
+    "63": {
+      "key": "Barioth",
+      "name": "Barioth"
+    },
+    "64": {
+      "key": "SavageDeviljho",
+      "name": "Savage Deviljho"
+    },
+    "65": {
+      "key": "Brachydios",
+      "name": "Brachydios"
+    },
+    "66": {
+      "key": "Glavenus",
+      "name": "Glavenus"
+    },
+    "67": {
+      "key": "AcidicGlavenus",
+      "name": "Acidic Glavenus"
+    },
+    "68": {
+      "key": "FulgurAnjanath",
+      "name": "Fulgur Anjanath"
+    },
+    "69": {
+      "key": "CoralPukei",
+      "name": "Coral Pukei-Pukei"
+    },
+    "70": {
+      "key": "RuinerNergigante",
+      "name": "Ruiner Nergigante"
+    },
+    "71": {
+      "key": "ViperTobi",
+      "name": "Viper Tobi-Kadachi"
+    },
+    "72": {
+      "key": "NightshadePaolumu",
+      "name": "Nightshade Paolumu"
+    },
+    "73": {
+      "key": "ShriekingLegiana",
+      "name": "Shrieking Legiana"
+    },
+    "74": {
+      "key": "EbonyOdogaron",
+      "name": "Ebony Odogaron"
+    },
+    "75": {
+      "key": "BlackveilVaal",
+      "name": "Blackveil Vaal Hazak"
+    },
+    "76": {
+      "key": "SeethingBazelgeuse",
+      "name": "Seething Bazelgeuse"
+    },
+    "77": {
+      "key": "Beotodus",
+      "name": "Beotodus"
+    },
+    "78": {
+      "key": "Banbaro",
+      "name": "Banbaro"
+    },
+    "79": {
+      "key": "Velkhana",
+      "name": "Velkhana"
+    },
+    "80": {
+      "key": "Namielle",
+      "name": "Namielle"
+    },
+    "81": {
+      "key": "Shara",
+      "name": "Shara Ishvalda"
+    },
+    "82": {
+      "key": "Popo",
+      "name": "Popo"
+    },
+    "83": {
+      "key": "Anteka",
+      "name": "Anteka"
+    },
+    "84": {
+      "key": "Wulg",
+      "name": "Wulg"
+    },
+    "85": {
+      "key": "Cortos",
+      "name": "Cortos"
+    },
+    "86": {
+      "key": "Boaboa",
+      "name": "Boaboa"
+    },
+    "87": {
+      "key": "Alatreon",
+      "name": "Alatreon"
+    },
+    "88": {
+      "key": "GoldRathian",
+      "name": "Gold Rathian"
+    },
+    "89": {
+      "key": "SilverRathalos",
+      "name": "Silver Rathalos"
+    },
+    "90": {
+      "key": "YianGaruga",
+      "name": "Yian Garuga"
+    },
+    "91": {
+      "key": "Rajang",
+      "name": "Rajang"
+    },
+    "92": {
+      "key": "FuriousRajang",
+      "name": "Furious Rajang"
+    },
+    "93": {
+      "key": "BruteTigrex",
+      "name": "Brute Tigrex"
+    },
+    "94": {
+      "key": "Zinogre",
+      "name": "Zinogre"
+    },
+    "95": {
+      "key": "StygianZinogre",
+      "name": "Stygian Zinogre"
+    },
+    "96": {
+      "key": "RagingBrachy",
+      "name": "Raging Brachydios"
+    },
+    "97": {
+      "key": "SafiJiiva",
+      "name": "Safi'jiiva"
+    },
+    "98": {
+      "key": "Unavaliable",
+      "name": "Unknown monster"
+    },
+    "99": {
+      "key": "ScarredYianGaruga",
+      "name": "Scarred Yian Garuga"
+    },
+    "100": {
+      "key": "FrostfangBarioth",
+      "name": "Frostfang Barioth"
+    },
+    "101": {
+      "key": "Fatalis",
+      "name": "Fatalis"
+    }
+  }
+}

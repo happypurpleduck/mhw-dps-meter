@@ -41,6 +41,10 @@ internal sealed class AddressMap
             }
         }
 
+        var embedded = TryLoadEmbedded(filePrivatePart, exactOnly: true);
+        if (embedded is not null)
+            return embedded;
+
         foreach (var dir in dirs)
         {
             foreach (var folder in new[] { Path.Combine(dir, "Addresses"), dir })
@@ -59,12 +63,14 @@ internal sealed class AddressMap
         return TryLoadEmbedded(filePrivatePart);
     }
 
-    public static AddressMap? TryLoadEmbedded(int filePrivatePart)
+    public static AddressMap? TryLoadEmbedded(int filePrivatePart, bool exactOnly = false)
     {
         var assembly = Assembly.GetExecutingAssembly();
         var names = assembly.GetManifestResourceNames();
         var preferred = names.FirstOrDefault(name =>
             name.EndsWith($"MonsterHunterWorld.{filePrivatePart}.map", StringComparison.OrdinalIgnoreCase));
+        if (exactOnly && preferred is null)
+            return null;
         var any = preferred ?? names.FirstOrDefault(name =>
             name.EndsWith(".map", StringComparison.OrdinalIgnoreCase));
         if (any is null)

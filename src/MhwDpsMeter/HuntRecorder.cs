@@ -109,7 +109,10 @@ internal sealed class HuntRecorder
                 if (_roster.TryGetValue(slot, out var known) && known == name)
                     continue;
                 if (known is not null)
+                {
                     AddEventLocked(elapsed, "leave", slot: slot, detail: known);
+                    _weaponBySlot.Remove(slot);
+                }
                 AddEventLocked(elapsed, "join", slot: slot, detail: name);
                 _roster[slot] = name;
             }
@@ -118,6 +121,7 @@ internal sealed class HuntRecorder
             {
                 AddEventLocked(elapsed, "leave", slot: slot, detail: _roster[slot]);
                 _roster.Remove(slot);
+                _weaponBySlot.Remove(slot);
             }
         }
     }
@@ -134,6 +138,7 @@ internal sealed class HuntRecorder
                 _weaponBySlot[localSlot] = name;
             if (_localWeapon == name)
                 return;
+            _actionNames.Clear();
             _localWeapon = name;
             AddEventLocked(elapsed, "weapon", slot: localSlot < 0 ? null : localSlot, detail: name);
         }
