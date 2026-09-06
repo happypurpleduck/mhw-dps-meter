@@ -45,13 +45,25 @@ internal sealed class PartyActionTracker
     private readonly Dictionary<nint, Hunter> _hunters = [];
     private readonly Dictionary<nint, bool> _isPlayer = [];
     private readonly Dictionary<(nint, int, int), string?> _names = [];
+    private Dictionary<int, (string Name, nint Instance)> _roster = [];
     private readonly Func<nint, int, int, string?> _resolveName;
+    private readonly Func<nint, bool> _looksAlive;
+    private readonly Func<nint, bool>? _isHunter;
     private nint _localInstance;
     private int _localSlot = -1;
 
-    public PartyActionTracker(Func<nint, int, int, string?> resolveName)
+    /// <param name="isHunter">
+    /// Decides whether an action-hook entity is a hunter without calling into the object.
+    /// When null, falls back to Entity.Is("uPlayer"), which is only safe for simulated entities.
+    /// </param>
+    public PartyActionTracker(
+        Func<nint, int, int, string?> resolveName,
+        Func<nint, bool>? looksAlive = null,
+        Func<nint, bool>? isHunter = null)
     {
         _resolveName = resolveName;
+        _looksAlive = looksAlive ?? (_ => true);
+        _isHunter = isHunter;
     }
 
     public void Reset()
@@ -60,8 +72,34 @@ internal sealed class PartyActionTracker
         {
             _hunters.Clear();
             _names.Clear();
+            _isPlayer.Clear();
+            _roster.Clear();
             _localInstance = 0;
             _localSlot = -1;
+        }
+    }
+
+    /// <summary>
+    /// Roster pointers identify occupants, not hunter entities. On a roster change,
+    /// discard learned associations and wait for fresh entity actions before rematching.
+    /// Returns true when award deltas need a new baseline.
+    /// </summary>
+    public bool ObserveParty(IReadOnlyList<PartyMemberSnapshot> members)
+    {
+        lock (_gate)
+        {
+            var current = members.ToDictionary(m => m.Slot, m => (m.Name, m.Instance));
+            var changed = _roster.Count > 0 &&
+                (_roster.Count != current.Count || _roster.Any(entry =>
+                    !current.TryGetValue(entry.Key, out var occupant) || occupant != entry.Value));
+            _roster = current;
+            if (changed)
+            {
+                _hunters.Clear();
+                _names.Clear();
+                _isPlayer.Clear();
+            }
+            return changed;
         }
     }
 
@@ -90,7 +128,11 @@ internal sealed class PartyActionTracker
         {
             if (!_isPlayer.TryGetValue(instance, out var isPlayer))
             {
-                isPlayer = SafeIs(entity, "uPlayer");
+                // SPL's action hook covers every action controller in the game, and some owner
+                // pointers are not live entities. Entity.Is() calls through the object's vtable;
+                // on a bad pointer that is an AccessViolation no managed catch can stop
+                // (game crash 2026-09-06). Prefer the pointer-validated check.
+                isPlayer = _isHunter is not null ? _isHunter(instance) : SafeIs(entity, "uPlayer");
                 _isPlayer[instance] = isPlayer;
             }
 
@@ -232,8 +274,9 @@ internal sealed class PartyActionTracker
         {
             if (_hunters.Count == 0)
                 return "no hunter entities seen";
+            // Shown from the hub too, when these entities may be gone: cached names only, no dereference.
             return string.Join(" | ", _hunters.Values.Select(h =>
-                $"0x{h.Instance:X} slot={(h.Slot < 0 ? "?" : h.Slot.ToString())}({h.Matched}) {h.Weapon ?? "-"} acts={h.Actions} cur={NameOf(h.Instance, h.Action.Set, h.Action.Id) ?? $"{h.Action.Set}/{h.Action.Id}"}"));
+                $"0x{h.Instance:X} slot={(h.Slot < 0 ? "?" : h.Slot.ToString())}({h.Matched}) {h.Weapon ?? "-"} acts={h.Actions} cur={CachedName(h.Instance, h.Action.Set, h.Action.Id) ?? $"{h.Action.Set}/{h.Action.Id}"}"));
         }
     }
 
@@ -261,11 +304,17 @@ internal sealed class PartyActionTracker
             if (hunter.Weapon is not null && Stopwatch.GetElapsedTime(hunter.WeaponReadAt, now).TotalSeconds < WeaponRefreshSeconds)
                 continue;
             hunter.WeaponReadAt = now;
+            if (!_looksAlive(hunter.Instance))
+                continue;
             try
             {
                 var weapon = new Player(hunter.Instance).CurrentWeaponType;
-                if (weapon != WeaponType.None)
+                if (weapon != WeaponType.None && hunter.Weapon != weapon.ToString())
+                {
+                    foreach (var key in _names.Keys.Where(key => key.Item1 == hunter.Instance).ToArray())
+                        _names.Remove(key);
                     hunter.Weapon = weapon.ToString();
+                }
             }
             catch
             {
@@ -274,10 +323,15 @@ internal sealed class PartyActionTracker
         }
     }
 
+    private string? CachedName(nint instance, int set, int id) =>
+        _names.TryGetValue((instance, set, id), out var cached) ? cached : null;
+
     private string? NameOf(nint instance, int set, int id)
     {
         if (_names.TryGetValue((instance, set, id), out var cached))
             return cached;
+        if (!_looksAlive(instance))
+            return null;
         string? name = null;
         try
         {

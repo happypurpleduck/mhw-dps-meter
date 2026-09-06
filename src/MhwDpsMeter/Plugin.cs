@@ -47,6 +47,10 @@ public sealed class Plugin : IPlugin
     private float _elapsedSeconds;
     private string _timerSource = "local";
     private nint _moduleBase;
+    private long _moduleSize = FallbackModuleSize;
+    private nint _hunterVtable;
+    // MtObject vtables live in the exe image; used to reject garbage entity pointers.
+    private const long FallbackModuleSize = 0x1000_0000;
     private string _status = "not loaded";
     private string _damageSource = "n/a";
     private uint _questState;
@@ -60,6 +64,9 @@ public sealed class Plugin : IPlugin
     // ~0 => absurd DPS on the results screen, plus a duplicate millisecond fight log).
     private int _finishedQuestId;
     private DateTimeOffset _finishedAt;
+    // Expedition / Guiding Lands quest that was rejected; decided once, not every frame.
+    private int _unsupportedQuestId;
+    private readonly Dictionary<string, DateTime> _lastCallbackError = [];
     private bool _buildConfirmed;
     private float _buildRetryAccumulator;
     private int _buildRetries;
@@ -71,7 +78,7 @@ public sealed class Plugin : IPlugin
     public Plugin()
     {
         _recorder = new HuntRecorder(ResolveActionName);
-        _party = new PartyActionTracker(ResolveEntityActionName);
+        _party = new PartyActionTracker(ResolveEntityActionName, EntityLooksAlive, IsHunterEntity);
         _trial = new TimeTrial(ResolveActionName);
     }
 
@@ -96,6 +103,8 @@ public sealed class Plugin : IPlugin
             Log.Error($"MhwDpsMeter: {_status}.");
             return;
         }
+
+        _moduleSize = ReadModuleSize(_moduleBase);
 
         // The exe's version resource is 1.0.0.0 on current builds, so use the build
         // number Capcom bakes into the window title ("MONSTER HUNTER: WORLD(421810)").
@@ -210,7 +219,31 @@ public sealed class Plugin : IPlugin
         return created;
     }
 
-    public void OnUpdate(float deltaTime)
+    /// <summary>
+    /// SPL calls plugin callbacks with no try/catch of its own, so an exception escaping one
+    /// unwinds into the game's frame loop and takes the whole process down. Log it (at most
+    /// once per 10 s per callback) and carry on instead.
+    /// </summary>
+    private void Guarded(string callback, System.Action body)
+    {
+        try
+        {
+            body();
+        }
+        catch (Exception ex)
+        {
+            _status = $"{callback} failed ({ex.GetType().Name})";
+            var now = DateTime.UtcNow;
+            if (_lastCallbackError.TryGetValue(callback, out var last) && (now - last).TotalSeconds < 10)
+                return;
+            _lastCallbackError[callback] = now;
+            Log.Error($"MhwDpsMeter: {callback} threw {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    public void OnUpdate(float deltaTime) => Guarded("OnUpdate", () => UpdateCore(deltaTime));
+
+    private void UpdateCore(float deltaTime)
     {
         if (Input.IsPressed(Key.F10))
         {
@@ -282,6 +315,8 @@ public sealed class Plugin : IPlugin
     private void AttributeTeammateDamage(PartySnapshot snapshot)
     {
         _party.SetLocal(LocalPlayerInstance(), snapshot.LocalSlot);
+        if (_party.ObserveParty(snapshot.Members))
+            _prevSlotDamage = null;
         if (!snapshot.HasAwardTable)
         {
             _prevSlotDamage = null;
@@ -458,7 +493,7 @@ public sealed class Plugin : IPlugin
             return;
 
         var name = _reader?.LastLocalName is { Length: > 0 } local ? local : "You";
-        var log = _trial.BuildLog(name, _stageId, ((Stage)_stageId).ToString(), _gameBuild);
+        var log = _trial.BuildLog(name, _stageId, GameNames.Stage(_stageId), _gameBuild);
         if (_logs.Save(log))
             _trial.SavedFileName = log.FileName;
         Log.Info($"MhwDpsMeter: time trial {_trial.DurationSeconds}s finished: {_trial.Damage} dmg, {_trial.Hits} hits{(_trial.IsPersonalBest ? ", personal best" : "")}.");
@@ -523,7 +558,9 @@ public sealed class Plugin : IPlugin
         ApplyMap(build);
     }
 
-    public void OnImGuiRender()
+    public void OnImGuiRender() => Guarded("OnImGuiRender", RenderSettingsCore);
+
+    private void RenderSettingsCore()
     {
         _overlay.DrawSettings(
             _logs,
@@ -622,7 +659,9 @@ public sealed class Plugin : IPlugin
     private static string FormatSlots(int[]? slots) =>
         slots is { Length: > 0 } ? string.Join(" / ", slots) : "-";
 
-    public void OnImGuiFreeRender()
+    public void OnImGuiFreeRender() => Guarded("OnImGuiFreeRender", RenderOverlayCore);
+
+    private void RenderOverlayCore()
     {
         _overlay.Draw(
             _snapshot,
@@ -634,7 +673,7 @@ public sealed class Plugin : IPlugin
 
     // ---- SPL quest callbacks -------------------------------------------------------
 
-    public void OnQuestEnter(int questId)
+    public void OnQuestEnter(int questId) => Guarded("OnQuestEnter", () =>
     {
         try
         {
@@ -649,17 +688,17 @@ public sealed class Plugin : IPlugin
             return;
 
         BeginHunt(questId);
-    }
+    });
 
-    public void OnQuestComplete(int questId) => EndHunt("complete");
+    public void OnQuestComplete(int questId) => Guarded("OnQuestComplete", () => EndHunt("complete"));
 
-    public void OnQuestFail(int questId) => EndHunt("fail");
+    public void OnQuestFail(int questId) => Guarded("OnQuestFail", () => EndHunt("fail"));
 
-    public void OnQuestAbandon(int questId) => EndHunt("abandon");
+    public void OnQuestAbandon(int questId) => Guarded("OnQuestAbandon", () => EndHunt("abandon"));
 
-    public void OnQuestReturn(int questId) => EndHunt("return");
+    public void OnQuestReturn(int questId) => Guarded("OnQuestReturn", () => EndHunt("return"));
 
-    public void OnQuestLeave(int questId)
+    public void OnQuestLeave(int questId) => Guarded("OnQuestLeave", () =>
     {
         if (!_inQuest)
             return;
@@ -675,7 +714,7 @@ public sealed class Plugin : IPlugin
         }
 
         EndHunt(ResultFromQuestState(state));
-    }
+    });
 
     // ---- SPL monster / player callbacks (fight-log timeline) --------------------------
 
@@ -710,7 +749,7 @@ public sealed class Plugin : IPlugin
     /// <summary>Remember the local hunter's current action so each hooked hit can be tagged with the move.</summary>
     public void OnPlayerAction(Player player, ref ActionInfo action)
     {
-        if (!_inQuest || !_hits.Hooked)
+        if (!(_inQuest || _training) || !_hits.Hooked)
             return;
 
         try
@@ -778,6 +817,53 @@ public sealed class Plugin : IPlugin
         }
     }
 
+    /// <summary>SizeOfImage from the PE optional header; generous fallback if unreadable.</summary>
+    private static long ReadModuleSize(nint moduleBase)
+    {
+        if (moduleBase == 0
+            || !SafeMemory.TryRead<int>(moduleBase + 0x3C, out var lfanew) || lfanew <= 0 || lfanew > 0x1000
+            || !SafeMemory.TryRead<uint>(moduleBase + lfanew + 0x50, out var sizeOfImage) || sizeOfImage == 0)
+            return FallbackModuleSize;
+        return sizeOfImage;
+    }
+
+    private bool ModuleContains(nint address) =>
+        _moduleBase != 0 && address >= _moduleBase && address < _moduleBase + _moduleSize;
+
+    /// <summary>
+    /// Reads an object's vtable pointer through validated memory and checks it points into
+    /// the game image. Freed or garbage pointers fail here instead of faulting later.
+    /// </summary>
+    private bool TryReadVtable(nint instance, out nint vtable) =>
+        SafeMemory.TryRead(instance, out vtable) && ModuleContains(vtable);
+
+    /// <summary>
+    /// Hunter entity pointers are remembered from past callbacks; a teammate who left may
+    /// have been freed. Only touch ones whose vtable pointer still reads sanely.
+    /// </summary>
+    private bool EntityLooksAlive(nint instance) => TryReadVtable(instance, out _);
+
+    /// <summary>
+    /// Every hunter is a uPlayer, so it shares the local player's vtable. Comparing vtables
+    /// answers "is this a hunter?" with plain reads, never a call into the object, which is
+    /// what crashed the game on 2026-09-06 (Entity.Is -> GetDti on a non-entity owner).
+    /// </summary>
+    private bool IsHunterEntity(nint instance)
+    {
+        if (!TryReadVtable(instance, out var vtable))
+            return false;
+
+        if (_hunterVtable == 0)
+        {
+            var local = LocalPlayerInstance();
+            if (local == 0 || !TryReadVtable(local, out var localVtable))
+                return false;
+            _hunterVtable = localVtable;
+        }
+
+        return vtable == _hunterVtable;
+    }
+
     private static nint LocalPlayerInstance()
     {
         try
@@ -810,7 +896,10 @@ public sealed class Plugin : IPlugin
         _questState = questState;
 
         if (questId <= 0 || questState is (uint)QuestState.None or (uint)QuestState.Ready)
+        {
             _finishedQuestId = 0;
+            _unsupportedQuestId = 0;
+        }
 
         if ((Stage)_stageId == Stage.TrainingCamp && !_inQuest)
         {
@@ -880,22 +969,16 @@ public sealed class Plugin : IPlugin
         if (questId == _finishedQuestId && (DateTimeOffset.UtcNow - _finishedAt) < TimeSpan.FromMinutes(3))
             return;
 
-        string questName;
-        try
-        {
-            questName = Quest.CurrentQuestName;
-            if (IsPlaceholderName(questName))
-                questName = Quest.GetQuestName(questId);
-            if (IsPlaceholderName(questName))
-                questName = "";
-        }
-        catch
-        {
-            questName = "";
-        }
+        // Expeditions read as InQuest for their whole duration, so SyncQuestState lands here
+        // every frame; without this the game's quest-name function ran 60+ times a second.
+        if (questId == _unsupportedQuestId)
+            return;
+
+        var questName = GameNames.Quest(questId, () => Quest.CurrentQuestName, Quest.GetQuestName);
 
         if (IsUnsupportedHunt((Stage)_stageId, questName))
         {
+            _unsupportedQuestId = questId;
             _inQuest = false;
             _showResults = false;
             _snapshot = null;
@@ -940,9 +1023,15 @@ public sealed class Plugin : IPlugin
             {
                 var snapshot = ReadPartyWithFallbacks();
                 if (snapshot is not null)
+                {
                     _snapshot = snapshot.WithRates(_elapsedSeconds);
+                    _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
+                    _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
+                }
                 _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
                 _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), _snapshot?.LocalSlot ?? 0);
+                if (snapshot is not null)
+                    AttributeTeammateDamage(snapshot);
             }
         }
         catch (Exception ex)
@@ -958,7 +1047,7 @@ public sealed class Plugin : IPlugin
                 _questName,
                 result,
                 _stageId,
-                ((Stage)_stageId).ToString(),
+                GameNames.Stage(_stageId),
                 _questStartedAt,
                 _elapsedSeconds,
                 _timerSource,
@@ -1053,10 +1142,6 @@ public sealed class Plugin : IPlugin
         Stage.InfinityOfNothingHandler or Stage.GuidingLands => false,
         _ => (uint)stage != 0
     };
-
-    /// <summary>The game returns "Unavailable" for arena/challenge quest ids it has no text for.</summary>
-    private static bool IsPlaceholderName(string? name) =>
-        string.IsNullOrWhiteSpace(name) || name.Equals("Unavailable", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Expeditions and the Guiding Lands never allocate the quest-award damage table.</summary>
     private static readonly string[] UnsupportedQuestNameMarkers =

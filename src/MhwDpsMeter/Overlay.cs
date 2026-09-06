@@ -22,6 +22,30 @@ internal sealed class Overlay
     public bool Visible { get; set; } = true;
     public float Opacity { get; set; } = 0.92f;
 
+    // ImGui's Text/TextDisabled/TextColored/TextWrapped treat the string as a printf format
+    // with no arguments. Hunter names, quest names, file names and monster lists flow into
+    // these, and a '%' in any of them reads garbage varargs. Always use the unformatted path.
+    private static void Disabled(string text)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
+        ImGui.TextUnformatted(text);
+        ImGui.PopStyleColor();
+    }
+
+    private static void Colored(Vector4 color, string text)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, color);
+        ImGui.TextUnformatted(text);
+        ImGui.PopStyleColor();
+    }
+
+    private static void Wrapped(string text)
+    {
+        ImGui.PushTextWrapPos(0f);
+        ImGui.TextUnformatted(text);
+        ImGui.PopTextWrapPos();
+    }
+
     public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null)
     {
         if (!Visible || !inQuest)
@@ -46,12 +70,12 @@ internal sealed class Overlay
 
         ImGui.TextUnformatted("DPS");
         ImGui.SameLine();
-        ImGui.TextDisabled(Plugin.BuildStamp);
+        Disabled(Plugin.BuildStamp);
         ImGui.Separator();
 
         if (snapshot is null || snapshot.Members.Length == 0)
         {
-            ImGui.TextDisabled("Waiting for hunt data...");
+            Disabled("Waiting for hunt data...");
             ImGui.End();
             return;
         }
@@ -61,7 +85,7 @@ internal sealed class Overlay
         if (trial is { Active: true })
             DrawTrial(trial);
         else if (!string.IsNullOrEmpty(hint))
-            ImGui.TextDisabled(hint);
+            Disabled(hint);
 
         ImGui.End();
     }
@@ -83,13 +107,13 @@ internal sealed class Overlay
             ImGui.TableSetupColumn("pct", ImGuiTableColumnFlags.WidthFixed, 48f);
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.TextDisabled("Name");
+            Disabled("Name");
             ImGui.TableNextColumn();
-            ImGui.TextDisabled("Dmg");
+            Disabled("Dmg");
             ImGui.TableNextColumn();
-            ImGui.TextDisabled("DPS");
+            Disabled("DPS");
             ImGui.TableNextColumn();
-            ImGui.TextDisabled("%");
+            Disabled("%");
 
             foreach (var member in members)
             {
@@ -123,46 +147,46 @@ internal sealed class Overlay
         switch (trial.State)
         {
             case TimeTrialState.Armed:
-                ImGui.TextColored(TrialRunning, $"Time trial {trial.DurationSeconds}s armed");
-                ImGui.TextDisabled("Clock starts on your first hit.  F8 cancels");
+                Colored(TrialRunning, $"Time trial {trial.DurationSeconds}s armed");
+                Disabled("Clock starts on your first hit.  F8 cancels");
                 break;
 
             case TimeTrialState.Running:
             {
                 var remaining = trial.Remaining;
                 var color = remaining <= TrialEndingWarningSeconds ? TrialEnding : TrialRunning;
-                ImGui.TextColored(color, $"Time trial {trial.DurationSeconds}s   {remaining:0.0}s left");
+                Colored(color, $"Time trial {trial.DurationSeconds}s   {remaining:0.0}s left");
                 ImGui.PushStyleColor(ImGuiCol.PlotHistogram, color);
                 ImGui.ProgressBar(trial.Elapsed / trial.DurationSeconds, new Vector2(-1f, 6f), "");
                 ImGui.PopStyleColor();
                 ImGui.TextUnformatted($"{trial.Damage:N0} dmg   {trial.Dps:0.0} DPS   {trial.Hits} hits   {trial.Crits} crit");
                 if (trial.PreviousBest is { } best)
-                    ImGui.TextDisabled($"Best {best:N0} ({best / (float)trial.DurationSeconds:0.0} DPS)");
+                    Disabled($"Best {best:N0} ({best / (float)trial.DurationSeconds:0.0} DPS)");
                 break;
             }
 
             case TimeTrialState.Finished:
             {
-                ImGui.TextColored(TrialRunning, $"Time trial {trial.DurationSeconds}s finished");
+                Colored(TrialRunning, $"Time trial {trial.DurationSeconds}s finished");
                 if (trial.IsPersonalBest)
                 {
                     ImGui.SameLine();
-                    ImGui.TextColored(TrialBest, trial.PreviousBest is { } prev ? $"NEW BEST (+{trial.Damage - prev:N0})" : "FIRST RECORD");
+                    Colored(TrialBest, trial.PreviousBest is { } prev ? $"NEW BEST (+{trial.Damage - prev:N0})" : "FIRST RECORD");
                 }
                 else if (trial.PreviousBest is { } best)
                 {
                     ImGui.SameLine();
-                    ImGui.TextDisabled($"best {best:N0} ({trial.Damage - best:+#,0;-#,0})");
+                    Disabled($"best {best:N0} ({trial.Damage - best:+#,0;-#,0})");
                 }
 
                 ImGui.TextUnformatted($"{trial.Damage:N0} dmg   {trial.Dps:0.0} DPS   {trial.Hits} hits   {trial.Crits} crit");
                 foreach (var move in trial.TopMoves(TrialMovesShown))
                 {
                     var share = trial.Damage > 0 ? 100f * move.Damage / trial.Damage : 0f;
-                    ImGui.TextDisabled($"  {TimeTrial.ShortMoveName(move.Name),-22} {move.Damage,6:N0}  {share,4:0}%  x{move.Hits}");
+                    Disabled($"  {TimeTrial.ShortMoveName(move.Name),-22} {move.Damage,6:N0}  {share,4:0}%  x{move.Hits}");
                 }
 
-                ImGui.TextDisabled("F8 runs it again   F7 clears");
+                Disabled("F8 runs it again   F7 clears");
                 break;
             }
         }
@@ -177,7 +201,7 @@ internal sealed class Overlay
         TimeTrial? trial,
         Action? onToggleTrial)
     {
-        ImGui.TextWrapped(diagnostics);
+        Wrapped(diagnostics);
         if (ImGui.Button("Dump diagnostics (F6)"))
             onDumpDiagnostics();
 
@@ -207,7 +231,7 @@ internal sealed class Overlay
             settings.Save();
 
         ImGui.TextUnformatted("F10 overlay   F6 diagnostics   F7 reset training   F8 time trial");
-        ImGui.TextDisabled("Overlay after depart, or in the training area (DPS clock starts at your first hit).");
+        Disabled("Overlay after depart, or in the training area (DPS clock starts at your first hit).");
 
         DrawTrialSettings(logs, settings, trial, onToggleTrial);
         DrawHistory(logs);
@@ -237,7 +261,7 @@ internal sealed class Overlay
 
         if (trial is null || onToggleTrial is null)
         {
-            ImGui.TextDisabled("Enter the training area to run a trial. F8 arms it; the clock starts on your first hit.");
+            Disabled("Enter the training area to run a trial. F8 arms it; the clock starts on your first hit.");
         }
         else
         {
@@ -253,7 +277,7 @@ internal sealed class Overlay
             if (trial.State == TimeTrialState.Finished)
             {
                 ImGui.SameLine();
-                ImGui.TextDisabled(trial.SavedFileName ?? "not saved");
+                Disabled(trial.SavedFileName ?? "not saved");
             }
         }
 
@@ -268,11 +292,11 @@ internal sealed class Overlay
             .ToArray();
         if (best.Length == 0)
         {
-            ImGui.TextDisabled("No trials recorded yet.");
+            Disabled("No trials recorded yet.");
             return;
         }
 
-        ImGui.TextDisabled("Personal bests");
+        Disabled("Personal bests");
         foreach (var entry in best)
         {
             ImGui.TextUnformatted(
@@ -287,11 +311,11 @@ internal sealed class Overlay
 
         if (logs is null || logs.History.Count == 0)
         {
-            ImGui.TextDisabled("No hunts recorded yet.");
+            Disabled("No hunts recorded yet.");
             return;
         }
 
-        ImGui.TextDisabled(logs.LogsDirectory);
+        Disabled(logs.LogsDirectory);
         for (var i = 0; i < logs.History.Count; i++)
         {
             var log = logs.History[i];
@@ -305,9 +329,9 @@ internal sealed class Overlay
                 continue;
 
             ImGui.Indent();
-            ImGui.TextDisabled(log.FileName);
+            Disabled(log.FileName);
             if (log.Monsters.Length > 0)
-                ImGui.TextDisabled(string.Join(", ", log.Monsters.Select(monster => monster.Name).Distinct()));
+                Disabled(string.Join(", ", log.Monsters.Select(monster => monster.Name).Distinct()));
             foreach (var player in log.Players)
             {
                 var weapon = player.Weapon is null ? "" : $"  {player.Weapon}";
@@ -315,7 +339,7 @@ internal sealed class Overlay
             }
 
             if (log.Hits.Length > 0)
-                ImGui.TextDisabled($"{log.Hits.Length} hits, {log.Events.Length} events recorded");
+                Disabled($"{log.Hits.Length} hits, {log.Events.Length} events recorded");
             ImGui.Unindent();
         }
     }
