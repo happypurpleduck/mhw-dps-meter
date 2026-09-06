@@ -25,12 +25,13 @@ pnpm build        # type-check + static build in dist/
 
 - **Hunt list**: every quest and time trial from `index.json`, filterable by text and kind, sortable by date, result, duration, damage.
 - **Overview**: party table with damage/DPS/share, cumulative damage per hunter with monster death and enrage markers, rolling DPS with a selectable window.
-- **Moves**: per-move breakdown of *your* hits (damage, share, hits, crit rate, avg, max, tenderized) with a bar chart. Toggle to hide `Common::` actions, which are hits that registered after the move animation ended.
+- **Moves**: per-move breakdown per hunter (damage, share, hits, crit rate, avg, max, tenderized) with a bar chart. Your rows are exact hits; teammates' rows (plugin 0.4.0+) are *estimated* from award-table increments credited to the move they were performing and are labelled as such. Toggle to hide `Common::` actions, which are hits that registered after the move animation ended.
+- **Layout**: drag the separator between the hunt list and the detail pane; the width is remembered per browser.
 - **Monsters**: HP lost per large monster and how much of it was yours.
 - **Timeline**: enrage, unenrage, death, flinch, weapon swaps, hunters joining/leaving.
 - **Time trials**: personal bests per weapon and window (same rule as the plugin's F9 panel), every run, and a two-run comparison with overlaid damage curves and top moves.
 
-Per-move data exists only for the local hunter: the game runs its deal-damage function only for hits simulated on your client. Teammates get their award total and the 2-second damage curve.
+Exact per-hit data (crit, tenderize) exists only for the local hunter: the game runs its deal-damage function only for hits simulated on your client. Teammates get their award total, the 2-second damage curve, and estimated per-move rows when the plugin could match their hunter entity to their slot.
 
 ## Move names
 

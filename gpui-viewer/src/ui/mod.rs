@@ -13,6 +13,7 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants as _},
     h_flex,
     input::{Input, InputEvent, InputState},
+    resizable::{h_resizable, resizable_panel},
     scroll::ScrollableElement as _,
     table::{DataTable, TableEvent, TableState},
     theme::{Theme, ThemeMode},
@@ -77,6 +78,8 @@ pub struct ViewerApp {
     pub(crate) hide_common: bool,
     pub(crate) dps_window: f32,
     pub(crate) show_flinches: bool,
+    /// Which hunter's moves the Moves tab shows (None = local).
+    pub(crate) moves_slot: Option<usize>,
     /// Trial files ticked for comparison (at most two).
     pub(crate) compare: Vec<String>,
     _tasks: Vec<Task<()>>,
@@ -134,6 +137,7 @@ impl ViewerApp {
             hide_common: false,
             dps_window: 20.0,
             show_flinches: false,
+            moves_slot: None,
             compare: Vec::new(),
             _tasks: Vec::new(),
         };
@@ -153,6 +157,7 @@ impl ViewerApp {
     fn open_hunt(&mut self, file: String, cx: &mut Context<Self>) {
         if self.page != Page::Hunt(file.clone()) {
             self.page = Page::Hunt(file);
+            self.moves_slot = None;
             cx.notify();
         }
     }
@@ -331,9 +336,7 @@ impl ViewerApp {
         let kind = self.hunt_table.read(cx).delegate().kind;
         let counts = self.hunt_table.read(cx).delegate().counts();
         v_flex()
-            .w(px(460.))
-            .flex_shrink_0()
-            .h_full()
+            .size_full()
             .border_r_1()
             .border_color(cx.theme().border)
             .child(
@@ -393,20 +396,31 @@ impl Render for ViewerApp {
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .child(self.render_toolbar(cx))
-            .child(
-                h_flex()
+            .child(if self.loaded.is_some() {
+                // Draggable separator between the hunt list and the detail pane.
+                div()
                     .flex_1()
                     .min_h_0()
-                    .items_start()
-                    .when(self.loaded.is_some(), |this| this.child(self.render_sidebar(cx)))
+                    .w_full()
                     .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .h_full()
-                            .overflow_y_scrollbar()
-                            .child(div().p_4().child(content)),
-                    ),
-            )
+                        h_resizable("split")
+                            .child(
+                                resizable_panel()
+                                    .size(px(460.))
+                                    .size_range(px(300.)..px(960.))
+                                    .child(self.render_sidebar(cx)),
+                            )
+                            .child(
+                                div()
+                                    .size_full()
+                                    .min_w_0()
+                                    .child(div().size_full().overflow_y_scrollbar().child(div().p_4().w_full().child(content)))
+                                    .into_any_element(),
+                            ),
+                    )
+                    .into_any_element()
+            } else {
+                div().flex_1().min_h_0().size_full().overflow_y_scrollbar().child(div().p_4().child(content)).into_any_element()
+            })
     }
 }

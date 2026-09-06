@@ -20,8 +20,8 @@ use super::{
     plots::{LinesPlot, Marker, Series, legend, slot_color},
 };
 use crate::analysis::{
-    damage_curves, format_date, format_duration, format_int, hit_stats, monster_breakdown, move_breakdown, move_display_name, pct,
-    rolling_dps,
+    damage_curves, format_date, format_duration, format_int, hit_stats, local_exact_hits, monster_breakdown, move_breakdown,
+    move_display_name, pct, rolling_dps,
 };
 use crate::model::{FightLog, LogKind};
 
@@ -119,28 +119,61 @@ impl ViewerApp {
         if log.hits.is_empty() {
             return v_flex().child(muted("This log has no per-hit data. Logs written by plugin 0.4.0 or later include every hit of the local hunter.", cx));
         }
-        let weapon = log.local_player().and_then(|p| p.weapon.clone());
-        let mut rows = move_breakdown(&log.hits, |k| move_display_name(weapon.as_deref(), k));
+        let slots = log.slots_with_hits();
+        let slot = self.moves_slot.filter(|s| slots.contains(s)).or_else(|| slots.first().copied()).unwrap_or(0);
+        let player = log.players.iter().find(|p| p.slot == slot);
+        let weapon = player.and_then(|p| p.weapon.clone());
+        let hits = log.hits_for_slot(slot);
+        let estimated = !hits.is_empty() && hits.iter().all(|h| h.estimated);
+        let mut rows = move_breakdown(hits.iter().copied(), |k| move_display_name(weapon.as_deref(), k));
         if self.hide_common {
             rows.retain(|r| !r.is_common);
         }
         let top = rows.iter().map(|r| r.damage).max().unwrap_or(1).max(1) as f32;
+        let bar_color = slot_color(slot);
+        let who = match player {
+            Some(p) if p.is_local => "your".to_string(),
+            Some(p) => format!("{}'s", p.name),
+            None => format!("slot {}'s", slot + 1),
+        };
+        let summary = if estimated {
+            format!(
+                "Estimated per-move damage for {} ({}): {} award-table increments credited to the move being performed. Crit and tenderize are unknown for teammates.",
+                player.map(|p| p.name.clone()).unwrap_or_else(|| "teammate".into()),
+                weapon.clone().unwrap_or_else(|| "unknown weapon".into()),
+                hits.len()
+            )
+        } else {
+            format!("Per-move breakdown of {who} {} hits ({}).", hits.len(), weapon.clone().unwrap_or_else(|| "unknown weapon".into()))
+        };
 
         v_flex()
             .gap_3()
+            .when(slots.len() > 1, |this| {
+                this.child(
+                    TabBar::new("moves-hunters")
+                        .pill()
+                        .selected_index(slots.iter().position(|s| *s == slot).unwrap_or(0))
+                        .on_click(cx.listener({
+                            let slots = slots.clone();
+                            move |this, ix: &usize, _, cx| {
+                                this.moves_slot = slots.get(*ix).copied();
+                                cx.notify();
+                            }
+                        }))
+                        .children(slots.iter().map(|s| {
+                            let name = log.players.iter().find(|p| p.slot == *s).map(|p| p.name.clone()).unwrap_or_else(|| format!("Slot {}", s + 1));
+                            let est = log.hits_for_slot(*s).iter().all(|h| h.estimated);
+                            SharedString::from(if est { format!("{name} (est.)") } else { name })
+                        })),
+                )
+            })
             .child(
                 h_flex()
                     .flex_wrap()
                     .gap_4()
                     .items_center()
-                    .child(muted(
-                        format!(
-                            "Per-move breakdown of your {} hits ({}). Teammates' hits are not visible to the plugin.",
-                            log.hits.len(),
-                            weapon.clone().unwrap_or_else(|| "unknown weapon".into())
-                        ),
-                        cx,
-                    ))
+                    .child(muted(summary, cx))
                     .child(
                         Checkbox::new("hide-common")
                             .label("Hide Common:: actions (hits that landed after the move ended)")
@@ -171,7 +204,7 @@ impl ViewerApp {
                         ),
                     )
                     .child(TableBody::new().children(rows.iter().enumerate().map(|(ix, r)| {
-                        let fill = if r.is_common { cx.theme().muted_foreground } else { cx.theme().chart_1 };
+                        let fill = if r.is_common { cx.theme().muted_foreground } else { bar_color };
                         TableRow::new()
                             .when(ix % 2 == 1, |row| row.bg(cx.theme().table_even))
                             .child(
@@ -258,7 +291,7 @@ impl ViewerApp {
 
 fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
     let me = log.local_player();
-    let stats = hit_stats(&log.hits);
+    let stats = hit_stats(local_exact_hits(log));
     let total = log.total_damage();
     let duration = log.duration_seconds.max(1.0);
     v_flex()
@@ -276,10 +309,20 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                     format_date(&log.started_at),
                     log.stage.clone().unwrap_or_else(|| format!("stage {}", log.stage_id)),
                     log.schema_version
-                ))),
+                )))
+                .when_some(log.rewards.as_ref(), |this, r| {
+                    this.child(div().text_sm().text_color(cx.theme().muted_foreground).child(format!(
+                        "rewards {}z · {} HRP · {}★",
+                        format_int(r.zenny),
+                        format_int(r.hunter_rank_points),
+                        r.stars
+                    )))
+                }),
         )
         .child(
+            // Tiles share one fixed height and stretch to fill the row.
             h_flex()
+                .w_full()
                 .flex_wrap()
                 .gap_2()
                 .child(stat_tile("Total damage", format_int(total), format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }), None, cx))
@@ -325,8 +368,8 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
         .child(
             TableHeader::new().child(
                 TableRow::new()
-                    .child(TableHead::new().w(px(220.)).child("Hunter"))
-                    .child(TableHead::new().w(px(130.)).child("Weapon"))
+                    .child(TableHead::new().w(px(280.)).child("Hunter"))
+                    .child(TableHead::new().w(px(140.)).child("Weapon"))
                     .child(TableHead::new().text_right().child("Damage"))
                     .child(TableHead::new().text_right().child("DPS"))
                     .child(TableHead::new().w(px(220.)).child("Share")),
@@ -336,16 +379,17 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
             TableRow::new()
                 .when(ix % 2 == 1, |row| row.bg(cx.theme().table_even))
                 .child(
-                    TableCell::new().w(px(220.)).child(
+                    TableCell::new().w(px(280.)).child(
                         h_flex()
                             .gap_2()
                             .items_center()
-                            .child(div().size_2p5().rounded_full().bg(slot_color(p.slot)))
-                            .child(div().font_medium().child(p.name.clone()))
+                            .overflow_hidden()
+                            .child(div().size_2p5().flex_shrink_0().rounded_full().bg(slot_color(p.slot)))
+                            .child(div().font_medium().truncate().child(p.name.clone()))
                             .when(p.is_local, |this| this.child(gpui_kit::component::tag::Tag::primary().xsmall().child("you"))),
                     ),
                 )
-                .child(TableCell::new().w(px(130.)).child(p.weapon.clone().unwrap_or_else(|| "—".into())))
+                .child(TableCell::new().w(px(140.)).child(p.weapon.clone().unwrap_or_else(|| "—".into())))
                 .child(TableCell::new().text_right().child(format_int(p.damage)))
                 .child(TableCell::new().text_right().child(format!("{:.1}", p.dps)))
                 .child(
@@ -420,7 +464,7 @@ pub(super) fn event_tag(kind: &str) -> gpui_kit::component::tag::Tag {
         "death" => Tag::danger(),
         "enrage" => Tag::warning(),
         "join" | "leave" => Tag::success(),
-        "weapon" => Tag::primary(),
+        "weapon" | "slotmatch" => Tag::primary(),
         _ => Tag::secondary(),
     }
     .outline()
@@ -429,7 +473,7 @@ pub(super) fn event_tag(kind: &str) -> gpui_kit::component::tag::Tag {
 }
 
 pub(super) fn card(cx: &App) -> Div {
-    v_flex().gap_2().p_3().rounded(cx.theme().radius_lg).bg(cx.theme().secondary)
+    v_flex().w_full().gap_2().p_3().rounded(cx.theme().radius_lg).bg(cx.theme().secondary)
 }
 
 pub(super) fn section_title(text: &'static str, _cx: &App) -> impl IntoElement {
@@ -442,11 +486,14 @@ pub(super) fn muted(text: impl Into<SharedString>, cx: &App) -> impl IntoElement
 
 pub(super) fn stat_tile(title: &'static str, value: String, desc: String, accent: Option<Hsla>, cx: &App) -> impl IntoElement {
     v_flex()
-        .min_w(px(150.))
+        .flex_1()
+        .min_w(px(170.))
+        .h(px(96.))
+        .justify_between()
         .p_3()
         .rounded(cx.theme().radius_lg)
         .bg(cx.theme().secondary)
         .child(div().text_xs().text_color(cx.theme().muted_foreground).child(title))
         .child(div().text_2xl().font_semibold().when_some(accent, |this, c| this.text_color(c)).child(value))
-        .child(div().text_xs().text_color(cx.theme().muted_foreground).child(desc))
+        .child(div().text_xs().text_color(cx.theme().muted_foreground).truncate().child(desc))
 }

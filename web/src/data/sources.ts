@@ -45,6 +45,26 @@ export async function filesSource(files: Iterable<File>): Promise<LogSource> {
   }
 }
 
+/**
+ * index.json written by plugin 0.4.0 before totalDamage/weapon existed has zeros; a
+ * logged hunt never has 0 damage, so such rows are re-derived from the log itself.
+ */
+async function repairEntries(entries: IndexEntry[], load: (file: string) => Promise<FightLog>): Promise<IndexEntry[]> {
+  const out: IndexEntry[] = []
+  for (const entry of entries) {
+    if (entry.totalDamage > 0) {
+      out.push(entry)
+      continue
+    }
+    try {
+      out.push(indexEntryFromLog(await load(entry.file), entry.file))
+    } catch {
+      out.push(entry)
+    }
+  }
+  return out
+}
+
 // ---- File System Access directory handle (Chromium) ---------------------------
 
 export const supportsDirectoryPicker = typeof window !== 'undefined' && 'showDirectoryPicker' in window
@@ -81,19 +101,17 @@ export async function directorySource(handle: FileSystemDirectoryHandle): Promis
     entries.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
   }
 
-  return {
-    kind: 'directory',
-    label: handle.name,
-    entries,
-    async loadLog(file) {
-      const cached = cache.get(file)
-      if (cached) return cached
-      if (!files.has(file)) throw new Error(`${file} is not in ${handle.name}`)
-      const log = parseLog(await read(file))
-      cache.set(file, log)
-      return log
-    },
+  const loadLog = async (file: string) => {
+    const cached = cache.get(file)
+    if (cached) return cached
+    if (!files.has(file)) throw new Error(`${file} is not in ${handle.name}`)
+    const log = parseLog(await read(file))
+    cache.set(file, log)
+    return log
   }
+  entries = await repairEntries(entries, loadLog)
+
+  return { kind: 'directory', label: handle.name, entries, loadLog }
 }
 
 // ---- a served folder (the bundled sample, or any URL with an index.json) ------
@@ -102,22 +120,18 @@ export async function urlSource(base: string, label: string, kind: 'sample' | 'u
   const root = base.endsWith('/') ? base : `${base}/`
   const res = await fetch(`${root}index.json`, { cache: 'no-store' })
   if (!res.ok) throw new Error(`${root}index.json: HTTP ${res.status}`)
-  const entries = parseIndex(await res.text())
   const cache = new Map<string, FightLog>()
-  return {
-    kind,
-    label,
-    entries,
-    async loadLog(file) {
-      const cached = cache.get(file)
-      if (cached) return cached
-      const r = await fetch(`${root}${encodeURIComponent(file)}`, { cache: 'no-store' })
-      if (!r.ok) throw new Error(`${file}: HTTP ${r.status}`)
-      const log = parseLog(await r.text())
-      cache.set(file, log)
-      return log
-    },
+  const loadLog = async (file: string) => {
+    const cached = cache.get(file)
+    if (cached) return cached
+    const r = await fetch(`${root}${encodeURIComponent(file)}`, { cache: 'no-store' })
+    if (!r.ok) throw new Error(`${file}: HTTP ${r.status}`)
+    const log = parseLog(await r.text())
+    cache.set(file, log)
+    return log
   }
+  const entries = await repairEntries(parseIndex(await res.text()), loadLog)
+  return { kind, label, entries, loadLog }
 }
 
 export function sampleSource(): Promise<LogSource> {

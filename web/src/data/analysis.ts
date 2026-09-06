@@ -89,6 +89,22 @@ export function rollingDps(log: FightLog, windowSeconds = 20): RatePoint[] {
   return out
 }
 
+/** Hits of one hunter; teammates only have estimated rows. */
+export function hitsForSlot(log: FightLog, slot: number): FightLogHit[] {
+  return log.hits.filter((h) => h.slot === slot)
+}
+
+/** Slots that have any hit rows, local first. */
+export function slotsWithHits(log: FightLog): number[] {
+  const slots = [...new Set(log.hits.map((h) => h.slot))]
+  const local = localPlayer(log)?.slot
+  return slots.sort((a, b) => (a === local ? -1 : b === local ? 1 : a - b))
+}
+
+export function isEstimated(hits: FightLogHit[]): boolean {
+  return hits.length > 0 && hits.every((h) => h.estimated)
+}
+
 export function isCommonAction(action: string | null | undefined): boolean {
   return !!action && action.startsWith('Common::')
 }
@@ -133,8 +149,9 @@ export function moveBreakdown(hits: FightLogHit[], displayName: (key: string) =>
 }
 
 export function monsterBreakdown(log: FightLog): MonsterRow[] {
+  const local = localPlayer(log)?.slot
   return log.monsters.map((m) => {
-    const mine = log.hits.filter((h) => h.monster === m.id)
+    const mine = log.hits.filter((h) => h.monster === m.id && h.slot === local && !h.estimated)
     return {
       ...m,
       hpLost: Math.max(0, m.maxHealth - m.lastHealth),

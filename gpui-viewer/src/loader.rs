@@ -44,10 +44,15 @@ impl Loaded {
             }));
         }
 
-        // Trust the files we hold over the index (it may list files that are gone).
+        // Trust the files we hold over the index (it may list files that are gone, or
+        // predate totalDamage/weapon: a logged hunt never has 0 damage).
         let mut entries: Vec<IndexEntry> = match index {
             Some(index) => {
-                let mut listed: Vec<IndexEntry> = index.into_iter().filter(|e| logs.contains_key(&e.file)).collect();
+                let mut listed: Vec<IndexEntry> = index
+                    .into_iter()
+                    .filter(|e| logs.contains_key(&e.file))
+                    .map(|e| if e.total_damage == 0 { IndexEntry::from_log(&logs[&e.file], &e.file) } else { e })
+                    .collect();
                 for (name, log) in &logs {
                     if !listed.iter().any(|e| &e.file == name) {
                         listed.push(IndexEntry::from_log(log, name));

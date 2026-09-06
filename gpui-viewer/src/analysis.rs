@@ -90,10 +90,10 @@ pub fn is_common_action(action: Option<&str>) -> bool {
     action.is_some_and(|a| a.starts_with("Common::"))
 }
 
-/// Per-move breakdown of the local hunter's hits, biggest damage first.
-pub fn move_breakdown(hits: &[Hit], display_name: impl Fn(&str) -> String) -> Vec<MoveRow> {
+/// Per-move breakdown of one hunter's hits, biggest damage first.
+pub fn move_breakdown<'a>(hits: impl IntoIterator<Item = &'a Hit> + Clone, display_name: impl Fn(&str) -> String) -> Vec<MoveRow> {
     let mut groups: BTreeMap<String, MoveRow> = BTreeMap::new();
-    let total: i64 = hits.iter().map(|h| h.damage).sum();
+    let total: i64 = hits.clone().into_iter().map(|h| h.damage).sum();
     for hit in hits {
         let key = hit
             .action
@@ -133,10 +133,14 @@ pub struct MonsterRow {
 }
 
 pub fn monster_breakdown(log: &FightLog) -> Vec<MonsterRow> {
+    let local = log.local_player().map(|p| p.slot);
     log.monsters
         .iter()
         .map(|m| {
-            let mine = log.hits.iter().filter(|h| h.monster.as_deref() == Some(m.id.as_str()));
+            let mine = log
+                .hits
+                .iter()
+                .filter(|h| h.monster.as_deref() == Some(m.id.as_str()) && Some(h.slot) == local && !h.estimated);
             let (dmg, n) = mine.fold((0i64, 0usize), |(d, n), h| (d + h.damage, n + 1));
             MonsterRow {
                 monster: m.clone(),
@@ -170,7 +174,8 @@ impl HitStats {
     }
 }
 
-pub fn hit_stats(hits: &[Hit]) -> HitStats {
+pub fn hit_stats<'a>(hits: impl IntoIterator<Item = &'a Hit>) -> HitStats {
+    let hits: Vec<&Hit> = hits.into_iter().collect();
     let first = hits.first().map(|h| h.t).unwrap_or(0.0);
     let last = hits.last().map(|h| h.t).unwrap_or(0.0);
     HitStats {
@@ -181,6 +186,12 @@ pub fn hit_stats(hits: &[Hit]) -> HitStats {
         max: hits.iter().map(|h| h.damage).max().unwrap_or(0),
         active_seconds: (last - first).max(0.0),
     }
+}
+
+/// Exact (non-estimated) hits of the local hunter.
+pub fn local_exact_hits(log: &FightLog) -> Vec<&Hit> {
+    let local = log.local_player().map(|p| p.slot);
+    log.hits.iter().filter(|h| Some(h.slot) == local && !h.estimated).collect()
 }
 
 #[derive(Debug, Clone)]

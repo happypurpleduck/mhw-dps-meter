@@ -50,6 +50,8 @@ pub struct FightLog {
     pub timer_source: Option<String>,
     #[serde(default)]
     pub hit_coverage: Option<String>,
+    #[serde(default)]
+    pub rewards: Option<Rewards>,
     pub players: Vec<Player>,
     #[serde(default)]
     pub monsters: Vec<Monster>,
@@ -133,6 +135,20 @@ pub struct Hit {
     /// Internal action name, e.g. `WP_02::RANBU`.
     #[serde(default)]
     pub action: Option<String>,
+    /// Teammate row: award-table delta credited to the current move, not an exact hit.
+    #[serde(default)]
+    pub estimated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Rewards {
+    #[serde(default)]
+    pub zenny: i64,
+    #[serde(default)]
+    pub hunter_rank_points: i64,
+    #[serde(default)]
+    pub stars: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -212,6 +228,21 @@ impl FightLog {
 
     pub fn total_damage(&self) -> i64 {
         self.players.iter().map(|p| p.damage).sum()
+    }
+
+    /// Hits of one hunter (teammates only have estimated rows).
+    pub fn hits_for_slot(&self, slot: usize) -> Vec<&Hit> {
+        self.hits.iter().filter(|h| h.slot == slot).collect()
+    }
+
+    /// Slots that have hit rows, local hunter first.
+    pub fn slots_with_hits(&self) -> Vec<usize> {
+        let local = self.local_player().map(|p| p.slot);
+        let mut slots: Vec<usize> = self.hits.iter().map(|h| h.slot).collect();
+        slots.sort();
+        slots.dedup();
+        slots.sort_by_key(|s| if Some(*s) == local { 0 } else { 1 + *s });
+        slots
     }
 }
 

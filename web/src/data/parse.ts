@@ -35,6 +35,7 @@ export function normalizeLog(raw: unknown): FightLog {
     durationSeconds: num(r.durationSeconds, 0),
     timerSource: (r.timerSource as string | undefined) ?? undefined,
     hitCoverage: (r.hitCoverage as string | undefined) ?? undefined,
+    rewards: (r.rewards as FightLog['rewards']) ?? null,
     players,
     monsters: Array.isArray(r.monsters) ? (r.monsters as FightLog['monsters']) : [],
     samples: Array.isArray(r.samples) ? (r.samples as FightLog['samples']) : [],

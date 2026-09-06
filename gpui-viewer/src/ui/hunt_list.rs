@@ -26,11 +26,12 @@ pub struct HuntListDelegate {
 impl HuntListDelegate {
     fn columns() -> Vec<Column> {
         vec![
-            Column::new("date", "Date").width(130.).sortable().descending(),
-            Column::new("hunt", "Hunt").width(180.).sortable(),
-            Column::new("result", "Result").width(78.).sortable(),
-            Column::new("time", "Time").width(58.).sortable().text_right(),
-            Column::new("damage", "Dmg").width(70.).sortable().text_right(),
+            // Sums to the default 460 px panel width so no column is cut off.
+            Column::new("date", "Date").width(118.).sortable().descending(),
+            Column::new("hunt", "Hunt").width(150.).sortable(),
+            Column::new("result", "Result").width(76.).sortable(),
+            Column::new("time", "Time").width(52.).sortable().text_right(),
+            Column::new("damage", "Dmg").width(64.).sortable().text_right(),
         ]
     }
 

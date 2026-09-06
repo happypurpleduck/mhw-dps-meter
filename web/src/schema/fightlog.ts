@@ -22,8 +22,9 @@ export interface FightLog {
   durationSeconds: number
   /** "quest" | "local" | "trial" */
   timerSource?: string
-  /** Always "local": hits[] only cover the local hunter. */
+  /** "local" (your exact hits only) or "party-estimated" (teammates have estimated rows too). */
   hitCoverage?: string
+  rewards?: FightLogRewards | null
   players: FightLogPlayer[]
   monsters: FightLogMonster[]
   samples: FightLogSample[]
@@ -70,6 +71,14 @@ export interface FightLogHit {
   actionId: number
   /** Internal action name, e.g. "WP_02::RANBU". */
   action?: string | null
+  /** Teammate row: award-table delta credited to the current move, not an exact hit. */
+  estimated?: boolean
+}
+
+export interface FightLogRewards {
+  zenny: number
+  hunterRankPoints: number
+  stars: number
 }
 
 export type EventType = 'enrage' | 'unenrage' | 'death' | 'flinch' | 'weapon' | 'join' | 'leave' | (string & {})

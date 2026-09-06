@@ -8,7 +8,10 @@ import {
   formatDuration,
   formatInt,
   hitStats,
+  hitsForSlot,
+  isEstimated,
   localPlayer,
+  slotsWithHits,
   monsterBreakdown,
   moveBreakdown,
   pct,
@@ -59,7 +62,7 @@ export function HuntDetail() {
 
 function Header(props: { log: FightLog }) {
   const me = () => localPlayer(props.log)
-  const stats = () => hitStats(props.log.hits)
+  const stats = () => hitStats(props.log.hits.filter((h) => h.slot === me()?.slot && !h.estimated))
   const total = () => totalDamage(props.log)
   const duration = () => Math.max(props.log.durationSeconds, 1)
   return (
@@ -71,6 +74,13 @@ function Header(props: { log: FightLog }) {
         <span class="text-sm text-base-content/60">
           {formatDate(props.log.startedAt)} · {props.log.stage ?? `stage ${props.log.stageId}`} · schema {props.log.schemaVersion}
         </span>
+        <Show when={props.log.rewards}>
+          {(r) => (
+            <span class="text-sm text-base-content/60">
+              rewards {formatInt(r().zenny)}z · {formatInt(r().hunterRankPoints)} HRP · {r().stars}★
+            </span>
+          )}
+        </Show>
       </div>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
         <StatTile title="Total damage" value={formatInt(total())} desc={`${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
@@ -195,18 +205,50 @@ const moveColumns = [
 
 function Moves(props: { log: FightLog }) {
   const [hideCommon, setHideCommon] = createSignal(false)
-  const weapon = () => localPlayer(props.log)?.weapon ?? null
+  const slots = () => slotsWithHits(props.log)
+  const [slot, setSlot] = createSignal<number | undefined>(undefined)
+  const activeSlot = () => slot() ?? slots()[0] ?? 0
+  const player = () => props.log.players.find((p) => p.slot === activeSlot())
+  const weapon = () => player()?.weapon ?? null
+  const hits = () => hitsForSlot(props.log, activeSlot())
+  const estimated = () => isEstimated(hits())
   const rows = createMemo(() => {
-    const all = moveBreakdown(props.log.hits, (key) => moveDisplayName(weapon(), key))
+    const all = moveBreakdown(hits(), (key) => moveDisplayName(weapon(), key))
     return hideCommon() ? all.filter((r) => !r.isCommon) : all
   })
   const table = createSolidTable<MoveRow>({ data: rows, columns: moveColumns, getRowId: (r) => r.key, initialSorting: [{ id: 'damage', desc: true }] })
   return (
     <Show when={props.log.hits.length} fallback={<div class="text-sm text-base-content/60">This log has no per-hit data. Logs written by plugin 0.4.0 or later include every hit of the local hunter.</div>}>
       <div class="flex flex-col gap-4">
+        <Show when={slots().length > 1}>
+          <div role="tablist" class="tabs tabs-box w-fit">
+            <For each={slots()}>
+              {(s) => {
+                const p = props.log.players.find((x) => x.slot === s)
+                return (
+                  <button role="tab" class={['tab gap-2', { 'tab-active': activeSlot() === s }]} onClick={() => setSlot(s)}>
+                    <span class="inline-block size-2.5 rounded-full" style={{ background: slotColor(s) }} />
+                    {p?.name ?? `Slot ${s + 1}`}
+                    <Show when={isEstimated(hitsForSlot(props.log, s))}><span class="badge badge-xs badge-warning badge-outline">est.</span></Show>
+                  </button>
+                )
+              }}
+            </For>
+          </div>
+        </Show>
         <div class="flex flex-wrap items-center gap-4 text-sm">
           <span class="text-base-content/70">
-            Per-move breakdown of <b>your</b> {props.log.hits.length} hits ({weapon() ?? 'unknown weapon'}). Teammates' hits are not visible to the plugin.
+            <Show
+              when={!estimated()}
+              fallback={
+                <>
+                  <b>Estimated</b> per-move damage for {player()?.name ?? 'teammate'} ({weapon() ?? 'unknown weapon'}): {hits().length} award-table
+                  increments credited to the move they were performing. Crit and tenderize are unknown for teammates.
+                </>
+              }
+            >
+              Per-move breakdown of <b>{player()?.isLocal ? 'your' : `${player()?.name}'s`}</b> {hits().length} hits ({weapon() ?? 'unknown weapon'}).
+            </Show>
           </span>
           <label class="label cursor-pointer gap-2">
             <input type="checkbox" class="toggle toggle-sm" checked={hideCommon()} onChange={(e) => setHideCommon(e.currentTarget.checked)} />
@@ -215,7 +257,7 @@ function Moves(props: { log: FightLog }) {
         </div>
         <section class="card bg-base-200">
           <div class="card-body p-4">
-            <Chart definition={movesBarChart(rows())} height={Math.max(160, Math.min(rows().length, 15) * 26 + 60)} ariaLabel="Damage per move" />
+            <Chart definition={movesBarChart(rows(), slotColor(activeSlot()))} height={Math.max(160, Math.min(rows().length, 15) * 26 + 60)} ariaLabel="Damage per move" />
           </div>
         </section>
         <TableView table={table} />
