@@ -134,6 +134,8 @@ This needs the hit hook, which is only enabled when the address map matches the 
 
 `nativePC/plugins/CSharp/MhwDpsMeter/settings.json` stores overlay visibility, opacity, and the time-trial duration. It is written whenever you change one of them in the F9 panel (or toggle the overlay with F10).
 
+To reposition the DPS overlay, open the F9 menu and drag **DPS Meter** by its title bar. Closing the menu makes the overlay click-through again. ImGui remembers the position between sessions.
+
 ## Viewers for the logs
 
 See the [mapping audit](data/README.md) for area, weapon-class and monster-name coverage, and the remaining quest, equipment and move-name gaps.
