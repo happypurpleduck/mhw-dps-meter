@@ -1,0 +1,17 @@
+{
+  "name": "mhw-dps-meter-releases",
+  "private": true,
+  "scripts": {
+    "changeset": "changeset",
+    "version-packages": "changeset version && python3 scripts/release.py sync",
+    "check:versions": "python3 scripts/release.py check",
+    "test:release": "python3 -m unittest discover -s tests/release -v"
+  },
+  "workspaces": [
+    "src/MhwDpsMeter",
+    "gpui-viewer"
+  ],
+  "devDependencies": {
+    "@changesets/cli": "2.31.1"
+  }
+}

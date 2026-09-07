@@ -139,6 +139,12 @@ pub fn default_log_dirs() -> Vec<std::path::PathBuf> {
 
 #[cfg(not(target_family = "wasm"))]
 pub fn sample_dir() -> Option<std::path::PathBuf> {
+    // Release archives keep samples beside the executable, regardless of the cwd.
+    if let Some(samples) = std::env::current_exe().ok().and_then(|exe| exe.parent().map(|dir| dir.join("sample-logs"))) {
+        if samples.join("index.json").is_file() {
+            return Some(samples);
+        }
+    }
     let candidates = [
         std::path::PathBuf::from("sample-logs"),
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("sample-logs"),

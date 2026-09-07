@@ -73,6 +73,12 @@ If F9 does nothing, SPL still is not injecting. Check that `ucrtbase.dll` exists
 
 SharpPluginLoader reloads a plugin when its DLL changes. Under Proton that watcher often misses the copy, so quit the game fully and relaunch after updating the plugin.
 
+## Automated builds and releases
+
+GitHub Actions builds and tests the mod and native GPUI app on Linux and Windows.
+See the [release guide](docs/releases.md) for downloads, changesets, changelogs,
+and the release PR workflow.
+
 ## Build
 
 Needs the .NET 8 SDK (`dotnet --list-sdks` should show 8.0.x).

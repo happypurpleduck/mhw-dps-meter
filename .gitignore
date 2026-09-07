@@ -14,3 +14,7 @@ gpui-viewer/www/node_modules/
 gpui-viewer/www/dist/
 gpui-viewer/www/src/wasm/
 gpui-viewer/www/public/sample-logs/
+
+# Release tooling
+/node_modules/
+__pycache__/

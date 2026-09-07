@@ -7,6 +7,24 @@ The same crate produces both targets:
 - **Native**: `cargo run --release -- <logs folder>`; a real window on Linux (Wayland/X11), macOS or Windows.
 - **Browser**: `wasm32-unknown-unknown` via wasm-bindgen, rendered on WebGPU (WebGL2 fallback) inside a canvas. Served by the tiny Vite shell in `www/`.
 
+## Release downloads
+
+Download the Linux x86-64 `.tar.gz` or Windows x86-64 `.zip` from this
+repository's Releases page and extract the entire archive. Run
+`mhw-log-viewer` (Windows: `mhw-log-viewer.exe`); sample logs are included.
+See the [release guide](../docs/releases.md) and [changelog](CHANGELOG.md).
+
+Linux archives are built on Ubuntu 24.04 (glibc 2.39). On Ubuntu 24.04,
+install the runtime libraries with:
+
+```sh
+sudo apt-get install libfontconfig1 libwayland-client0 libxkbcommon-x11-0 \
+  libx11-xcb1 libvulkan1 libssl3t64 libzstd1 libwebkit2gtk-4.1-0
+```
+
+A working Vulkan-capable graphics driver is also required. Windows builds
+require the Microsoft Visual C++ v14 Redistributable (x64).
+
 ## Native
 
 ```bash

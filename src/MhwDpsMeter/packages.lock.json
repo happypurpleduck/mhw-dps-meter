@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "SharpPluginLoader.Core": {
+        "type": "Direct",
+        "requested": "[0.0.7.2, )",
+        "resolved": "0.0.7.2",
+        "contentHash": "jY4ffzJVNDBtKGVRsdV8LAX/1/5pH7ghFuxvnVSgqCmvhZfNCQwjhoL91VoETrGrk7GQkigCa4DA81j1Zv804Q==",
+        "dependencies": {
+          "Reloaded.Hooks": "4.3.0",
+          "SharpPluginLoader.ImGui": "1.90.2"
+        }
+      },
+      "Iced": {
+        "type": "Transitive",
+        "resolved": "1.17.0",
+        "contentHash": "8x+HCVTl/HHTGpscH3vMBhV8sknN/muZFw9s3TsI8SA6+c43cOTCi2+jE4KsU8pNLbJ++iF2ZFcpcXHXtDglnw=="
+      },
+      "Reloaded.Assembler": {
+        "type": "Transitive",
+        "resolved": "1.0.14",
+        "contentHash": "y4I1ktSnHPIz3t1JcWk5Xiu0C0BmrlJ6nDnQGwiyz65RH6hjn9vPCcKYjpQDveuTtsebBFdTdUjxTUSw+qtZ2w==",
+        "dependencies": {
+          "Reloaded.Memory.Buffers": "2.0.0"
+        }
+      },
+      "Reloaded.Hooks": {
+        "type": "Transitive",
+        "resolved": "4.3.0",
+        "contentHash": "LhrqGeYMYCrcnlWCmSyQmdRJ7coizUixzCAHF3FVCdYT5ZHLzZnJWZoMrmYHbay762vtOYlgzQGenQgsWMxdbw==",
+        "dependencies": {
+          "Iced": "1.17.0",
+          "Reloaded.Assembler": "1.0.14",
+          "Reloaded.Hooks.Definitions": "1.15.0",
+          "Reloaded.Memory.Buffers": "2.0.0"
+        }
+      },
+      "Reloaded.Hooks.Definitions": {
+        "type": "Transitive",
+        "resolved": "1.15.0",
+        "contentHash": "bLY20vYB0fS2xwu6RDQVwlJxt2//KXLigYrCsCuzt5QFQqkvft4abq9FWPeCJYcvEeg/GQpJ3LC+108/4I2l+g=="
+      },
+      "Reloaded.Memory": {
+        "type": "Transitive",
+        "resolved": "7.0.0",
+        "contentHash": "QGg022yKnymnOGvvWQbIa7s0ODm3YRf4epRtr4D9pQ3KBy7mq/pF5kqCgW1oCmocjKnCKNBOBIz2A4zgZkLNkQ=="
+      },
+      "Reloaded.Memory.Buffers": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "LghMip4Q1mpr9+HsZCGYazlaxnZyMtbiGf87Ttao8Al2F+wvnRet1gPPA5qEaTWnBFg/3DNILwBBbC0W6o0tsw==",
+        "dependencies": {
+          "Reloaded.Memory": "7.0.0"
+        }
+      },
+      "SharpPluginLoader.ImGui": {
+        "type": "Transitive",
+        "resolved": "1.90.2",
+        "contentHash": "EorTXbN7+y/0AuRmqU4CdTS4mCm4vaP/uPnvd0Unhej6vtjxXZjGPf+3s1PHX08Xd84PCaDvjfBuGVMZ40M7Cw==",
+        "dependencies": {
+          "System.Buffers": "4.4.0",
+          "System.Numerics.Vectors": "4.4.0",
+          "System.Runtime.CompilerServices.Unsafe": "4.4.0"
+        }
+      },
+      "System.Buffers": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "AwarXzzoDwX6BgrhjoJsk6tUezZEozOT5Y9QKF94Gl4JK91I4PIIBkBco9068Y9/Dra8Dkbie99kXB8+1BaYKw=="
+      },
+      "System.Numerics.Vectors": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "UiLzLW+Lw6HLed1Hcg+8jSRttrbuXv7DANVj0DkL9g6EnnzbL75EB7EWsw5uRbhxd/4YdG8li5XizGWepmG3PQ=="
+      },
+      "System.Runtime.CompilerServices.Unsafe": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "9dLLuBxr5GNmOfl2jSMcsHuteEg32BEfUotmmUkmZjpR3RpVHE8YQwt0ow3p6prwA1ME8WqDVZqrr8z6H8G+Kw=="
+      }
+    }
+  }
+}

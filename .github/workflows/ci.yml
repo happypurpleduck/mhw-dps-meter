@@ -1,0 +1,188 @@
+name: CI and release
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # Never interrupt a release while its assets are being uploaded.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  tooling:
+    name: Release tooling
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:versions
+      - run: npm run test:release
+      - name: Validate changeset plan
+        # Version PRs have consumed their changesets; maintenance can omit them.
+        run: |
+          git show-ref --verify --quiet refs/heads/master || git branch master origin/master
+          for file in .changeset/*.md; do
+            if [ "$file" != '.changeset/README.md' ]; then
+              npm run changeset -- status
+              break
+            fi
+          done
+
+  plugin:
+    name: Plugin (${{ matrix.os }})
+    timeout-minutes: 20
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore src/MhwDpsMeter/MhwDpsMeter.csproj --locked-mode
+      - run: dotnet restore tests/PluginRegression/PluginRegression.csproj --locked-mode
+      - run: dotnet run --project tests/PluginRegression -c Release --no-restore
+      - name: Build plugin
+        run: dotnet build src/MhwDpsMeter/MhwDpsMeter.csproj -c Release --no-restore -p:ContinuousIntegrationBuild=true -p:Deterministic=true -p:BuildStamp=${{ github.sha }}
+      - name: Package shared Windows and Proton DLL
+        if: runner.os == 'Linux'
+        run: python3 scripts/release.py package --product plugin
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: runner.os == 'Linux'
+        with:
+          name: plugin
+          path: dist/artifacts/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  viewer:
+    name: Viewer (${{ matrix.platform }})
+    timeout-minutes: 90
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            target: x86_64-unknown-linux-gnu
+          - os: windows-2022
+            platform: windows
+            target: x86_64-pc-windows-msvc
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/gpui-viewer/target
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang cmake pkg-config libfontconfig-dev \
+            libwayland-dev libwebkit2gtk-4.1-dev libxkbcommon-x11-dev libx11-xcb-dev \
+            libssl-dev libzstd-dev libvulkan-dev vulkan-validationlayers
+      - name: Install Rust
+        run: rustup toolchain install 1.96.0 --profile minimal --target ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+        with:
+          workspaces: gpui-viewer -> target
+          key: ${{ matrix.target }}-1.96.0
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+      - name: Test viewer
+        working-directory: gpui-viewer
+        run: cargo +1.96.0 test --locked --release --target ${{ matrix.target }} --lib
+      - name: Build viewer
+        working-directory: gpui-viewer
+        run: cargo +1.96.0 build --locked --release --target ${{ matrix.target }} --bin mhw-log-viewer
+      - name: Package viewer
+        run: python scripts/release.py package --product viewer --platform ${{ matrix.platform }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: viewer-${{ matrix.platform }}
+          path: dist/artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Version PR or GitHub release
+    timeout-minutes: 15
+    needs: [tooling, plugin, viewer]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist/artifacts
+          merge-multiple: true
+      - name: Create or update release PR
+        id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
+        with:
+          version: npm run version-packages
+          title: 'chore: release plugin and viewer'
+          commit: 'chore: version packages and update changelogs'
+          createGithubReleases: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Describe binary releases in the PR
+        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.pullRequestNumber != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.changesets.outputs.pullRequestNumber }}
+        run: |
+          python3 - <<'PYBODY'
+          import os, pathlib, subprocess
+          number = os.environ['PR_NUMBER']
+          body = subprocess.check_output(['gh', 'pr', 'view', number, '--json', 'body', '--jq', '.body'], text=True)
+          summary = body.partition('# Releases')[2]
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'release-pr-body.md'
+          path.write_text('Merge this PR to release the versions below after Linux and Windows builds pass. '
+                          'GitHub releases include binary archives and SHA-256 checksums.\n\n# Releases' + summary)
+          subprocess.run(['gh', 'pr', 'edit', number, '--body-file', str(path)], check=True)
+          PYBODY
+      # GITHUB_TOKEN-generated pushes do not trigger CI; workflow_dispatch does.
+      - name: Run checks on the bot release branch
+        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.pullRequestNumber != ''
+        run: gh workflow run ci.yml --ref changeset-release/master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish built archives
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: python3 scripts/release.py publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
