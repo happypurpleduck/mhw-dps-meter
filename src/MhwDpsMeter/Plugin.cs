@@ -317,29 +317,24 @@ public sealed class Plugin : IPlugin
         _party.SetLocal(LocalPlayerInstance(), snapshot.LocalSlot);
         if (_party.ObserveParty(snapshot.Members))
             _prevSlotDamage = null;
-        if (!snapshot.HasAwardTable)
+        // Weapon discovery (especially the one-teammate case) does not require an
+        // award table. Arena quests may never allocate one; only damage attribution does.
+        var deltas = new int[PartyDamageReader.PartySlots];
+        if (snapshot.HasAwardTable && _prevSlotDamage is not null)
         {
-            _prevSlotDamage = null;
-            return;
-        }
-
-        if (_prevSlotDamage is not null)
-        {
-            var deltas = new int[PartyDamageReader.PartySlots];
             for (var slot = 0; slot < deltas.Length; slot++)
                 deltas[slot] = snapshot.SlotDamage[slot] - _prevSlotDamage[slot];
-
-            var elapsed = _elapsedSeconds;
-            var estimated = _party.Attribute(
-                elapsed,
-                deltas,
-                snapshot.Members,
-                _recorder.SingleLiveMonsterId(),
-                (slot, how) => _recorder.AddEvent(elapsed, "slotmatch", slot, how));
-            _recorder.AddEstimatedHits(estimated);
         }
 
-        _prevSlotDamage = (int[])snapshot.SlotDamage.Clone();
+        var elapsed = _elapsedSeconds;
+        var estimated = _party.Attribute(
+            elapsed,
+            deltas,
+            snapshot.Members,
+            _recorder.SingleLiveMonsterId(),
+            (slot, how) => _recorder.AddEvent(elapsed, "slotmatch", slot, how));
+        _recorder.AddEstimatedHits(estimated);
+        _prevSlotDamage = snapshot.HasAwardTable ? (int[])snapshot.SlotDamage.Clone() : null;
         _recorder.ObserveSlotWeapons(_elapsedSeconds, _party.SlotWeapons());
     }
 
@@ -476,7 +471,7 @@ public sealed class Plugin : IPlugin
 
         _hits.RecordHits = true;
         _trial.Arm(_settings.TrialDurationSeconds);
-        _trial.PreviousBest = _logs?.BestTrial(ReadLocalWeapon()?.ToString(), _trial.DurationSeconds)?.TotalDamage;
+        _trial.PreviousBest = _logs?.BestTrial(GameNames.Weapon(ReadLocalWeapon()), _trial.DurationSeconds)?.TotalDamage;
         _status = $"time trial {_trial.DurationSeconds}s armed, waiting for first hit";
         Log.Info($"MhwDpsMeter: time trial {_trial.DurationSeconds}s armed.");
     }

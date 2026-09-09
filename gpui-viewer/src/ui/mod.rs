@@ -83,6 +83,7 @@ pub struct ViewerApp {
     /// Trial files ticked for comparison (at most two).
     pub(crate) compare: Vec<String>,
     _tasks: Vec<Task<()>>,
+    source_task: Option<Task<()>>,
 }
 
 impl ViewerApp {
@@ -140,6 +141,7 @@ impl ViewerApp {
             moves_slot: None,
             compare: Vec::new(),
             _tasks: Vec::new(),
+            source_task: None,
         };
         if let Some(source) = initial {
             this.load(source, cx);
@@ -187,7 +189,7 @@ impl ViewerApp {
         cx.notify();
     }
 
-    fn apply_loaded(&mut self, loaded: Loaded, cx: &mut Context<Self>) {
+    fn apply_loaded(&mut self, loaded: Loaded, preserve: bool, cx: &mut Context<Self>) {
         self.status = format!("{} · {} hunts", loaded.label, loaded.entries.len()).into();
         let first = loaded.entries.first().map(|e| e.file.clone());
         self.hunt_table.update(cx, |table, cx| {
@@ -198,9 +200,22 @@ impl ViewerApp {
             table.delegate_mut().set_entries(&loaded.entries);
             table.refresh(cx);
         });
-        self.compare.clear();
+        if preserve {
+            self.compare.retain(|file| loaded.logs.contains_key(file));
+        } else {
+            self.compare.clear();
+        }
+        let compare = self.compare.clone();
+        self.trials_table.update(cx, |table, cx| {
+            table.delegate_mut().compare = compare;
+            table.refresh(cx);
+        });
+        if !preserve || matches!(&self.page, Page::Empty)
+            || matches!(&self.page, Page::Hunt(file) if !loaded.logs.contains_key(file)) {
+            self.page = first.map(Page::Hunt).unwrap_or(Page::Empty);
+            self.moves_slot = None;
+        }
         self.loaded = Some(loaded);
-        self.page = first.map(Page::Hunt).unwrap_or(Page::Empty);
         self.loading = false;
         cx.notify();
     }
@@ -212,33 +227,47 @@ impl ViewerApp {
     }
 
     pub fn load(&mut self, source: Source, cx: &mut Context<Self>) {
+        self.source_task = None;
         self.loading = true;
         self.status = "Loading…".into();
         cx.notify();
         match source {
             #[cfg(not(target_family = "wasm"))]
             Source::Dir(path) => {
-                let task = cx.spawn(async move |this, cx| {
-                    let result = cx.background_spawn(async move { crate::loader::load_dir(&path) }).await;
-                    this.update(cx, |this, cx| match result {
-                        Ok(loaded) => this.apply_loaded(loaded, cx),
-                        Err(err) => this.fail(format!("{err:#}"), cx),
-                    })
-                    .ok();
-                });
-                self._tasks.push(task);
+                self.source_task = Some(cx.spawn(async move |this, cx| {
+                    let mut watch = crate::loader::DirectoryWatch::default();
+                    let mut first = true;
+                    loop {
+                        let path = path.clone();
+                        let (next_watch, result) = cx.background_spawn(async move {
+                            let result = watch.poll(&path);
+                            (watch, result)
+                        }).await;
+                        watch = next_watch;
+                        if this.update(cx, |this, cx| match result {
+                            Ok(Some(loaded)) => {
+                                this.apply_loaded(loaded, !first, cx);
+                                this.status = format!("{} · watching", this.status).into();
+                                first = false;
+                            }
+                            Ok(None) => {}
+                            Err(err) => this.fail(format!("{err:#} (retrying)"), cx),
+                        }).is_err() { break; }
+                        cx.background_executor().timer(std::time::Duration::from_secs(2)).await;
+                    }
+                }));
             }
             Source::Url(url) => {
                 let client = cx.http_client();
                 let task = cx.spawn(async move |this, cx| {
                     let result = crate::loader::load_url(client, &url).await;
                     this.update(cx, |this, cx| match result {
-                        Ok(loaded) => this.apply_loaded(loaded, cx),
+                        Ok(loaded) => this.apply_loaded(loaded, false, cx),
                         Err(err) => this.fail(format!("{err:#}"), cx),
                     })
                     .ok();
                 });
-                self._tasks.push(task);
+                self.source_task = Some(task);
             }
         }
     }

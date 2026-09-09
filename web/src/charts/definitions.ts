@@ -4,7 +4,7 @@ import { scaleBand } from '@tanstack/charts/scales/band'
 import { tooltip } from '@tanstack/charts/tooltip'
 import type { FightLog } from '../schema/fightlog'
 import { slotColor } from '../schema/fightlog'
-import { damageCurves, rollingDps, type CurvePoint, type MoveRow, type RatePoint } from '../data/analysis'
+import { damageCurves, rollingDps, intervalDps, type CurvePoint, type MoveRow, type RatePoint } from '../data/analysis'
 import { formatInt } from '../data/analysis'
 
 type Def = DomChartDefinition<any, any, any>
@@ -68,8 +68,8 @@ export function damageCurveChart(log: FightLog, markers: EventMarker[] = eventMa
 }
 
 /** Rolling DPS per hunter. */
-export function dpsCurveChart(log: FightLog, windowSeconds = 20): Def {
-  const rows = rollingDps(log, windowSeconds)
+export function dpsCurveChart(log: FightLog, windowSeconds: number | null = 20): Def {
+  const rows = windowSeconds === null ? intervalDps(log) : rollingDps(log, windowSeconds)
   return defineChart({
     marks: [
       lineY(rows, {
@@ -83,7 +83,7 @@ export function dpsCurveChart(log: FightLog, windowSeconds = 20): Def {
     ],
     scales: {
       x: { scale: scaleLinear, nice: true, axis: { label: 'Hunt time (s)' } },
-      y: { scale: scaleLinear, nice: true, grid: true, axis: { label: `DPS (${windowSeconds}s window)` } },
+      y: { scale: scaleLinear, nice: true, grid: true, axis: { label: windowSeconds === null ? 'DPS (per sample interval)' : `DPS (${windowSeconds}s window)` } },
     },
     tooltip: {
       use: tooltip,

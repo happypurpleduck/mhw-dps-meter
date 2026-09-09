@@ -51,7 +51,7 @@ impl Loaded {
                 let mut listed: Vec<IndexEntry> = index
                     .into_iter()
                     .filter(|e| logs.contains_key(&e.file))
-                    .map(|e| if e.total_damage == 0 { IndexEntry::from_log(&logs[&e.file], &e.file) } else { e })
+                    .map(|e| IndexEntry::from_log(&logs[&e.file], &e.file))
                     .collect();
                 for (name, log) in &logs {
                     if !listed.iter().any(|e| &e.file == name) {
@@ -74,21 +74,78 @@ impl Loaded {
 
 #[cfg(not(target_family = "wasm"))]
 pub fn load_dir(path: &std::path::Path) -> anyhow::Result<Loaded> {
-    let mut files = Vec::new();
-    for entry in std::fs::read_dir(path).with_context(|| format!("reading {}", path.display()))? {
-        let entry = entry?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if !name.ends_with(".json") {
-            continue;
-        }
-        let text = std::fs::read_to_string(entry.path()).with_context(|| format!("reading {name}"))?;
-        files.push((name, text));
-    }
+    let files = read_log_files(path)?;
     let label = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| path.display().to_string());
+    if files.iter().all(|(name, _)| name == "index.json") {
+        return Ok(Loaded { label, ..Loaded::default() });
+    }
     Loaded::from_files(label, files)
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn read_log_files(path: &std::path::Path) -> anyhow::Result<Vec<(String, String)>> {
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(path).with_context(|| format!("reading {}", path.display()))? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !entry.file_type()?.is_file() || (name != "index.json" && !is_log_file_name(&name)) {
+            continue;
+        }
+        let text = std::fs::read_to_string(entry.path())?;
+        files.push((name, text));
+    }
+    Ok(files)
+}
+
+/// Polling works on local, network and Proton-mounted folders without OS-specific watchers.
+#[cfg(not(target_family = "wasm"))]
+#[derive(Default)]
+pub struct DirectoryWatch {
+    fingerprint: Option<Vec<(std::ffi::OsString, u64, std::time::SystemTime)>>,
+    valid_files: HashMap<String, String>,
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl DirectoryWatch {
+    pub fn poll(&mut self, path: &std::path::Path) -> anyhow::Result<Option<Loaded>> {
+        let mut fingerprint = Vec::new();
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let name = entry.file_name();
+            let text = name.to_string_lossy();
+            if text != "index.json" && !is_log_file_name(&text) { continue; }
+            let metadata = entry.metadata()?;
+            if metadata.is_file() {
+                fingerprint.push((name, metadata.len(), metadata.modified()?));
+            }
+        }
+        fingerprint.sort();
+        if self.fingerprint.as_ref() == Some(&fingerprint) { return Ok(None); }
+        let files = read_log_files(path)?;
+        let present: std::collections::HashSet<_> = files.iter().map(|(name, _)| name.clone()).collect();
+        self.valid_files.retain(|name, _| present.contains(name));
+        let mut incomplete = false;
+        for (name, text) in files {
+            if name == "index.json" { continue; }
+            if FightLog::parse(&text).is_ok() {
+                self.valid_files.insert(name, text);
+            } else {
+                // Keep the last good version during writes; never block other new fights.
+                incomplete = true;
+            }
+        }
+        let label = path.display().to_string();
+        let loaded = if self.valid_files.is_empty() {
+            Loaded { label, ..Loaded::default() }
+        } else {
+            Loaded::from_files(label, self.valid_files.iter().map(|(n, t)| (n.clone(), t.clone())).collect())?
+        };
+        if !incomplete { self.fingerprint = Some(fingerprint); }
+        Ok(Some(loaded))
+    }
 }
 
 /// Fetches `index.json` from `base` and then every listed file.
@@ -150,4 +207,38 @@ pub fn sample_dir() -> Option<std::path::PathBuf> {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("sample-logs"),
     ];
     candidates.into_iter().find(|p| p.join("index.json").is_file())
+}
+
+#[cfg(all(test, not(target_family = "wasm")))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn watches_additions_updates_deletions_and_incomplete_writes() {
+        let path = std::env::temp_dir().join(format!("mhw-watch-{}-{}", std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir(&path).unwrap();
+        let mut watch = DirectoryWatch::default();
+        assert!(watch.poll(&path).unwrap().unwrap().entries.is_empty());
+        assert!(watch.poll(&path).unwrap().is_none());
+        // Diagnostics must never cause a refresh or parse failure.
+        std::fs::write(path.join("live-debug.json"), "{").unwrap();
+        assert!(watch.poll(&path).unwrap().is_none());
+        let fight = r#"{"questName":"First","players":[]}"#;
+        std::fs::write(path.join("fight.json"), fight).unwrap();
+        assert_eq!(watch.poll(&path).unwrap().unwrap().entries.len(), 1);
+        std::fs::write(path.join("fight.json"), "{").unwrap();
+        std::fs::write(path.join("second.json"), fight).unwrap();
+        let loaded = watch.poll(&path).unwrap().unwrap();
+        assert_eq!(loaded.entries.len(), 2);
+        assert_eq!(loaded.logs["fight.json"].quest_name, "First");
+        std::fs::write(path.join("fight.json"), fight.replace("First", "Updated fight")).unwrap();
+        assert_eq!(watch.poll(&path).unwrap().unwrap().logs["fight.json"].quest_name, "Updated fight");
+        assert!(watch.poll(&path).unwrap().is_none());
+        std::fs::remove_file(path.join("fight.json")).unwrap();
+        assert_eq!(watch.poll(&path).unwrap().unwrap().entries.len(), 1);
+        std::fs::remove_file(path.join("second.json")).unwrap();
+        assert!(watch.poll(&path).unwrap().unwrap().entries.is_empty());
+        std::fs::remove_dir_all(&path).unwrap();
+    }
 }

@@ -11,6 +11,10 @@ void Equal<T>(T expected, T actual, string scenario)
     checks++;
 }
 
+Equal("HeavyBowgun", GameNames.Weapon((WeaponType)12), "heavy bowgun game ID despite old SPL enum");
+Equal("LightBowgun", GameNames.Weapon((WeaponType)13), "light bowgun game ID despite old SPL enum");
+Equal<string?>(null, GameNames.Weapon((WeaponType)99), "invalid weapon stays unknown");
+
 Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
 Equal("Stage 999", GameNames.Stage(999), "unknown stage retains ID");
 Equal("Coral Pukei-Pukei", GameNames.Monster(69), "abbreviated monster fallback");
@@ -77,6 +81,40 @@ party.OnAction(new Entity(300), new ActionInfo { ActionSet = 1, ActionId = 20 })
 Equal("WP_300", Attribute(local, newMember).Single().Action, "rejoin can rematch");
 Equal(true, party.ObserveParty([local, Member(1, "New", 3000)]), "same-name replacement detected by pointer");
 Equal(0, Attribute(local, newMember).Count, "same-name replacement clears old match");
+
+// Two attacking hunters with equal evidence must not be assigned arbitrarily.
+var ambiguous = new PartyActionTracker((_, _, id) => id == 10 ? "WP_ATTACK" : "Common::WAIT");
+ambiguous.SetLocal(100, 0);
+var thirdMember = Member(2, "Third", 3000);
+ambiguous.ObserveParty([local, oldMember, thirdMember]);
+ambiguous.OnAction(new Entity(200), new ActionInfo { ActionSet = 1, ActionId = 10 });
+ambiguous.OnAction(new Entity(300), new ActionInfo { ActionSet = 1, ActionId = 10 });
+Equal(0, ambiguous.Attribute(1, [0, 500, 0, 0], [local, oldMember, thirdMember], null, (_, _) => { }).Count,
+    "simultaneous attacks cannot choose a weapon by iteration order");
+Equal(0, ambiguous.SlotWeapons().Count, "ambiguous weapons remain unknown");
+ambiguous.OnAction(new Entity(300), new ActionInfo { ActionSet = 1, ActionId = 20 });
+Equal(1, ambiguous.Attribute(2, [0, 1500, 0, 0], [local, oldMember, thirdMember], null, (_, _) => { }).Count,
+    "independent damage disambiguates a hunter");
+Equal(1, ambiguous.SlotWeapons().Single().Slot, "confident weapon belongs to the correct slot");
+
+var alive = true;
+var despawn = new PartyActionTracker((_, _, _) => "WP_ATTACK", _ => alive);
+despawn.SetLocal(100, 0);
+despawn.ObserveParty([local, oldMember]);
+despawn.OnAction(new Entity(200), new ActionInfo { ActionSet = 1, ActionId = 10 });
+despawn.Attribute(1, [0, 100, 0, 0], [local, oldMember], null, (_, _) => { });
+alive = false;
+Equal(0, despawn.Attribute(2, [0, 100, 0, 0], [local, oldMember], null, (_, _) => { }).Count,
+    "despawned hunter loses attribution");
+Equal(0, despawn.SlotWeapons().Count, "despawned hunter loses weapon");
+
+var noAwards = new PartyActionTracker((_, _, _) => "WP_ATTACK");
+noAwards.SetLocal(100, 0);
+noAwards.ObserveParty([local, oldMember]);
+noAwards.OnAction(new Entity(200), new ActionInfo { ActionSet = 1, ActionId = 10 });
+Equal(0, noAwards.Attribute(1, [0, 0, 0, 0], [local, oldMember], null, (_, _) => { }).Count,
+    "weapon discovery without awards does not invent damage");
+Equal(1, noAwards.SlotWeapons().Single().Slot, "weapon discovery works without award deltas");
 
 var actionName = "WP_GS";
 var recorder = new HuntRecorder((_, _) => actionName);

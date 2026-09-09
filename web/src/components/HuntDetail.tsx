@@ -152,6 +152,13 @@ function Overview(props: { log: FightLog }) {
         </section>
         <section class="card bg-base-200">
           <div class="card-body p-4 gap-2">
+            <h3 class="card-title text-base">DPS</h3>
+            <p class="text-xs text-base-content/60">Damage gained / elapsed time between consecutive samples. No rolling window; party samples are usually 2s apart.</p>
+            <Chart definition={dpsCurveChart(props.log, null)} height={260} ariaLabel="DPS per sample interval per hunter" />
+          </div>
+        </section>
+        <section class="card bg-base-200">
+          <div class="card-body p-4 gap-2">
             <div class="flex items-center justify-between">
               <h3 class="card-title text-base">Rolling DPS</h3>
               <div class="join">

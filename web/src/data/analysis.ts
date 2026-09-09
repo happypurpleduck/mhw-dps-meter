@@ -67,6 +67,27 @@ export function damageCurves(log: FightLog): CurvePoint[] {
   return out
 }
 
+/** Damage gained / elapsed time between consecutive samples; no rolling window. */
+export function intervalDps(log: FightLog): RatePoint[] {
+  const out: RatePoint[] = []
+  for (const slot of activeSlots(log)) {
+    const player = playerBySlot(log, slot)?.name ?? `Slot ${slot + 1}`
+    let previousTime = 0
+    let previousDamage = 0
+    for (const sample of log.samples) {
+      const damage = sample.damage[slot] ?? 0
+      const dt = sample.t - previousTime
+      const dps = dt > 0 ? Math.max(0, damage - previousDamage) / dt : 0
+      out.push({ t: sample.t, dps, slot, player })
+      if (sample.t >= previousTime) {
+        previousTime = sample.t
+        previousDamage = damage
+      }
+    }
+  }
+  return out
+}
+
 /**
  * Rolling DPS over a window (seconds) from the cumulative samples.
  * Trials rebuild their samples from hits, so this works for both kinds.
