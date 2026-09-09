@@ -1,5 +1,11 @@
 # MHW Fight Logs
 
+## 0.2.1
+
+### Patch Changes
+
+- 5dcab16: Record hunter carts from the quest death counter in fight logs and the overlay, with timeline markers and carts columns in both viewers.
+
 ## 0.2.0
 
 ### Minor Changes

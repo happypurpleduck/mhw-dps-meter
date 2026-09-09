@@ -1,5 +1,11 @@
 # MHW DPS Meter
 
+## 0.5.0
+
+### Minor Changes
+
+- 5dcab16: Record hunter carts from the quest death counter in fight logs and the overlay, with timeline markers and carts columns in both viewers.
+
 ## 0.4.1
 
 ### Patch Changes
