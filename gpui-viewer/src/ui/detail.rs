@@ -23,7 +23,7 @@ use super::{
 };
 use crate::analysis::{
     damage_curves, format_date, format_duration, format_int, hit_stats, local_exact_hits, monster_breakdown, move_breakdown,
-    move_display_name, pct, rolling_dps,
+    move_display_name, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
 
@@ -82,6 +82,10 @@ impl ViewerApp {
             })
             .collect();
 
+        let direct_series = series.iter().zip(crate::analysis::active_slots(log))
+            .map(|(s, slot)| Series { label: s.label.clone(), color: s.color, points: interval_dps(log, slot) })
+            .collect();
+
         v_flex()
             .gap_4()
             .child(render_players_table(log, cx))
@@ -91,6 +95,14 @@ impl ViewerApp {
                         .child(section_title("Cumulative damage", cx))
                         .child(div().text_xs().text_color(cx.theme().muted_foreground).child("Dashed: red = large monster death, orange = enrage."))
                         .child(div().h(px(280.)).w_full().child(LinesPlot::new(series.clone(), markers)))
+                        .child(legend(&series, cx)),
+                )
+                .child(
+                    card(cx)
+                        .child(section_title("DPS", cx))
+                        .child(div().text_xs().text_color(cx.theme().muted_foreground)
+                            .child("Damage gained / elapsed time between consecutive samples. No rolling window; party samples are usually 2s apart."))
+                        .child(div().h(px(220.)).w_full().child(LinesPlot::new(direct_series, Vec::new())))
                         .child(legend(&series, cx)),
                 )
                 .child(

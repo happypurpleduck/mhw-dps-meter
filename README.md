@@ -134,11 +134,13 @@ This needs the hit hook, which is only enabled when the address map matches the 
 
 `nativePC/plugins/CSharp/MhwDpsMeter/settings.json` stores overlay visibility, opacity, and the time-trial duration. It is written whenever you change one of them in the F9 panel (or toggle the overlay with F10).
 
+To reposition the DPS overlay, open the F9 menu and drag **DPS Meter** by its title bar. Closing the menu makes the overlay click-through again. ImGui remembers the position between sessions.
+
 ## Viewers for the logs
 
 See the [mapping audit](data/README.md) for area, weapon-class and monster-name coverage, and the remaining quest, equipment and move-name gaps.
 
-Two independent viewers read the `logs/` folder. Both show the hunt list, party table, cumulative damage and rolling DPS curves with enrage/death markers, your per-move breakdown, monsters, the event timeline, and time-trial personal bests with two-run comparison.
+Two independent viewers read the `logs/` folder. Both show the hunt list, party table, cumulative damage, per-sample DPS and rolling DPS curves with enrage/death markers, your per-move breakdown, monsters, the event timeline, and time-trial personal bests with two-run comparison.
 
 | | [`web/`](web/README.md) | [`gpui-viewer/`](gpui-viewer/README.md) |
 | --- | --- | --- |
@@ -146,6 +148,15 @@ Two independent viewers read the `logs/` folder. Both show the hunt list, party 
 | Runs as | Static web page | Native desktop app **and** in the browser (WebAssembly + WebGPU) |
 | Reads logs from | Folder picker (Chromium), drag and drop, `?logs=<url>` | Native folder dialog, CLI argument, `MHW_LOGS`, `?logs=<url>` |
 | Start | `cd web && pnpm install && pnpm dev` | `cd gpui-viewer && cargo run --release -- <logs dir>`; browser: `scripts/build-wasm.sh` then `cd www && pnpm dev` |
+
+The native GPUI viewer watches the opened folder every two seconds. New and changed fights
+appear automatically, including when the folder starts empty. Refreshes preserve the open
+fight, filters and trial comparisons; incomplete writes retain the last readable fight.
+The web viewers still load folders/URLs on demand.
+
+The **DPS** chart shows the increase in damage divided by elapsed time between consecutive
+samples, with no rolling window. Party samples are normally two seconds apart, so this
+chart shows the recorded interval rate rather than exact per-hit timing.
 
 ## Diagnostics
 

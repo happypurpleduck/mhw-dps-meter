@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { parseIndex, parseLog, indexEntryFromLog } from '../src/data/parse'
 import {
   activeSlots,
+  intervalDps,
   cumulativeFromHits,
   damageCurves,
   hitStats,
@@ -113,4 +114,11 @@ describe('analysis', () => {
     expect(prettifyAction('WP_02::KIJIN_SLIDING_ON')).toBe('Kijin Sliding On')
     expect(moveDisplayName('Hammer', 'WP_04::SOMETHING_NEW')).toBe('Something New')
   })
+})
+
+it('interval DPS preserves bursts, idle time, uneven intervals and duplicate timestamps', () => {
+  const log = { ...logs[0]![1], players: [{ ...logs[0]![1].players[0]!, slot: 0 }],
+    samples: [[0, 0], [2, 100], [5, 100], [6, 400], [6, 400], [8, 500]]
+      .map(([t, damage]) => ({ t: t!, damage: [damage!] })) }
+  expect(intervalDps(log).map(p => [p.t, p.dps])).toEqual([[0, 0], [2, 50], [5, 0], [6, 300], [6, 0], [8, 50]])
 })

@@ -1,7 +1,7 @@
 namespace SharpPluginLoader.Core.Entities
 {
     public enum MonsterType { SmallBarrel, LargeBarrel, TrainingPole, TrainingWagon, Magmacore, Magmacore2, Unavaliable, LargeMonster }
-    public enum WeaponType { None, GreatSword, DualBlades }
+    public enum WeaponType { GreatSword = 0, DualBlades = 2, None = 255 }
 
     public sealed class Monster
     {

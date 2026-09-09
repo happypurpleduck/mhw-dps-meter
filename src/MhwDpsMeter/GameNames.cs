@@ -8,6 +8,16 @@ internal static class GameNames
     private static readonly JsonDocument Names = JsonDocument.Parse(
         typeof(GameNames).Assembly.GetManifestResourceStream("MhwDpsMeter.GameNames.json")!);
 
+    // Game IDs, independent of the loaded SPL enum: 0.0.7.2 swapped the bowgun names.
+    // Corrected upstream in SPL 0.0.9 (Player.cs WeaponType).
+    public static string? Weapon(SharpPluginLoader.Core.Entities.WeaponType? weapon) => weapon is null ? null : (int)weapon.Value switch
+    {
+        0 => "GreatSword", 1 => "SwordAndShield", 2 => "DualBlades", 3 => "LongSword",
+        4 => "Hammer", 5 => "HuntingHorn", 6 => "Lance", 7 => "GunLance",
+        8 => "SwitchAxe", 9 => "ChargeBlade", 10 => "InsectGlaive", 11 => "Bow",
+        12 => "HeavyBowgun", 13 => "LightBowgun", _ => null
+    };
+
     public static string Stage(int id) => Lookup("stages", id) ?? $"Stage {id}";
     public static string Monster(int id) => Lookup("monsters", id) ?? $"Monster {id}";
 

@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using SharpPluginLoader.Core.Rendering;
 
 namespace MhwDpsMeter;
 
@@ -51,18 +52,19 @@ internal sealed class Overlay
         if (!Visible || !inQuest)
             return;
 
-        var flags = ImGuiWindowFlags.NoTitleBar
-                    | ImGuiWindowFlags.NoResize
+        var moving = Renderer.MenuShown;
+        var flags = ImGuiWindowFlags.NoResize
                     | ImGuiWindowFlags.AlwaysAutoResize
                     | ImGuiWindowFlags.NoCollapse
-                    | ImGuiWindowFlags.NoNav
-                    | ImGuiWindowFlags.NoInputs;
+                    | ImGuiWindowFlags.NoNav;
+        if (!moving)
+            flags |= ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoInputs;
 
         var io = ImGui.GetIO();
-        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X - 16f, 16f), ImGuiCond.Always, new Vector2(1f, 0f));
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X - 16f, 16f), ImGuiCond.FirstUseEver, new Vector2(1f, 0f));
         ImGui.SetNextWindowBgAlpha(Math.Clamp(Opacity, 0.2f, 1f) * 0.85f);
 
-        if (!ImGui.Begin("##MhwDpsMeter", flags))
+        if (!ImGui.Begin("DPS Meter##MhwDpsMeter", flags))
         {
             ImGui.End();
             return;
@@ -230,6 +232,7 @@ internal sealed class Overlay
         if (ImGui.IsItemDeactivatedAfterEdit())
             settings.Save();
 
+        Disabled("While this F9 menu is open, drag the DPS Meter by its title bar.");
         ImGui.TextUnformatted("F10 overlay   F6 diagnostics   F7 reset training   F8 time trial");
         Disabled("Overlay after depart, or in the training area (DPS clock starts at your first hit).");
 

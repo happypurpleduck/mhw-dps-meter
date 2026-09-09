@@ -178,6 +178,14 @@ internal sealed class PartyActionTracker
         var now = Stopwatch.GetTimestamp();
         lock (_gate)
         {
+            // Despawned entities must not remain candidates or keep occupying a slot.
+            foreach (var instance in _hunters.Keys.Where(instance => !_looksAlive(instance)).ToArray())
+            {
+                _hunters.Remove(instance);
+                _isPlayer.Remove(instance);
+                foreach (var key in _names.Keys.Where(key => key.Item1 == instance).ToArray())
+                    _names.Remove(key);
+            }
             RefreshWeapons(now);
 
             var occupied = members.Where(m => m.Slot is >= 0 and < PartyDamageReader.PartySlots).Select(m => m.Slot).ToHashSet();
@@ -222,7 +230,15 @@ internal sealed class PartyActionTracker
                         }
                     }
 
-                    if (best >= 0 && bestScore >= MinCorrelationDamage && bestScore >= CorrelationDominance * Math.Max(second, 1))
+                    // The winner must dominate in BOTH directions. Otherwise simultaneous
+                    // attacks give several hunters the same score for a slot and dictionary
+                    // iteration order silently decides whose weapon that player gets.
+                    var rivalScore = best < 0 ? 0 : unmappedHunters
+                        .Where(other => other != hunter && other.Slot < 0)
+                        .Select(other => other.Score[best]).DefaultIfEmpty(0).Max();
+                    if (best >= 0 && bestScore >= MinCorrelationDamage
+                        && bestScore >= CorrelationDominance * Math.Max(second, 1)
+                        && bestScore >= CorrelationDominance * Math.Max(rivalScore, 1))
                     {
                         Match(hunter, best, $"correlation {bestScore:0} vs {second:0}", onMatched);
                         unmappedSlots.Remove(best);
@@ -308,12 +324,12 @@ internal sealed class PartyActionTracker
                 continue;
             try
             {
-                var weapon = new Player(hunter.Instance).CurrentWeaponType;
-                if (weapon != WeaponType.None && hunter.Weapon != weapon.ToString())
+                var weapon = GameNames.Weapon(new Player(hunter.Instance).CurrentWeaponType);
+                if (weapon is not null && hunter.Weapon != weapon)
                 {
                     foreach (var key in _names.Keys.Where(key => key.Item1 == hunter.Instance).ToArray())
                         _names.Remove(key);
-                    hunter.Weapon = weapon.ToString();
+                    hunter.Weapon = weapon;
                 }
             }
             catch

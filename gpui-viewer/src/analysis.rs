@@ -41,6 +41,19 @@ pub fn active_slots(log: &FightLog) -> Vec<usize> {
     slots
 }
 
+/// Unsmooth rate: damage gained since the previous sample divided by elapsed time.
+/// A missing slot is zero; duplicate/out-of-order timestamps have no rate.
+pub fn interval_dps(log: &FightLog, slot: usize) -> Vec<(f32, f32)> {
+    let mut previous = (0.0, 0);
+    log.samples.iter().map(|sample| {
+        let damage = sample.damage.get(slot).copied().unwrap_or(0);
+        let dt = sample.t - previous.0;
+        let rate = if dt > 0.0 { (damage - previous.1).max(0) as f32 / dt } else { 0.0 };
+        if sample.t >= previous.0 { previous = (sample.t, damage); }
+        (sample.t, rate)
+    }).collect()
+}
+
 /// Rolling DPS over `window` seconds for one slot, one point per sample.
 pub fn rolling_dps(log: &FightLog, slot: usize, window: f32) -> Vec<(f32, f32)> {
     let samples = &log.samples;
@@ -377,6 +390,15 @@ mod tests {
         assert!((share - 1.0).abs() < 1e-4);
         assert_eq!(rows.iter().map(|r| r.hits).sum::<usize>(), log.hits.len());
         assert_eq!(rows.iter().find(|r| r.key == "WP_02::RANBU").unwrap().name, "Blade Dance");
+    }
+
+    #[test]
+    fn interval_rates_preserve_bursts_and_idle_intervals() {
+        let mut log = newest_v2();
+        log.samples = [(0., 0), (2., 100), (5., 100), (6., 400), (6., 400), (8., 500)]
+            .into_iter().map(|(t, d)| crate::model::Sample { t, damage: vec![d] }).collect();
+        assert_eq!(interval_dps(&log, 0), vec![(0., 0.), (2., 50.), (5., 0.), (6., 300.), (6., 0.), (8., 50.)]);
+        assert!(interval_dps(&log, 3).iter().all(|(_, rate)| *rate == 0.));
     }
 
     #[test]

@@ -131,7 +131,9 @@ internal sealed class HuntRecorder
         if (weapon is null or WeaponType.None)
             return;
 
-        var name = weapon.Value.ToString();
+        var name = GameNames.Weapon(weapon);
+        if (name is null)
+            return;
         lock (_gate)
         {
             if (localSlot >= 0)
