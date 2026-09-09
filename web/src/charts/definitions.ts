@@ -12,7 +12,7 @@ type Def = DomChartDefinition<any, any, any>
 export interface EventMarker {
   t: number
   label: string
-  kind: 'death' | 'enrage' | 'unenrage' | 'join' | 'leave' | 'weapon'
+  kind: 'death' | 'enrage' | 'unenrage' | 'join' | 'leave' | 'weapon' | 'cart'
 }
 
 const MARKER_COLORS: Record<EventMarker['kind'], string> = {
@@ -22,9 +22,10 @@ const MARKER_COLORS: Record<EventMarker['kind'], string> = {
   join: '#22c55e',
   leave: '#22c55e',
   weapon: '#a855f7',
+  cart: '#eab308',
 }
 
-export function eventMarkers(log: FightLog, kinds: EventMarker['kind'][] = ['death', 'enrage']): EventMarker[] {
+export function eventMarkers(log: FightLog, kinds: EventMarker['kind'][] = ['death', 'enrage', 'cart']): EventMarker[] {
   const names = new Map(log.monsters.map((m) => [m.id, m.name]))
   return log.events
     .filter((e) => (kinds as string[]).includes(e.type))

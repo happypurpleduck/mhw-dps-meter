@@ -18,3 +18,7 @@ gpui-viewer/www/public/sample-logs/
 # Release tooling
 /node_modules/
 __pycache__/
+
+# Personal mise overrides
+mise.local.toml
+.mise.local.toml

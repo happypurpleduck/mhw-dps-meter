@@ -5,9 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-DOTNET="${DOTNET:-$HOME/.dotnet/dotnet}"
-if ! command -v "$DOTNET" >/dev/null 2>&1; then
-  DOTNET=dotnet
+DOTNET="${DOTNET:-dotnet}"
+if ! command -v "$DOTNET" >/dev/null 2>&1 && [[ "$DOTNET" == dotnet ]]; then
+  DOTNET="$HOME/.dotnet/dotnet"
 fi
 
 CONFIG="${1:-Release}"

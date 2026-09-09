@@ -15,9 +15,9 @@ if [[ -z "$VERSION" ]]; then
   exit 1
 fi
 
-DOTNET="${DOTNET:-$HOME/.dotnet/dotnet}"
-if ! command -v "$DOTNET" >/dev/null 2>&1; then
-  DOTNET=dotnet
+DOTNET="${DOTNET:-dotnet}"
+if ! command -v "$DOTNET" >/dev/null 2>&1 && [[ "$DOTNET" == dotnet ]]; then
+  DOTNET="$HOME/.dotnet/dotnet"
 fi
 
 echo "Building Release ($VERSION) with $DOTNET..."

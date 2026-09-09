@@ -10,6 +10,7 @@
     <Compile Include="../../src/MhwDpsMeter/MonsterHpTracker.cs" Link="MonsterHpTracker.cs" />
     <Compile Include="../../src/MhwDpsMeter/PartyActionTracker.cs" Link="PartyActionTracker.cs" />
     <Compile Include="../../src/MhwDpsMeter/HuntRecorder.cs" Link="HuntRecorder.cs" />
+    <Compile Include="../../src/MhwDpsMeter/CartTracker.cs" Link="CartTracker.cs" />
     <Compile Include="../../src/MhwDpsMeter/TimeTrial.cs" Link="TimeTrial.cs" />
     <Compile Include="../../src/MhwDpsMeter/PartySnapshot.cs" Link="PartySnapshot.cs" />
     <Compile Include="../../src/MhwDpsMeter/FightLog.cs" Link="FightLog.cs" />

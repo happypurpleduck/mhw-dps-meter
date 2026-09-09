@@ -117,6 +117,11 @@ internal sealed class FightLogPlayer
 
     [JsonPropertyName("percent")]
     public float Percent { get; set; }
+
+    /// <summary>Times this hunter carted during the hunt (quest death counter, attributed when possible).</summary>
+    [JsonPropertyName("carts")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Carts { get; set; }
 }
 
 internal sealed class FightLogMonster
@@ -220,6 +225,7 @@ internal sealed class FightLogRewards
 /// <summary>
 /// Timeline event. Types: enrage, unenrage, death, flinch (detail = flinch action id),
 /// weapon (detail = weapon type name), join, leave (detail = hunter name),
+/// cart (slot when attributed, detail = hunter name or null),
 /// slotmatch (detail = how a teammate entity was matched to its slot).
 /// </summary>
 internal sealed class FightLogEvent

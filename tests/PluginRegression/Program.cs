@@ -142,6 +142,28 @@ var trialLog = trial.BuildLog("Local", 504, "TrainingCamp", 421810);
 Equal("WP_GS", trialLog.Hits[0].Action, "trial preserves earlier weapon action");
 Equal("WP_DB", trialLog.Hits[1].Action, "trial refreshes weapon before resolving new hits");
 
+Equal(true, CartTracker.LooksLikeDeathAction("Common::DIE"), "die action detected");
+Equal(true, CartTracker.LooksLikeDeathAction("Common::DEATH"), "death action detected");
+Equal(true, CartTracker.LooksLikeDeathAction("Player_Faint"), "faint action detected");
+Equal(false, CartTracker.LooksLikeDeathAction("Common::IDLE"), "idle is not death");
+Equal(false, CartTracker.LooksLikeDeathAction("DIESEL"), "token must be bounded");
+Equal(false, CartTracker.LooksLikeDeathAction(null), "null action is not death");
+
+var cartRecorder = new HuntRecorder((_, _) => null);
+cartRecorder.AddCart(12.5f, 0, "Local");
+cartRecorder.AddCart(40f, null, null);
+cartRecorder.AddCart(55f, 1, "Teammate");
+Equal(1, cartRecorder.CartsOf(0), "local cart counted");
+Equal(1, cartRecorder.CartsOf(1), "teammate cart counted");
+Equal(0, cartRecorder.CartsOf(2), "untouched slot has zero carts");
+Equal(3, cartRecorder.Events().Count(e => e.Type == "cart"), "all carts appear as events");
+Equal<int?>(null, cartRecorder.Events().First(e => e.Type == "cart" && Math.Abs(e.T - 40f) < 0.01f).Slot, "unattributed cart keeps null slot");
+
+Equal(true, AddressMap.TryLoadEmbedded(421810)!.TryGetOffsets("QUEST_EXTRA_DATA_OFFSETS", out var deathOffsets)
+    && deathOffsets is [0x17370], "421810 map has quest death extras");
+Equal(true, AddressMap.TryLoadEmbedded(421631)!.TryGetOffsets("QUEST_DEATH_COUNTER_OFFSETS", out var deathOnly)
+    && deathOnly is [0x17374], "421631 map has death counter offset");
+
 var directory = Directory.CreateTempSubdirectory("mhw-map-regression-");
 try
 {

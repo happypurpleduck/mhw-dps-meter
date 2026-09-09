@@ -136,7 +136,8 @@ internal sealed class FightLogStore
                     Weapon = recorder.WeaponOf(member.Slot) ?? (member.IsLocal ? recorder.LocalWeapon : null),
                     Damage = member.Damage,
                     Dps = member.Damage / safeDuration,
-                    Percent = 100f * member.Damage / total
+                    Percent = 100f * member.Damage / total,
+                    Carts = recorder.CartsOf(member.Slot)
                 })
                 .ToArray(),
             Monsters = recorder.Monsters(),
