@@ -83,6 +83,9 @@ pub struct Player {
     pub dps: f32,
     #[serde(default)]
     pub percent: f32,
+    /// Times this hunter carted (absent in older logs).
+    #[serde(default)]
+    pub carts: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

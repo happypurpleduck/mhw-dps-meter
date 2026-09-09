@@ -35,6 +35,7 @@ public sealed class Plugin : IPlugin
 
     private AddressMap? _map;
     private PartyDamageReader? _reader;
+    private CartTracker? _carts;
     private FightLogStore? _logs;
     private LiveDebugStore? _liveDebug;
     private PartySnapshot? _snapshot;
@@ -134,6 +135,7 @@ public sealed class Plugin : IPlugin
         _overlay.Visible = _settings.OverlayVisible;
         _overlay.Opacity = _settings.OverlayOpacity;
         _reader = new PartyDamageReader(_map, _moduleBase);
+        _carts = new CartTracker(_map, _moduleBase);
         _logs = new FightLogStore(pluginDir);
         _liveDebug = new LiveDebugStore(pluginDir);
 
@@ -297,6 +299,7 @@ public sealed class Plugin : IPlugin
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
             _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);
             AttributeTeammateDamage(snapshot);
+            ObserveCarts(snapshot);
             _logs?.UpdateSamples(_elapsedSeconds, snapshot.SlotDamage);
             WriteLiveDebug(force: false);
         }
@@ -546,6 +549,7 @@ public sealed class Plugin : IPlugin
             {
                 _map = replacement;
                 _reader = new PartyDamageReader(_map, _moduleBase);
+                _carts = new CartTracker(_map, _moduleBase);
                 Log.Info($"MhwDpsMeter: switched to {Path.GetFileName(_map.SourceFile)}.");
             }
         }
@@ -663,7 +667,8 @@ public sealed class Plugin : IPlugin
             _elapsedSeconds,
             _inQuest || _showResults || _training,
             _training ? TrainingHint : null,
-            _training ? _trial : null);
+            _training ? _trial : null,
+            _inQuest ? _carts : null);
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------
@@ -734,6 +739,7 @@ public sealed class Plugin : IPlugin
         try
         {
             _party.OnAction(entity, action);
+            NoteDeathAction(entity.Instance, action.ActionSet, action.ActionId);
         }
         catch
         {
@@ -750,11 +756,52 @@ public sealed class Plugin : IPlugin
         try
         {
             if (player.Instance == LocalPlayerInstance())
+            {
                 _hits.SetCurrentAction(action.ActionSet, action.ActionId);
+                if (_inQuest)
+                    NoteDeathAction(player.Instance, action.ActionSet, action.ActionId);
+            }
         }
         catch
         {
             // player wrapper torn down mid-callback
+        }
+    }
+
+    private void NoteDeathAction(nint instance, int actionSet, int actionId)
+    {
+        if (_carts is null || instance == 0)
+            return;
+
+        var name = ResolveEntityActionName(instance, actionSet, actionId);
+        if (!CartTracker.LooksLikeDeathAction(name))
+            return;
+
+        var slot = _party.SlotOf(instance);
+        if (slot < 0 && instance == LocalPlayerInstance())
+            slot = _snapshot?.LocalSlot ?? -1;
+        if (slot < 0)
+            return;
+
+        var hunterName = _snapshot?.Members.FirstOrDefault(m => m.Slot == slot)?.Name;
+        _carts.NoteDeathAction(slot, hunterName);
+    }
+
+    /// <summary>Quest death-counter increments → <c>cart</c> timeline events (and per-player totals).</summary>
+    private void ObserveCarts(PartySnapshot snapshot)
+    {
+        if (_carts is null)
+            return;
+
+        var local = snapshot.Members.FirstOrDefault(m => m.IsLocal);
+        var carts = _carts.Poll(snapshot.LocalSlot, local?.Name);
+        foreach (var cart in carts)
+        {
+            var name = cart.Name
+                ?? (cart.Slot is int slot
+                    ? snapshot.Members.FirstOrDefault(m => m.Slot == slot)?.Name
+                    : null);
+            _recorder.AddCart(_elapsedSeconds, cart.Slot, name);
         }
     }
 
@@ -996,6 +1043,7 @@ public sealed class Plugin : IPlugin
         _hits.RecordHits = true;
         _recorder.Reset();
         _party.Reset();
+        _carts?.Reset();
         _prevSlotDamage = null;
         _logs?.BeginHunt();
         _status = $"in quest {questId}";
@@ -1026,7 +1074,10 @@ public sealed class Plugin : IPlugin
                 _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
                 _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), _snapshot?.LocalSlot ?? 0);
                 if (snapshot is not null)
+                {
                     AttributeTeammateDamage(snapshot);
+                    ObserveCarts(snapshot);
+                }
             }
         }
         catch (Exception ex)

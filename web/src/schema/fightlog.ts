@@ -40,6 +40,8 @@ export interface FightLogPlayer {
   damage: number
   dps: number
   percent: number
+  /** Times this hunter carted (quest death counter, attributed when known). */
+  carts?: number
 }
 
 export interface FightLogMonster {
@@ -81,7 +83,7 @@ export interface FightLogRewards {
   stars: number
 }
 
-export type EventType = 'enrage' | 'unenrage' | 'death' | 'flinch' | 'weapon' | 'join' | 'leave' | (string & {})
+export type EventType = 'enrage' | 'unenrage' | 'death' | 'flinch' | 'weapon' | 'join' | 'leave' | 'cart' | (string & {})
 
 export interface FightLogEvent {
   t: number

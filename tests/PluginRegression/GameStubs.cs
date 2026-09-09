@@ -26,7 +26,10 @@ namespace SharpPluginLoader.Core.Entities
 
     public sealed class Player(nint instance) : Entity(instance)
     {
+        public static Player? MainPlayer { get; set; }
         public WeaponType CurrentWeaponType => WeaponType.GreatSword;
+        public float Health { get; set; } = 100;
+        public float MaxHealth { get; set; } = 100;
     }
 }
 
@@ -46,4 +49,20 @@ namespace MhwDpsMeter
     internal static class Plugin { public const string BuildStamp = "regression"; }
     internal readonly record struct HitRecord(long Timestamp, nint Target, int Damage,
         bool Crit, bool Tenderized, int AttackId, int ActionSet, int ActionId);
+
+    /// <summary>Regression stub: Poll paths that touch memory are not exercised here.</summary>
+    internal static class SafeMemory
+    {
+        public static nint Follow(nint address, int[] offsets, out string error)
+        {
+            error = "stub";
+            return 0;
+        }
+
+        public static bool TryRead<T>(nint address, out T value) where T : unmanaged
+        {
+            value = default;
+            return false;
+        }
+    }
 }

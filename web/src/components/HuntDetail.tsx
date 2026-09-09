@@ -121,6 +121,13 @@ const playerColumns = [
   }),
   playerCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right whitespace-nowrap' }, cell: (info) => formatInt(info.getValue()) }),
   playerCol.accessor('dps', { header: 'DPS', sortFn: 'basic', meta: { class: 'text-right w-16 whitespace-nowrap' }, cell: (info) => info.getValue().toFixed(1) }),
+  playerCol.accessor((row) => row.carts ?? 0, {
+    id: 'carts',
+    header: 'Carts',
+    sortFn: 'basic',
+    meta: { class: 'text-right w-16 whitespace-nowrap' },
+    cell: (info) => (info.getValue() > 0 ? String(info.getValue()) : '—'),
+  }),
   playerCol.accessor('percent', {
     header: 'Share',
     sortFn: 'basic',
@@ -146,7 +153,7 @@ function Overview(props: { log: FightLog }) {
         <section class="card bg-base-200">
           <div class="card-body p-4 gap-2">
             <h3 class="card-title text-base">Cumulative damage</h3>
-            <p class="text-xs text-base-content/60">Dashed lines: red = large monster death, orange = enrage.</p>
+            <p class="text-xs text-base-content/60">Dashed lines: red = large monster death, orange = enrage, yellow = hunter cart.</p>
             <Chart definition={damageCurveChart(props.log, eventMarkers(props.log))} height={320} ariaLabel="Cumulative damage per hunter" />
           </div>
         </section>
@@ -311,9 +318,10 @@ function Monsters(props: { log: FightLog }) {
 
 // ---- Timeline ------------------------------------------------------------------
 
-const EVENT_KINDS = ['enrage', 'unenrage', 'death', 'flinch', 'weapon', 'join', 'leave'] as const
+const EVENT_KINDS = ['enrage', 'unenrage', 'death', 'cart', 'flinch', 'weapon', 'join', 'leave'] as const
 const EVENT_BADGE: Record<string, string> = {
   death: 'badge-error',
+  cart: 'badge-warning',
   enrage: 'badge-warning',
   unenrage: 'badge-ghost',
   flinch: 'badge-neutral',

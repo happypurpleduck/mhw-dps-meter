@@ -25,6 +25,7 @@ internal sealed class HuntRecorder
     private int _estimatedHits;
     private readonly Dictionary<(int Set, int Id), string?> _actionNames = [];
     private readonly Dictionary<int, string> _roster = [];
+    private readonly Dictionary<int, int> _cartsBySlot = [];
     private readonly Func<int, int, string?> _resolveActionName;
     private string? _localWeapon;
 
@@ -55,6 +56,7 @@ internal sealed class HuntRecorder
             _estimatedHits = 0;
             _actionNames.Clear();
             _roster.Clear();
+            _cartsBySlot.Clear();
             _localWeapon = null;
         }
     }
@@ -263,6 +265,23 @@ internal sealed class HuntRecorder
     {
         lock (_gate)
             AddEventLocked(elapsed, type, slot: slot, detail: detail);
+    }
+
+    /// <summary>Records a hunter cart from the quest death counter; slot may be null when unattributed.</summary>
+    public void AddCart(float elapsed, int? slot, string? name)
+    {
+        lock (_gate)
+        {
+            if (slot is >= 0 and < PartyDamageReader.PartySlots)
+                _cartsBySlot[slot.Value] = _cartsBySlot.GetValueOrDefault(slot.Value) + 1;
+            AddEventLocked(elapsed, "cart", slot: slot, detail: name);
+        }
+    }
+
+    public int CartsOf(int slot)
+    {
+        lock (_gate)
+            return _cartsBySlot.GetValueOrDefault(slot);
     }
 
     /// <summary>"party-estimated" once any teammate rows exist, else "local".</summary>

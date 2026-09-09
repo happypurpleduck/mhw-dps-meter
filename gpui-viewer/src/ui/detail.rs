@@ -67,6 +67,8 @@ impl ViewerApp {
             .filter_map(|e| match e.r#type.as_str() {
                 "death" => Some(Marker { t: e.t, color: cx.theme().danger }),
                 "enrage" => Some(Marker { t: e.t, color: cx.theme().warning }),
+                // Yellow — distinct from monster-death red and enrage orange.
+                "cart" => Some(Marker { t: e.t, color: hsla(48. / 360., 0.95, 0.48, 1.) }),
                 _ => None,
             })
             .collect();
@@ -93,7 +95,7 @@ impl ViewerApp {
                 this.child(
                     card(cx)
                         .child(section_title("Cumulative damage", cx))
-                        .child(div().text_xs().text_color(cx.theme().muted_foreground).child("Dashed: red = large monster death, orange = enrage."))
+                        .child(div().text_xs().text_color(cx.theme().muted_foreground).child("Dashed: red = large monster death, orange = enrage, yellow = hunter cart."))
                         .child(div().h(px(280.)).w_full().child(LinesPlot::new(series.clone(), markers)))
                         .child(legend(&series, cx)),
                 )
@@ -394,6 +396,7 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
                     .child(TableHead::new().w(px(280.)).child("Hunter"))
                     .child(TableHead::new().w(px(88.)).text_right().child("Damage"))
                     .child(TableHead::new().w(px(56.)).text_right().child("DPS"))
+                    .child(TableHead::new().w(px(48.)).text_right().child("Carts"))
                     .child(TableHead::new().w(px(220.)).child("Share")),
             ),
         )
@@ -414,6 +417,7 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
                 )
                 .child(TableCell::new().w(px(88.)).text_right().child(format_int(p.damage)))
                 .child(TableCell::new().w(px(56.)).text_right().child(format!("{:.1}", p.dps)))
+                .child(TableCell::new().w(px(48.)).text_right().child(if p.carts > 0 { p.carts.to_string() } else { "—".into() }))
                 .child(TableCell::new().w(px(220.)).child(meter_bar(
                     (p.percent / 100.0).clamp(0.0, 1.0),
                     slot_color(p.slot),
@@ -510,6 +514,7 @@ pub(super) fn event_tag(kind: &str) -> gpui_kit::component::tag::Tag {
     use gpui_kit::component::tag::Tag;
     match kind {
         "death" => Tag::danger(),
+        "cart" => Tag::warning(),
         "enrage" => Tag::warning(),
         "join" | "leave" => Tag::success(),
         "weapon" | "slotmatch" => Tag::primary(),

@@ -55,11 +55,11 @@ The browser build bundles Inter and IBM Plex Sans (`fonts/`, SIL OFL) because th
 ## What it shows
 
 - **Hunt list** (left): every quest and time trial from `index.json`, text filter, All/Quests/Trials toggle, sortable columns; click a row to open it.
-- **Overview**: party table with damage, DPS and share; cumulative damage per hunter as a multi-series plot with red (monster death) and orange (enrage) markers; rolling DPS with a selectable window.
+- **Overview**: party table with damage, DPS, carts and share; cumulative damage per hunter as a multi-series plot with red (monster death), orange (enrage) and yellow (hunter cart) markers; rolling DPS with a selectable window.
 - **Moves**: per-move breakdown per hunter (damage bar, share, hits, crit rate, avg, max, tenderized); your rows are exact, teammates' rows (plugin 0.4.0+) are estimated from award-table increments and labelled "(est.)". Toggle to hide `Common::` actions (hits registered after the move ended).
 - **Layout**: the hunt list and detail pane are separated by a draggable resizable panel.
 - **Monsters**: HP lost per large monster and how much of it was yours.
-- **Timeline**: enrage, unenrage, death, weapon swaps, joins and leaves; flinches on request.
+- **Timeline**: enrage, unenrage, death, cart, weapon swaps, joins and leaves; flinches on request.
 - **Time trials**: personal bests per weapon and window (same rule as the plugin's F9 panel), every run, and a two-run comparison (click two rows) with overlaid damage curves and top moves.
 
 Exact per-hit data exists only for the local hunter: the game runs its deal-damage function only for hits simulated on your client. Teammates get their award total, the 2-second damage curve, and estimated per-move rows once the plugin matched their hunter entity to their slot.

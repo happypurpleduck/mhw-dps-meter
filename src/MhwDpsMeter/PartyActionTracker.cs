@@ -117,6 +117,17 @@ internal sealed class PartyActionTracker
         }
     }
 
+    /// <summary>Party slot for a hunter entity once matched (or local); -1 when unknown.</summary>
+    public int SlotOf(nint instance)
+    {
+        lock (_gate)
+        {
+            if (instance != 0 && instance == _localInstance)
+                return _localSlot;
+            return _hunters.TryGetValue(instance, out var hunter) ? hunter.Slot : -1;
+        }
+    }
+
     /// <summary>SPL OnEntityAction: keep the current/previous action of every hunter entity.</summary>
     public void OnAction(Entity entity, ActionInfo action)
     {

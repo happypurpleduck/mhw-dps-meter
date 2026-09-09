@@ -47,7 +47,7 @@ internal sealed class Overlay
         ImGui.PopTextWrapPos();
     }
 
-    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null)
+    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null)
     {
         if (!Visible || !inQuest)
             return;
@@ -82,7 +82,7 @@ internal sealed class Overlay
             return;
         }
 
-        DrawPartyTable(snapshot, elapsedSeconds);
+        DrawPartyTable(snapshot, elapsedSeconds, carts);
 
         if (trial is { Active: true })
             DrawTrial(trial);
@@ -92,7 +92,7 @@ internal sealed class Overlay
         ImGui.End();
     }
 
-    private static void DrawPartyTable(PartySnapshot snapshot, float elapsedSeconds)
+    private static void DrawPartyTable(PartySnapshot snapshot, float elapsedSeconds, CartTracker? carts)
     {
         var members = snapshot.Members
             .OrderByDescending(member => member.Damage)
@@ -140,6 +140,11 @@ internal sealed class Overlay
 
         ImGui.Separator();
         ImGui.TextUnformatted($"Total  {total:N0}   {total / duration:0.0} DPS");
+        if (carts is { MaxDeaths: > 0 } || carts is { Deaths: > 0 })
+        {
+            ImGui.SameLine();
+            Disabled($"  Carts {carts.Deaths}/{Math.Max(carts.MaxDeaths, carts.Deaths)}");
+        }
     }
 
     /// <summary>Trial block under the table: countdown while running, frozen summary with top moves when done.</summary>

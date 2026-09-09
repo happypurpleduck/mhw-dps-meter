@@ -79,13 +79,46 @@ GitHub Actions builds and tests the mod and native GPUI app on Linux and Windows
 See the [release guide](docs/releases.md) for downloads, changesets, changelogs,
 and the release PR workflow.
 
-## Build
+## Development setup
 
-Needs the .NET 8 SDK (`dotnet --list-sdks` should show 8.0.x).
+Install [mise](https://mise.jdx.dev/getting-started.html), then run from the repository root:
 
 ```bash
-dotnet build -c Release
-# or: scripts/package.sh   # builds and zips dist/MhwDpsMeter-0.4.0.zip
+mise trust
+mise install
+mise run setup
+mise tasks
+```
+
+`mise.toml` pins the .NET SDK, Rust, Node.js, pnpm, and Python. Keep the .NET
+pin in sync with `global.json`, and the Rust and Node versions compatible with
+`.github/workflows/ci.yml`. The root release workspace uses npm; both web apps
+use pnpm and their own lockfiles.
+
+```bash
+mise run build:plugin
+mise run test:plugin
+mise run dev:web
+mise run build:web
+mise run test:web
+mise run build:viewer
+mise run test:release
+mise run test              # all suites, including the native viewer
+```
+
+Use `mise exec -- <command>` for other commands, or activate mise in your shell
+to use the pinned tools directly. Tasks also work from subdirectories.
+Native viewer builds still need the [platform libraries](gpui-viewer/README.md#native).
+The optional WebAssembly viewer needs the additional nightly Rust and
+wasm-bindgen setup in the [viewer README](gpui-viewer/README.md).
+
+## Build
+
+Use the mise development setup above to install the .NET 8 SDK.
+
+```bash
+mise run build:plugin
+# or: mise exec -- scripts/package.sh   # builds and zips dist/MhwDpsMeter-0.4.0.zip
 ```
 
 Output:
@@ -188,11 +221,11 @@ The files are meant to be consumed by an external viewer (a web UI in the style 
 | `startedAt`, `endedAt`, `durationSeconds`, `timerSource` | UTC timestamps; duration is the plugin's own clock from the in-quest transition (`"local"`), or the configured window for a trial (`"trial"`). `"quest"` is reserved for a future read of the on-screen quest timer |
 | `hitCoverage` | `"local"`: `hits` only contains your exact hits. `"party-estimated"`: teammates also have rows, marked `estimated: true` (see below) |
 | `rewards` | `{zenny, hunterRankPoints, stars}` as the game reports them for the quest. Item drops are **not** recorded yet: the game exposes no readable table for them and it would need a new hook |
-| `players[]` | `slot` (0–3, matches HUD colour), `name`, `isLocal`, `weapon` (local hunter only), `damage`, `dps`, `percent`. Sorted by damage |
+| `players[]` | `slot` (0–3, matches HUD colour), `name`, `isLocal`, `weapon` (local hunter only), `damage`, `dps`, `percent`, `carts` (times that hunter carted; omitted when 0). Sorted by damage |
 | `monsters[]` | Large monsters seen: `id` (`m1`, `m2`, … referenced by hits/events), `type`, `name`, `variant`, `maxHealth`, `lastHealth`, `firstSeenT`, `diedT` |
 | `samples[]` | `{t, damage[4]}` — cumulative party damage per slot every 2 s (capped at 30 min). This is the only per-player timeline available for other hunters |
 | `hits[]` | One row per hit from the deal-damage hook: `t`, `slot`, `monster`, `damage`, `crit`, `tenderized`, `attackId`, `actionSet`, `actionId`, `action` (internal move name when resolvable). Teammate rows carry `estimated: true`, `attackId: -1`, and no crit/tenderize information. Capped at 50 000 |
-| `events[]` | Timeline: `enrage` / `unenrage` / `death` / `flinch` (monster, `detail` = flinch action id), `weapon` (slot, `detail` = weapon type), `join` / `leave` (slot, `detail` = hunter name), `slotmatch` (slot, `detail` = how a teammate's hunter entity was matched to the slot). Capped at 5 000 |
+| `events[]` | Timeline: `enrage` / `unenrage` / `death` / `flinch` (monster, `detail` = flinch action id), `cart` (hunter faint; `slot` when attributed, `detail` = hunter name), `weapon` (slot, `detail` = weapon type), `join` / `leave` (slot, `detail` = hunter name), `slotmatch` (slot, `detail` = how a teammate's hunter entity was matched to the slot). Capped at 5 000 |
 
 All `t` values are seconds on the same clock as `durationSeconds`.
 
@@ -200,17 +233,18 @@ All `t` values are seconds on the same clock as `durationSeconds`.
 
 A same-named monster spawning after the first one died (two Beotodus in Trophy Fishin') gets its own entry: the game re-uses the instance pointer, so the plugin starts a new `m<n>` when a tracked monster's HP jumps back up. `attackId` is the game's attack parameter id and `actionSet`/`actionId` is the action the hunter was in when the hit landed; `action` is the game's internal action name (weapon-specific, not localized). In practice `action` is the key to group by: a dual-blades hunt used only six distinct `attackId` values but dozens of action names (`WP_02::RANBU`, `WP_02::KIJIN_RUSH`, …), and `attackId` 0 covers most normal attacks. A few percent of hits land after the action has already changed (`Common::RUN`, clutch-claw pushes); a viewer can fold those into "other". A viewer that wants friendly move names needs its own lookup table keyed by weapon + action name.
 
-Monster `flinch`, `enrage`, and `death` events are only recorded for tracked large monsters; small monsters are ignored.
+Monster `flinch`, `enrage`, and `death` events are only recorded for tracked large monsters; small monsters are ignored. Hunter `cart` events come from the quest death counter (same source HunterPie uses); the local hunter is attributed when their HP hits zero around the same time, and teammates when a death-like action name is seen on their entity. Unattributed carts still appear on the timeline without a `slot`.
 
 ## Limitations
 
-- Teammate per-move damage is an estimate (award-table deltas per 0.1 s credited to the current action); the 2-second award sync granularity and the learned entity-to-slot match both add noise. Item drops and reward items are not recorded: no readable table is known.
+- Teammate per-move damage is an estimate (award-table deltas per 0.1 s credited to the current action); the 2-second award sync granularity and the learned entity-to-slot match both add noise. Item drops and reward items are not recorded: no readable table is known. Teammate cart attribution depends on matching a death-like action to a party slot and can miss some carts (they still appear as unattributed `cart` events).
 - Address maps break when Capcom patches the exe. The plugin reads the build number from the `MONSTER HUNTER: WORLD(<build>)` string inside the exe (the exe's version resource is 1.0.0.0, so it cannot be used). Add `Addresses/MonsterHunterWorld.<build>.map` for a new build; HunterPie's `HunterPie/Address/MonsterHunterWorld.<build>.map` has the same keys. If no exact map exists the newest one is used, the hit hook is disabled, and the F9 menu shows `(MISMATCH)`.
 - Overlay stays hidden in the hub, expeditions, and the Guiding Lands. Accepting a quest is not enough; you have to depart. The training area is the exception (see above).
 - Solo and Challenge Arena often never allocate the quest-award damage table. In that case the meter uses your hooked hits or large-monster HP lost (still includes palico chip on HP).
 - The hunt clock is the plugin's own stopwatch from the in-quest transition, not the on-screen quest timer, so it includes the walk from camp. For SOS join-in-progress it starts when **you** load in, not at the quest's start.
 - Overlay stays on the hunting map after the quest ends, then hides in the hub.
 - Party damage comes from the quest-award table the game syncs for the results screen. The deal-damage hook only ever sees your own hits (the game does not run it for other hunters), so it is just a live local fallback for solo and arena.
+- The overlay shows party cart count (`Carts current/max`) from the quest death counter when available.
 
 ## Credits
 
