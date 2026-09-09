@@ -151,19 +151,19 @@ jobs:
           merge-multiple: true
       - name: Create or update release PR
         id: changesets
-        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v1
+        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
-          version: npm run version-packages
-          title: 'chore: release plugin and viewer'
-          commit: 'chore: version packages and update changelogs'
-          createGithubReleases: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: npm run version-packages
+          pr-title: 'chore: release plugin and viewer'
+          commit-message: 'chore: version packages and update changelogs'
+          create-github-releases: false
+          push-git-tags: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Describe binary releases in the PR
-        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.pullRequestNumber != ''
+        if: steps.changesets.outputs.has-changesets == 'true' && steps.changesets.outputs.pr-number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.changesets.outputs.pullRequestNumber }}
+          PR_NUMBER: ${{ steps.changesets.outputs.pr-number }}
         run: |
           python3 - <<'PYBODY'
           import os, pathlib, subprocess
@@ -177,12 +177,12 @@ jobs:
           PYBODY
       # GITHUB_TOKEN-generated pushes do not trigger CI; workflow_dispatch does.
       - name: Run checks on the bot release branch
-        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.pullRequestNumber != ''
+        if: steps.changesets.outputs.has-changesets == 'true' && steps.changesets.outputs.pr-number != ''
         run: gh workflow run ci.yml --ref changeset-release/master
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish built archives
-        if: steps.changesets.outputs.hasChangesets == 'false'
+        if: steps.changesets.outputs.has-changesets == 'false'
         run: python3 scripts/release.py publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
