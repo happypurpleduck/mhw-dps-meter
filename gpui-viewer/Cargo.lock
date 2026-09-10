@@ -4219,7 +4219,7 @@ dependencies = [
 
 [[package]]
 name = "mhw-log-viewer"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",

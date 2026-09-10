@@ -1,5 +1,11 @@
 # MHW Fight Logs
 
+## 0.2.2
+
+### Patch Changes
+
+- 13c9fe8: Tag local exact hits with the monster part from the part-health meters and show damage by part in both viewers, with part names from the new monster-parts table.
+
 ## 0.2.1
 
 ### Patch Changes
