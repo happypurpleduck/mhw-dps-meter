@@ -48,7 +48,7 @@ namespace MhwDpsMeter
     internal static class FightLogStore { public const float SampleIntervalSeconds = 2f; }
     internal static class Plugin { public const string BuildStamp = "regression"; }
     internal readonly record struct HitRecord(long Timestamp, nint Target, int Damage,
-        bool Crit, bool Tenderized, int AttackId, int ActionSet, int ActionId);
+        bool Crit, bool Tenderized, int AttackId, int ActionSet, int ActionId, int? Part = null);
 
     /// <summary>Regression stub: Poll paths that touch memory are not exercised here.</summary>
     internal static class SafeMemory
@@ -64,5 +64,7 @@ namespace MhwDpsMeter
             value = default;
             return false;
         }
+
+        public static bool LooksLikeUserPointer(nint address) => (ulong)address >= 0x10000;
     }
 }

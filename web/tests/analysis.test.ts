@@ -10,6 +10,8 @@ import {
   hitStats,
   monsterBreakdown,
   moveBreakdown,
+  partBreakdown,
+  hasPartData,
   rollingDps,
   trialBests,
 } from '../src/data/analysis'
@@ -93,6 +95,33 @@ describe('analysis', () => {
     const rows = monsterBreakdown(log)
     expect(rows.length).toBe(log.monsters.length)
     expect(rows.reduce((s, r) => s + r.yourHits, 0)).toBe(log.hits.filter((h) => h.monster).length)
+  })
+
+  it('ranks hunters within a part and puts untagged hits under Unknown part', () => {
+    const [, base] = v2[0]!
+    const monster = base.monsters[0]!.id
+    const log = {
+      ...base,
+      players: [
+        { ...base.players[0]!, slot: 0, name: 'Local', isLocal: true },
+        { slot: 1, name: 'Teammate', isLocal: false, damage: 500, dps: 0, percent: 0 },
+      ],
+      hits: [
+        { t: 1, slot: 0, monster, damage: 100, crit: false, tenderized: false, attackId: 1, actionSet: 1, actionId: 1, part: 2, partName: 'Head' },
+        { t: 2, slot: 0, monster, damage: 50, crit: false, tenderized: false, attackId: 1, actionSet: 1, actionId: 1, part: 2, partName: 'Head' },
+        { t: 3, slot: 1, monster, damage: 80, crit: false, tenderized: false, attackId: 0, actionSet: 1, actionId: 1, estimated: true },
+        { t: 4, slot: 0, monster, damage: 40, crit: false, tenderized: false, attackId: 1, actionSet: 1, actionId: 1, part: 0, partName: 'Tail' },
+      ],
+    }
+    const rows = partBreakdown(log, monster)
+    expect(rows[0]!.name).toBe('Head')
+    expect(rows[0]!.damage).toBe(150)
+    expect(rows[0]!.hunters[0]!.name).toBe('Local')
+    expect(rows[0]!.hunters[0]!.damage).toBe(150)
+    const unknown = rows.find((r) => r.part == null)!
+    expect(unknown.damage).toBe(80)
+    expect(unknown.hunters[0]!.name).toBe('Teammate')
+    expect(hasPartData(log)).toBe(true)
   })
 
   it('finds trial personal bests from the index', () => {

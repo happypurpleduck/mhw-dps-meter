@@ -14,7 +14,8 @@ internal readonly record struct HitRecord(
     bool Tenderized,
     int AttackId,
     int ActionSet,
-    int ActionId);
+    int ActionId,
+    int? Part);
 
 /// <summary>
 /// Hooks the game's deal-damage function (HunterPie's FUN_DEAL_DAMAGE) to get the
@@ -23,7 +24,8 @@ internal readonly record struct HitRecord(
 ///   void DealDamage(Monster* target, int damage, void* position, BOOL isTenderized,
 ///                   BOOL isCrit, int unk0, int unk1, char unk2, int attackId)
 /// The game only runs this for hits simulated on this client, so it can only ever
-/// attribute damage to the local player. Party damage comes from the award table.
+/// attribute damage (and part) to the local player. Party damage comes from the award
+/// table. Part id is resolved from the monster part-health array around the call.
 /// </summary>
 internal sealed class DamageTracker : IDisposable
 {
@@ -239,6 +241,19 @@ internal sealed class DamageTracker : IDisposable
         int unk0, int unk1, byte unk2, int attackId)
     {
         var hook = _hook;
+        List<MonsterPartResolver.PartSample>? partsBefore = null;
+        try
+        {
+            // Snapshot flinch/break meters before the game applies damage so we can
+            // see which part changed. Training poles have no part array.
+            if (_recordHits && damage is > 0 and <= 100_000)
+                partsBefore = MonsterPartResolver.Snapshot(target);
+        }
+        catch
+        {
+            partsBefore = null;
+        }
+
         try
         {
             hook?.Original(target, damage, position, isTenderized, isCrit, unk0, unk1, unk2, attackId);
@@ -247,7 +262,17 @@ internal sealed class DamageTracker : IDisposable
         {
             try
             {
-                Record(target, damage, isTenderized != 0, isCrit != 0, attackId);
+                int? part = null;
+                try
+                {
+                    part = MonsterPartResolver.Resolve(target, position, partsBefore);
+                }
+                catch
+                {
+                    // part tagging is best-effort
+                }
+
+                Record(target, damage, isTenderized != 0, isCrit != 0, attackId, part);
             }
             catch
             {
@@ -256,7 +281,7 @@ internal sealed class DamageTracker : IDisposable
         }
     }
 
-    private void Record(nint target, int damage, bool tenderized, bool crit, int attackId)
+    private void Record(nint target, int damage, bool tenderized, bool crit, int attackId, int? part)
     {
         lock (_gate)
         {
@@ -284,7 +309,7 @@ internal sealed class DamageTracker : IDisposable
             _hits++;
 
             if (_recordHits && _pending.Count < MaxPendingHits)
-                _pending.Add(new HitRecord(now, target, damage, crit, tenderized, attackId, _actionSet, _actionId));
+                _pending.Add(new HitRecord(now, target, damage, crit, tenderized, attackId, _actionSet, _actionId, part));
         }
     }
 }

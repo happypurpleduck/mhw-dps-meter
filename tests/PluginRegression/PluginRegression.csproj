@@ -16,7 +16,10 @@
     <Compile Include="../../src/MhwDpsMeter/FightLog.cs" Link="FightLog.cs" />
     <Compile Include="../../src/MhwDpsMeter/AddressMap.cs" Link="AddressMap.cs" />
     <Compile Include="../../src/MhwDpsMeter/GameNames.cs" Link="GameNames.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterParts.cs" Link="MonsterParts.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterPartResolver.cs" Link="MonsterPartResolver.cs" />
     <EmbeddedResource Include="../../data/game-names.json" LogicalName="MhwDpsMeter.GameNames.json" />
+    <EmbeddedResource Include="../../data/monster-parts.json" LogicalName="MhwDpsMeter.MonsterParts.json" />
     <EmbeddedResource Include="../../src/MhwDpsMeter/Addresses/*.map" />
   </ItemGroup>
 </Project>

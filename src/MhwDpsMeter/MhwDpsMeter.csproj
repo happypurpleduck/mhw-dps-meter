@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="../../data/game-names.json" LogicalName="MhwDpsMeter.GameNames.json" />
+    <EmbeddedResource Include="../../data/monster-parts.json" LogicalName="MhwDpsMeter.MonsterParts.json" />
     <EmbeddedResource Include="Addresses\*.map" />
     <None Update="Addresses\*.map">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -173,7 +173,7 @@ To reposition the DPS overlay, open the F9 menu and drag **DPS Meter** by its ti
 
 See the [mapping audit](data/README.md) for area, weapon-class and monster-name coverage, and the remaining quest, equipment and move-name gaps.
 
-Two independent viewers read the `logs/` folder. Both show the hunt list, party table, cumulative damage, per-sample DPS and rolling DPS curves with enrage/death markers, your per-move breakdown, monsters, the event timeline, and time-trial personal bests with two-run comparison.
+Two independent viewers read the `logs/` folder. Both show the hunt list, party table, cumulative damage, per-sample DPS and rolling DPS curves with enrage/death markers, your per-move breakdown, damage by monster part (local hits), monsters, the event timeline, and time-trial personal bests with two-run comparison.
 
 | | [`web/`](web/README.md) | [`gpui-viewer/`](gpui-viewer/README.md) |
 | --- | --- | --- |
@@ -224,7 +224,7 @@ The files are meant to be consumed by an external viewer (a web UI in the style 
 | `players[]` | `slot` (0–3, matches HUD colour), `name`, `isLocal`, `weapon` (local hunter only), `damage`, `dps`, `percent`, `carts` (times that hunter carted; omitted when 0). Sorted by damage |
 | `monsters[]` | Large monsters seen: `id` (`m1`, `m2`, … referenced by hits/events), `type`, `name`, `variant`, `maxHealth`, `lastHealth`, `firstSeenT`, `diedT` |
 | `samples[]` | `{t, damage[4]}` — cumulative party damage per slot every 2 s (capped at 30 min). This is the only per-player timeline available for other hunters |
-| `hits[]` | One row per hit from the deal-damage hook: `t`, `slot`, `monster`, `damage`, `crit`, `tenderized`, `attackId`, `actionSet`, `actionId`, `action` (internal move name when resolvable). Teammate rows carry `estimated: true`, `attackId: -1`, and no crit/tenderize information. Capped at 50 000 |
+| `hits[]` | One row per hit from the deal-damage hook: `t`, `slot`, `monster`, `damage`, `crit`, `tenderized`, `attackId`, `part` / `partName` (local hits when the part meter could be resolved; see `docs/part-damage.md`), `actionSet`, `actionId`, `action` (internal move name when resolvable). Teammate rows carry `estimated: true`, `attackId: -1`, and no crit/tenderize/part information. Capped at 50 000 |
 | `events[]` | Timeline: `enrage` / `unenrage` / `death` / `flinch` (monster, `detail` = flinch action id), `cart` (hunter faint; `slot` when attributed, `detail` = hunter name), `weapon` (slot, `detail` = weapon type), `join` / `leave` (slot, `detail` = hunter name), `slotmatch` (slot, `detail` = how a teammate's hunter entity was matched to the slot). Capped at 5 000 |
 
 All `t` values are seconds on the same clock as `durationSeconds`.

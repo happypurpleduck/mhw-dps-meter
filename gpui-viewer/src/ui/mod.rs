@@ -41,16 +41,18 @@ pub enum Source {
 pub enum Tab {
     Overview,
     Moves,
+    Parts,
     Monsters,
     Timeline,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 4] = [Tab::Overview, Tab::Moves, Tab::Monsters, Tab::Timeline];
+    pub const ALL: [Tab; 5] = [Tab::Overview, Tab::Moves, Tab::Parts, Tab::Monsters, Tab::Timeline];
     pub fn label(self) -> &'static str {
         match self {
             Tab::Overview => "Overview",
             Tab::Moves => "Moves",
+            Tab::Parts => "Parts",
             Tab::Monsters => "Monsters",
             Tab::Timeline => "Timeline",
         }
@@ -80,6 +82,8 @@ pub struct ViewerApp {
     pub(crate) show_flinches: bool,
     /// Which hunter's moves the Moves tab shows (None = local).
     pub(crate) moves_slot: Option<usize>,
+    /// Which monster the Parts tab shows (None = first).
+    pub(crate) parts_monster: Option<String>,
     /// Trial files ticked for comparison (at most two).
     pub(crate) compare: Vec<String>,
     _tasks: Vec<Task<()>>,
@@ -139,6 +143,7 @@ impl ViewerApp {
             dps_window: 20.0,
             show_flinches: false,
             moves_slot: None,
+            parts_monster: None,
             compare: Vec::new(),
             _tasks: Vec::new(),
             source_task: None,
@@ -160,6 +165,7 @@ impl ViewerApp {
         if self.page != Page::Hunt(file.clone()) {
             self.page = Page::Hunt(file);
             self.moves_slot = None;
+            self.parts_monster = None;
             cx.notify();
         }
     }
@@ -214,6 +220,7 @@ impl ViewerApp {
             || matches!(&self.page, Page::Hunt(file) if !loaded.logs.contains_key(file)) {
             self.page = first.map(Page::Hunt).unwrap_or(Page::Empty);
             self.moves_slot = None;
+            self.parts_monster = None;
         }
         self.loaded = Some(loaded);
         self.loading = false;

@@ -189,6 +189,19 @@ internal sealed class FightLogHit
     [JsonPropertyName("attackId")]
     public int AttackId { get; set; }
 
+    /// <summary>
+    /// Monster part index (flinch/break slot id) for local exact hits when resolvable.
+    /// Absent for teammates and for hits that did not change a part meter.
+    /// </summary>
+    [JsonPropertyName("part")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Part { get; set; }
+
+    /// <summary>Display name for <see cref="Part"/> when known from the part table.</summary>
+    [JsonPropertyName("partName")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PartName { get; set; }
+
     /// <summary>Action set / id the local hunter was performing when the hit landed.</summary>
     [JsonPropertyName("actionSet")]
     public int ActionSet { get; set; }

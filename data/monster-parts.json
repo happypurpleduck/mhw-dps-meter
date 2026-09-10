@@ -1,0 +1,3412 @@
+{
+  "_meta": {
+    "source": "Derived from HunterPie MonsterData.xml (Apache-2.0). Part string keys humanized for display.",
+    "note": "Monster ids match SharpPluginLoader MonsterType / in-game em ids."
+  },
+  "monsters": {
+    "0": {
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "1": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "4": {
+      "0": {
+        "key": "PART_REPEL",
+        "name": "Repel",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_SHELL",
+        "name": "Shell",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_EXHAUST_ORGAN_CENTRAL",
+        "name": "Exhaust Organ Central",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_EXHAUST_ORGAN_HEAD",
+        "name": "Exhaust Organ Head",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_EXHAUST_ORGAN_CRATER",
+        "name": "Exhaust Organ Crater",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_EXHAUST_ORGAN_REAR",
+        "name": "Exhaust Organ Rear",
+        "severable": false
+      },
+      "14": {
+        "key": "PART_WEAK_L_SHELL",
+        "name": "Weak L Shell",
+        "severable": false
+      },
+      "15": {
+        "key": "PART_WEAK_R_SHELL",
+        "name": "Weak R Shell",
+        "severable": false
+      }
+    },
+    "7": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_ABDOMEN",
+        "name": "Abdomen",
+        "severable": false
+      }
+    },
+    "9": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "10": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "11": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "12": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "13": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "14": {
+      "0": {
+        "key": "PART_HORN",
+        "name": "Horn",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      }
+    },
+    "15": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "16": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_LIMBS",
+        "name": "L Limbs",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_LIMBS",
+        "name": "R Limbs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      }
+    },
+    "17": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_LIMBS",
+        "name": "Limbs",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "18": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "19": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_ABDOMEN",
+        "name": "Abdomen",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "20": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_BIG_FLINCH",
+        "name": "Big Flinch",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_REAR",
+        "name": "Rear",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "21": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_HEAD_MUD",
+        "name": "Head Mud",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY_MUD",
+        "name": "Body Mud",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_ARMS_MUD",
+        "name": "Arms Mud",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_L_LEG_MUD",
+        "name": "L Leg Mud",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_R_LEG_MUD",
+        "name": "R Leg Mud",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_TAIL_MUD",
+        "name": "Tail Mud",
+        "severable": false
+      }
+    },
+    "22": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_JAW",
+        "name": "Jaw",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "23": {
+      "0": {
+        "key": "PART_BODY_LEGS",
+        "name": "Body Legs",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_ANTLERS",
+        "name": "Antlers",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      }
+    },
+    "24": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "25": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "26": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_NECK",
+        "name": "Neck",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "27": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ROCK",
+        "name": "Rock",
+        "severable": false
+      }
+    },
+    "28": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "29": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_TORSO",
+        "name": "Torso",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_HEAD_MUD",
+        "name": "Head Mud",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TORSO_MUD",
+        "name": "Torso Mud",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_L_LEG_MUD",
+        "name": "L Leg Mud",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_R_LEG_MUD",
+        "name": "R Leg Mud",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL_MUD",
+        "name": "Tail Mud",
+        "severable": false
+      }
+    },
+    "30": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_MANE",
+        "name": "Mane",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "31": {
+      "0": {
+        "key": "PART_BALLOON",
+        "name": "Balloon",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BALLOON",
+        "name": "Balloon",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "32": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "33": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "34": {
+      "0": {
+        "key": "PART_COUNTERATTACK",
+        "name": "Counterattack",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "35": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "4": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "5": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_JAW",
+        "name": "Jaw",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_L_BONE",
+        "name": "L Bone",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_R_BONE",
+        "name": "R Bone",
+        "severable": false
+      }
+    },
+    "36": {
+      "0": {
+        "key": "PART_EMISSIONS",
+        "name": "Emissions",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      }
+    },
+    "37": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "38": {
+      "1": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_HORNS_2",
+        "name": "Horns 2",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LIMBS",
+        "name": "L Limbs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LIMBS",
+        "name": "R Limbs",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_HORNS_GOLD",
+        "name": "Horns Gold",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_MANE_GOLD",
+        "name": "Mane Gold",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_L_CHEST_GOLD",
+        "name": "L Chest Gold",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_R_CHEST_GOLD",
+        "name": "R Chest Gold",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_L_ARM_GOLD",
+        "name": "L Arm Gold",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_R_ARM_GOLD",
+        "name": "R Arm Gold",
+        "severable": false
+      },
+      "14": {
+        "key": "PART_L_LEG_GOLD",
+        "name": "L Leg Gold",
+        "severable": false
+      },
+      "15": {
+        "key": "PART_R_LEG_GOLD",
+        "name": "R Leg Gold",
+        "severable": false
+      },
+      "16": {
+        "key": "PART_L_TAIL_GOLD",
+        "name": "L Tail Gold",
+        "severable": false
+      },
+      "17": {
+        "key": "PART_R_TAIL_GOLD",
+        "name": "R Tail Gold",
+        "severable": false
+      }
+    },
+    "39": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "51": {
+      "0": {
+        "key": "PART_BODY_LEGS",
+        "name": "Body Legs",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_ANTLERS",
+        "name": "Antlers",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      }
+    },
+    "61": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "62": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "63": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "64": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_BIG_FLINCH",
+        "name": "Big Flinch",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_COUNTERATTACK",
+        "name": "Counterattack",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_REAR",
+        "name": "Rear",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "65": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "66": {
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_FIN",
+        "name": "Fin",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "67": {
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_FIN",
+        "name": "Fin",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "68": {
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "69": {
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_INFLATED_TAIL",
+        "name": "Inflated Tail",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "70": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_SILVER_SPIKES_HEAD",
+        "name": "Silver Spikes Head",
+        "severable": true
+      },
+      "4": {
+        "key": "PART_SILVER_SPIKES_L_ARM",
+        "name": "Silver Spikes L Arm",
+        "severable": true
+      },
+      "5": {
+        "key": "PART_SILVER_SPIKES_R_ARM",
+        "name": "Silver Spikes R Arm",
+        "severable": true
+      },
+      "6": {
+        "key": "PART_SILVER_SPIKES_L_WING",
+        "name": "Silver Spikes L Wing",
+        "severable": true
+      },
+      "7": {
+        "key": "PART_SILVER_SPIKES_R_WING",
+        "name": "Silver Spikes R Wing",
+        "severable": true
+      },
+      "8": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "14": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "15": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "16": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "17": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "71": {
+      "0": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_MANE",
+        "name": "Mane",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "72": {
+      "0": {
+        "key": "PART_BALLOON",
+        "name": "Balloon",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BALLOON",
+        "name": "Balloon",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "73": {
+      "0": {
+        "key": "PART_SKY_FALL",
+        "name": "Sky Fall",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "74": {
+      "0": {
+        "key": "PART_COUNTERATTACK",
+        "name": "Counterattack",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "75": {
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_EMISSIONS",
+        "name": "Emissions",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      },
+      "14": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      },
+      "15": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      }
+    },
+    "76": {
+      "1": {
+        "key": "PART_GLOWING_HEAD",
+        "name": "Glowing Head",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_GLOWING_TAIL",
+        "name": "Glowing Tail",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "77": {
+      "0": {
+        "key": "PART_EMERGE_SNOW_HEAD",
+        "name": "Emerge Snow Head",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_EMERGE_SNOW_BODY",
+        "name": "Emerge Snow Body",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_EMERGE_SNOW_TAIL",
+        "name": "Emerge Snow Tail",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_HEAD_SNOW",
+        "name": "Head Snow",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_BODY_SNOW",
+        "name": "Body Snow",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL_SNOW",
+        "name": "Tail Snow",
+        "severable": false
+      }
+    },
+    "78": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "79": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_SKY_FALL",
+        "name": "Sky Fall",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_HEAD_ICE",
+        "name": "Head Ice",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY_ICE",
+        "name": "Body Ice",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_WINGS_ICE",
+        "name": "Wings Ice",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_ARMS_ICE",
+        "name": "Arms Ice",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "80": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      }
+    },
+    "81": {
+      "0": {
+        "key": "PART_HEAD_ROCK",
+        "name": "Head Rock",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD_ROCK",
+        "name": "Head Rock",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_CHEST_ROCK",
+        "name": "Chest Rock",
+        "severable": true
+      },
+      "4": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true
+      },
+      "5": {
+        "key": "PART_L_NECK_ROCK",
+        "name": "L Neck Rock",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_NECK_ROCK",
+        "name": "R Neck Rock",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_HEAD_ROCK",
+        "name": "Head Rock",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL_ROCK",
+        "name": "Tail Rock",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_L_WING_ROCK",
+        "name": "L Wing Rock",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_R_WING_ROCK",
+        "name": "R Wing Rock",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_L_ARM_ROCK",
+        "name": "L Arm Rock",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_R_ARM_ROCK",
+        "name": "R Arm Rock",
+        "severable": false
+      },
+      "13": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "14": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "15": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "16": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "17": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "18": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "19": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "20": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "87": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_WINGS",
+        "name": "Wings",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "88": {
+      "1": {
+        "key": "PART_BIG_FLINCH",
+        "name": "Big Flinch",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "89": {
+      "1": {
+        "key": "PART_BIG_FLINCH",
+        "name": "Big Flinch",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "90": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "91": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HORNS_2",
+        "name": "Horns 2",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_RAGE",
+        "name": "Rage",
+        "severable": true
+      },
+      "4": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "92": {
+      "0": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HORNS_2",
+        "name": "Horns 2",
+        "severable": true
+      },
+      "3": {
+        "key": "PART_RAGE",
+        "name": "Rage",
+        "severable": true
+      },
+      "4": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "93": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "94": {
+      "1": {
+        "key": "PART_CHARGE",
+        "name": "Charge",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "95": {
+      "1": {
+        "key": "PART_CHARGE",
+        "name": "Charge",
+        "severable": true
+      },
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_ARMS",
+        "name": "Arms",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_LEGS",
+        "name": "Legs",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "96": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_TAIL_TIP",
+        "name": "Tail Tip",
+        "severable": false
+      }
+    },
+    "97": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_ABDOMEN",
+        "name": "Abdomen",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BACK",
+        "name": "Back",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "12": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "98": {
+      "0": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      },
+      "1": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": false
+      }
+    },
+    "99": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "100": {
+      "0": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    },
+    "101": {
+      "0": {
+        "key": "PART_KNOCKDOWN",
+        "name": "Knockdown",
+        "severable": true
+      },
+      "1": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": false
+      },
+      "2": {
+        "key": "PART_NECK",
+        "name": "Neck",
+        "severable": false
+      },
+      "3": {
+        "key": "PART_CHEST",
+        "name": "Chest",
+        "severable": false
+      },
+      "4": {
+        "key": "PART_BODY",
+        "name": "Body",
+        "severable": false
+      },
+      "5": {
+        "key": "PART_L_ARM",
+        "name": "L Arm",
+        "severable": false
+      },
+      "6": {
+        "key": "PART_R_ARM",
+        "name": "R Arm",
+        "severable": false
+      },
+      "7": {
+        "key": "PART_L_LEG",
+        "name": "L Leg",
+        "severable": false
+      },
+      "8": {
+        "key": "PART_R_LEG",
+        "name": "R Leg",
+        "severable": false
+      },
+      "9": {
+        "key": "PART_L_WING",
+        "name": "L Wing",
+        "severable": false
+      },
+      "10": {
+        "key": "PART_R_WING",
+        "name": "R Wing",
+        "severable": false
+      },
+      "11": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": false
+      }
+    }
+  }
+}

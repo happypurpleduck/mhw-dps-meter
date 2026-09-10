@@ -159,6 +159,19 @@ Equal(0, cartRecorder.CartsOf(2), "untouched slot has zero carts");
 Equal(3, cartRecorder.Events().Count(e => e.Type == "cart"), "all carts appear as events");
 Equal<int?>(null, cartRecorder.Events().First(e => e.Type == "cart" && Math.Abs(e.T - 40f) < 0.01f).Slot, "unattributed cart keeps null slot");
 
+Equal("Head", MonsterParts.Display(0, 2), "Anjanath head part name");
+Equal("Part 99", MonsterParts.Display(0, 99), "unknown part retains id");
+
+var head = new MonsterPartResolver.PartSample(2, 100f, 0, 0x20000, 0x1F8);
+var body = new MonsterPartResolver.PartSample(3, 200f, 1, 0x201F8, 0x1F8);
+var afterHeadDrop = new[] { head with { Health = 40f }, body };
+var afterCounter = new[] { head, body with { Counter = 2 } };
+Equal(2, MonsterPartResolver.ResolveFromDiff([head, body], afterHeadDrop), "largest flinch-meter drop wins");
+Equal(3, MonsterPartResolver.ResolveFromDiff([head, body], afterCounter), "counter rise identifies part when health unchanged");
+Equal<int?>(null, MonsterPartResolver.ResolveFromDiff([head], [head]), "no change yields no part");
+Equal(2, MonsterPartResolver.MatchPosition([head, body], 2), "small position treated as part index");
+Equal(3, MonsterPartResolver.MatchPosition([head, body], 0x201F8 + 0x10), "position inside part struct");
+
 Equal(true, AddressMap.TryLoadEmbedded(421810)!.TryGetOffsets("QUEST_EXTRA_DATA_OFFSETS", out var deathOffsets)
     && deathOffsets is [0x17370], "421810 map has quest death extras");
 Equal(true, AddressMap.TryLoadEmbedded(421631)!.TryGetOffsets("QUEST_DEATH_COUNTER_OFFSETS", out var deathOnly)

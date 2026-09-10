@@ -71,6 +71,10 @@ export interface FightLogHit {
   attackId: number
   actionSet: number
   actionId: number
+  /** Monster part index (flinch/break slot) for local exact hits when known. */
+  part?: number | null
+  /** Display name for `part` when resolvable from the part table. */
+  partName?: string | null
   /** Internal action name, e.g. "WP_02::RANBU". */
   action?: string | null
   /** Teammate row: award-table delta credited to the current move, not an exact hit. */
