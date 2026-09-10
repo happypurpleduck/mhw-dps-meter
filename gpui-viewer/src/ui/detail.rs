@@ -22,8 +22,8 @@ use super::{
     plots::{LinesPlot, Marker, Series, legend, slot_color},
 };
 use crate::analysis::{
-    damage_curves, format_date, format_duration, format_int, hit_stats, local_exact_hits, monster_breakdown, move_breakdown,
-    move_display_name, pct, rolling_dps, interval_dps,
+    damage_curves, format_date, format_duration, format_int, has_part_data, hit_stats, local_exact_hits, monster_breakdown,
+    move_breakdown, move_display_name, part_breakdown, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
 
@@ -33,6 +33,7 @@ impl ViewerApp {
         let body: AnyElement = match tab {
             Tab::Overview => self.render_overview(&log, cx).into_any_element(),
             Tab::Moves => self.render_moves(&log, cx).into_any_element(),
+            Tab::Parts => self.render_parts(&log, cx).into_any_element(),
             Tab::Monsters => render_monsters(&log, cx).into_any_element(),
             Tab::Timeline => self.render_timeline(&log, cx).into_any_element(),
         };
@@ -258,6 +259,141 @@ impl ViewerApp {
                             .child(TableCell::new().w(px(72.)).text_right().child(r.tenderized.to_string()))
                     }))),
             )
+    }
+
+    fn render_parts(&mut self, log: &FightLog, cx: &mut Context<Self>) -> impl IntoElement {
+        if !log.hits.iter().any(|h| h.monster.is_some()) {
+            return v_flex().child(muted("This log has no monster-targeted hits to group by part.", cx));
+        }
+        let monsters = &log.monsters;
+        let monster_id = self
+            .parts_monster
+            .as_deref()
+            .filter(|id| monsters.iter().any(|m| m.id == *id))
+            .or_else(|| monsters.first().map(|m| m.id.as_str()));
+        let rows = part_breakdown(log, monster_id);
+        let top = rows.iter().map(|r| r.damage).max().unwrap_or(1).max(1) as f32;
+        let summary = if has_part_data(log) {
+            "Damage by monster part. Part tags come from your exact hits; teammate award deltas have no part."
+                .to_string()
+        } else {
+            "No part tags in this log yet. Untagged and teammate rows appear under Unknown part — party award totals are not split by part.".to_string()
+        };
+
+        v_flex()
+            .gap_3()
+            .when(monsters.len() > 1, |this| {
+                this.child(
+                    TabBar::new("parts-monsters")
+                        .pill()
+                        .selected_index(
+                            monsters
+                                .iter()
+                                .position(|m| Some(m.id.as_str()) == monster_id)
+                                .unwrap_or(0),
+                        )
+                        .on_click(cx.listener({
+                            let ids: Vec<String> = monsters.iter().map(|m| m.id.clone()).collect();
+                            move |this, ix: &usize, _, cx| {
+                                this.parts_monster = ids.get(*ix).cloned();
+                                cx.notify();
+                            }
+                        }))
+                        .children(monsters.iter().map(|m| SharedString::from(m.name.clone()))),
+                )
+            })
+            .child(muted(summary, cx))
+            .child(
+                Table::new()
+                    .small()
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .rounded(cx.theme().radius)
+                    .child(
+                        TableHeader::new().child(
+                            TableRow::new()
+                                .child(TableHead::new().w(px(180.)).child("Part"))
+                                .child(TableHead::new().w(px(220.)).child("Damage"))
+                                .child(TableHead::new().w(px(64.)).text_right().child("Share"))
+                                .child(TableHead::new().w(px(48.)).text_right().child("Hits"))
+                                .child(TableHead::new().w(px(200.)).child("Most damage")),
+                        ),
+                    )
+                    .child(TableBody::new().children(rows.iter().enumerate().map(|(ix, r)| {
+                        let frac = (r.damage as f32 / top).clamp(0.0, 1.0);
+                        let top_hunter = r.hunters.first().map(|h| {
+                            format!("{} {}", h.name, format_int(h.damage))
+                        }).unwrap_or_else(|| "—".into());
+                        let top_color = r.hunters.first().map(|h| slot_color(h.slot)).unwrap_or(cx.theme().muted_foreground);
+                        TableRow::new()
+                            .when(ix % 2 == 1, |row| row.bg(cx.theme().table_even))
+                            .child(
+                                TableCell::new().w(px(180.)).child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .child(div().child(r.name.clone()))
+                                        .when_some(r.part, |d, part| {
+                                            d.child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(cx.theme().muted_foreground)
+                                                    .child(format!("id {part}")),
+                                            )
+                                        }),
+                                ),
+                            )
+                            .child(
+                                TableCell::new().w(px(220.)).child(meter_bar(
+                                    frac,
+                                    Hsla::from(rgb(0xf26bb8)),
+                                    cx.theme().border,
+                                    format_int(r.damage),
+                                )),
+                            )
+                            .child(TableCell::new().w(px(64.)).text_right().child(pct(r.share, 1)))
+                            .child(TableCell::new().w(px(48.)).text_right().child(r.hits.to_string()))
+                            .child(
+                                TableCell::new().w(px(200.)).child(
+                                    h_flex()
+                                        .gap_2()
+                                        .items_center()
+                                        .child(div().size(px(8.)).rounded_full().bg(top_color))
+                                        .child(div().truncate().child(top_hunter)),
+                                ),
+                            )
+                    }))),
+            )
+            .when_some(rows.first().cloned(), |this, part| {
+                this.child(
+                    card(cx)
+                        .child(div().font_medium().child(part.name.clone()))
+                        .child(muted("Hunters ranked by damage to this part", cx))
+                        .children(part.hunters.into_iter().map(|h| {
+                            h_flex()
+                                .gap_2()
+                                .items_center()
+                                .child(div().size(px(8.)).rounded_full().bg(slot_color(h.slot)))
+                                .child(div().flex_1().truncate().child(h.name.clone()))
+                                .when(h.estimated, |row| {
+                                    row.child(
+                                        gpui_kit::component::tag::Tag::warning()
+                                            .outline()
+                                            .xsmall()
+                                            .child("est."),
+                                    )
+                                })
+                                .child(div().child(format_int(h.damage)))
+                                .child(
+                                    div()
+                                        .w(px(48.))
+                                        .text_right()
+                                        .text_color(cx.theme().muted_foreground)
+                                        .child(pct(h.share, 1)),
+                                )
+                        })),
+                )
+            })
     }
 
     fn render_timeline(&mut self, log: &FightLog, cx: &mut Context<Self>) -> impl IntoElement {

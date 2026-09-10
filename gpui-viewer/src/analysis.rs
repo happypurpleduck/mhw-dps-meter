@@ -165,6 +165,101 @@ pub fn monster_breakdown(log: &FightLog) -> Vec<MonsterRow> {
         .collect()
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct PartHunterRow {
+    pub slot: usize,
+    pub name: String,
+    pub damage: i64,
+    pub hits: usize,
+    pub share: f32,
+    pub estimated: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PartRow {
+    pub part: Option<i32>,
+    pub name: String,
+    pub damage: i64,
+    pub hits: usize,
+    pub share: f32,
+    pub hunters: Vec<PartHunterRow>,
+}
+
+pub fn has_part_data(log: &FightLog) -> bool {
+    log.hits.iter().any(|h| h.part.is_some() && !h.estimated)
+}
+
+/// Damage grouped by monster part. Untagged / teammate rows land under "Unknown part".
+pub fn part_breakdown(log: &FightLog, monster_id: Option<&str>) -> Vec<PartRow> {
+    let hits = log.hits.iter().filter(|h| match monster_id {
+        Some(id) => h.monster.as_deref() == Some(id),
+        None => h.monster.is_some(),
+    });
+    let mut groups: BTreeMap<String, PartRow> = BTreeMap::new();
+    let mut total = 0i64;
+    for hit in hits {
+        total += hit.damage;
+        let key = hit
+            .part
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| "unknown".into());
+        let row = groups.entry(key).or_insert_with(|| PartRow {
+            part: hit.part,
+            name: match hit.part {
+                None => "Unknown part".into(),
+                Some(p) => hit.part_name.clone().unwrap_or_else(|| format!("Part {p}")),
+            },
+            damage: 0,
+            hits: 0,
+            share: 0.0,
+            hunters: Vec::new(),
+        });
+        if hit.part.is_some()
+            && row.name.starts_with("Part ")
+            && let Some(name) = &hit.part_name
+        {
+            row.name = name.clone();
+        }
+        row.damage += hit.damage;
+        row.hits += 1;
+
+        if let Some(hunter) = row.hunters.iter_mut().find(|h| h.slot == hit.slot) {
+            hunter.damage += hit.damage;
+            hunter.hits += 1;
+            hunter.estimated = hunter.estimated && hit.estimated;
+        } else {
+            let name = log
+                .players
+                .iter()
+                .find(|p| p.slot == hit.slot)
+                .map(|p| p.name.clone())
+                .unwrap_or_else(|| format!("Slot {}", hit.slot + 1));
+            row.hunters.push(PartHunterRow {
+                slot: hit.slot,
+                name,
+                damage: hit.damage,
+                hits: 1,
+                share: 0.0,
+                estimated: hit.estimated,
+            });
+        }
+    }
+    let mut rows: Vec<PartRow> = groups.into_values().collect();
+    for row in &mut rows {
+        row.share = if total > 0 { row.damage as f32 / total as f32 } else { 0.0 };
+        for hunter in &mut row.hunters {
+            hunter.share = if row.damage > 0 {
+                hunter.damage as f32 / row.damage as f32
+            } else {
+                0.0
+            };
+        }
+        row.hunters.sort_by(|a, b| b.damage.cmp(&a.damage));
+    }
+    rows.sort_by(|a, b| b.damage.cmp(&a.damage));
+    rows
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HitStats {
     pub hits: usize,
@@ -421,6 +516,88 @@ mod tests {
         let trial = sample(&bests[0].best.file);
         let curve = cumulative_from_hits(&trial.hits, 1.0);
         assert_eq!(curve.last().unwrap().damage, trial.players[0].damage);
+    }
+
+    #[test]
+    fn parts_rank_hunters_and_unknown() {
+        let mut log = newest_v2();
+        let monster = log.monsters[0].id.clone();
+        log.players = vec![
+            crate::model::Player {
+                slot: 0,
+                name: "Local".into(),
+                is_local: true,
+                weapon: Some("DualBlades".into()),
+                damage: 190,
+                dps: 0.0,
+                percent: 0.0,
+                carts: 0,
+            },
+            crate::model::Player {
+                slot: 1,
+                name: "Teammate".into(),
+                is_local: false,
+                weapon: None,
+                damage: 80,
+                dps: 0.0,
+                percent: 0.0,
+                carts: 0,
+            },
+        ];
+        log.hits = vec![
+            crate::model::Hit {
+                t: 1.0,
+                slot: 0,
+                monster: Some(monster.clone()),
+                damage: 100,
+                crit: false,
+                tenderized: false,
+                attack_id: 1,
+                action_set: 1,
+                action_id: 1,
+                action: None,
+                part: Some(2),
+                part_name: Some("Head".into()),
+                estimated: false,
+            },
+            crate::model::Hit {
+                t: 2.0,
+                slot: 0,
+                monster: Some(monster.clone()),
+                damage: 50,
+                crit: false,
+                tenderized: false,
+                attack_id: 1,
+                action_set: 1,
+                action_id: 1,
+                action: None,
+                part: Some(2),
+                part_name: Some("Head".into()),
+                estimated: false,
+            },
+            crate::model::Hit {
+                t: 3.0,
+                slot: 1,
+                monster: Some(monster.clone()),
+                damage: 80,
+                crit: false,
+                tenderized: false,
+                attack_id: -1,
+                action_set: 1,
+                action_id: 1,
+                action: None,
+                part: None,
+                part_name: None,
+                estimated: true,
+            },
+        ];
+        let rows = part_breakdown(&log, Some(&monster));
+        assert_eq!(rows[0].name, "Head");
+        assert_eq!(rows[0].damage, 150);
+        assert_eq!(rows[0].hunters[0].name, "Local");
+        let unknown = rows.iter().find(|r| r.part.is_none()).unwrap();
+        assert_eq!(unknown.damage, 80);
+        assert!(has_part_data(&log));
     }
 
     #[test]

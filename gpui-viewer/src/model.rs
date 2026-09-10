@@ -138,6 +138,12 @@ pub struct Hit {
     /// Internal action name, e.g. `WP_02::RANBU`.
     #[serde(default)]
     pub action: Option<String>,
+    /// Monster part index for local exact hits when resolvable.
+    #[serde(default)]
+    pub part: Option<i32>,
+    /// Display name for `part` when known.
+    #[serde(default)]
+    pub part_name: Option<String>,
     /// Teammate row: award-table delta credited to the current move, not an exact hit.
     #[serde(default)]
     pub estimated: bool,

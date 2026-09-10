@@ -177,6 +177,9 @@ internal sealed class HuntRecorder
                     return;
 
                 _monsters.TryGetValue(hit.Target, out var monster);
+                string? partName = null;
+                if (hit.Part is int partId && monster is not null)
+                    partName = MonsterParts.Name(monster.Type, partId);
                 _hits.Add(new FightLogHit
                 {
                     T = Math.Max(0f, timeOf(hit)),
@@ -186,6 +189,8 @@ internal sealed class HuntRecorder
                     Crit = hit.Crit,
                     Tenderized = hit.Tenderized,
                     AttackId = hit.AttackId,
+                    Part = hit.Part,
+                    PartName = partName,
                     ActionSet = hit.ActionSet,
                     ActionId = hit.ActionId,
                     Action = ActionNameLocked(hit.ActionSet, hit.ActionId)

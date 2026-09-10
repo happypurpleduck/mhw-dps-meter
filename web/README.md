@@ -26,6 +26,7 @@ pnpm build        # type-check + static build in dist/
 - **Hunt list**: every quest and time trial from `index.json`, filterable by text and kind, sortable by date, result, duration, damage.
 - **Overview**: party table with damage/DPS/share, cumulative damage per hunter with monster death and enrage markers, rolling DPS with a selectable window.
 - **Moves**: per-move breakdown per hunter (damage, share, hits, crit rate, avg, max, tenderized) with a bar chart. Your rows are exact hits; teammates' rows (plugin 0.4.0+) are *estimated* from award-table increments credited to the move they were performing and are labelled as such. Toggle to hide `Common::` actions, which are hits that registered after the move animation ended.
+- **Parts**: damage by monster part for the selected monster, with hunters ranked on each part. Part tags exist only on your exact hits; teammate damage stays under Unknown part (see `docs/part-damage.md`).
 - **Layout**: drag the separator between the hunt list and the detail pane; the width is remembered per browser.
 - **Monsters**: HP lost per large monster and how much of it was yours.
 - **Timeline**: enrage, unenrage, death, flinch, weapon swaps, hunters joining/leaving.

@@ -9,6 +9,7 @@ import {
   formatDate,
   formatDuration,
   formatInt,
+  hasPartData,
   hitStats,
   hitsForSlot,
   isEstimated,
@@ -16,10 +17,12 @@ import {
   slotsWithHits,
   monsterBreakdown,
   moveBreakdown,
+  partBreakdown,
   pct,
   totalDamage,
   type MonsterRow,
   type MoveRow,
+  type PartRow,
 } from '../data/analysis'
 import { moveDisplayName } from '../moves/names'
 import { createSolidTable, type Features } from '../lib/table'
@@ -27,13 +30,14 @@ import { Chart } from '../lib/Chart'
 import { damageCurveChart, dpsCurveChart, eventMarkers, movesBarChart } from '../charts/definitions'
 import { ResultBadge, StatTile, TableView } from './TableView'
 
-type Tab = 'overview' | 'moves' | 'monsters' | 'timeline' | 'raw'
+type Tab = 'overview' | 'moves' | 'parts' | 'monsters' | 'timeline' | 'raw'
 
 export function HuntDetail() {
   // Async memo: inside <Loading> this read resolves to the loaded log.
   const log = () => logStore.selectedLog() as unknown as FightLog | undefined
   const initialTab = new URLSearchParams(location.search).get('tab') as Tab | null
-  const [tab, setTab] = createSignal<Tab>(initialTab && ['overview', 'moves', 'monsters', 'timeline', 'raw'].includes(initialTab) ? initialTab : 'overview')
+  const tabs = ['overview', 'moves', 'parts', 'monsters', 'timeline', 'raw'] as const
+  const [tab, setTab] = createSignal<Tab>(initialTab && tabs.includes(initialTab) ? initialTab : 'overview')
 
   return (
     <Show when={log()} fallback={<div class="text-base-content/60">No hunt selected.</div>}>
@@ -41,7 +45,7 @@ export function HuntDetail() {
         <div class="flex flex-col gap-4">
           <Header log={l()} />
           <div role="tablist" class="tabs tabs-box w-fit">
-            <For each={[['overview', 'Overview'], ['moves', 'Moves'], ['monsters', 'Monsters'], ['timeline', 'Timeline'], ['raw', 'Raw']] as const}>
+            <For each={[['overview', 'Overview'], ['moves', 'Moves'], ['parts', 'Parts'], ['monsters', 'Monsters'], ['timeline', 'Timeline'], ['raw', 'Raw']] as const}>
               {([value, label]) => (
                 <button role="tab" class={['tab', { 'tab-active': tab() === value }]} onClick={() => setTab(value)}>
                   {label}
@@ -52,6 +56,7 @@ export function HuntDetail() {
           <Switch>
             <Match when={tab() === 'overview'}><Overview log={l()} /></Match>
             <Match when={tab() === 'moves'}><Moves log={l()} /></Match>
+            <Match when={tab() === 'parts'}><Parts log={l()} /></Match>
             <Match when={tab() === 'monsters'}><Monsters log={l()} /></Match>
             <Match when={tab() === 'timeline'}><Timeline log={l()} /></Match>
             <Match when={tab() === 'raw'}><Raw log={l()} /></Match>
@@ -278,6 +283,142 @@ function Moves(props: { log: FightLog }) {
           </div>
         </section>
         <TableView table={table} />
+      </div>
+    </Show>
+  )
+}
+
+// ---- Parts ---------------------------------------------------------------------
+
+const partCol = createColumnHelper<Features, PartRow>()
+const partColumns = [
+  partCol.accessor('name', {
+    header: 'Part',
+    sortFn: 'alphanumeric',
+    cell: (info) => (
+      <div class="min-w-0">
+        <div class="font-medium">{info.getValue()}</div>
+        <Show when={info.row.original.part != null}>
+          <div class="text-[10px] text-base-content/50 font-mono">id {info.row.original.part}</div>
+        </Show>
+      </div>
+    ),
+  }),
+  partCol.accessor('damage', { header: 'Damage', sortFn: 'basic', meta: { class: 'text-right whitespace-nowrap' }, cell: (info) => formatInt(info.getValue()) }),
+  partCol.accessor('share', {
+    header: 'Share',
+    sortFn: 'basic',
+    meta: { class: 'w-44' },
+    cell: (info) => (
+      <div class="flex items-center gap-2 min-w-0">
+        <progress class="progress progress-secondary flex-1 min-w-12 max-w-24" value={info.getValue() * 100} max="100" />
+        <span class="text-xs shrink-0 tabular-nums">{pct(info.getValue())}</span>
+      </div>
+    ),
+  }),
+  partCol.accessor('hits', { header: 'Hits', sortFn: 'basic', meta: { class: 'text-right' } }),
+  partCol.accessor((r) => r.hunters[0]?.name ?? '', {
+    id: 'topHunter',
+    header: 'Most damage',
+    sortFn: 'alphanumeric',
+    cell: (info) => {
+      const top = info.row.original.hunters[0]
+      if (!top) return <span class="opacity-40">—</span>
+      return (
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="inline-block size-2.5 rounded-full shrink-0" style={{ background: slotColor(top.slot) }} />
+          <span class="truncate">{top.name}</span>
+          <span class="text-xs text-base-content/60 tabular-nums shrink-0">{formatInt(top.damage)}</span>
+        </div>
+      )
+    },
+  }),
+]
+
+function Parts(props: { log: FightLog }) {
+  const monsters = () => props.log.monsters
+  const [monsterId, setMonsterId] = createSignal<string | undefined>(undefined)
+  const activeMonster = () => monsterId() ?? monsters()[0]?.id
+  const rows = createMemo(() => partBreakdown(props.log, activeMonster()))
+  const [selectedPart, setSelectedPart] = createSignal<number | null | undefined>(undefined)
+  const selected = createMemo(() => {
+    const id = selectedPart()
+    if (id === undefined) return rows()[0]
+    return rows().find((r) => r.part === id) ?? rows()[0]
+  })
+  const table = createSolidTable<PartRow>({
+    data: rows,
+    columns: partColumns,
+    getRowId: (r) => (r.part == null ? 'unknown' : String(r.part)),
+    initialSorting: [{ id: 'damage', desc: true }],
+  })
+  return (
+    <Show
+      when={props.log.hits.some((h) => h.monster)}
+      fallback={<div class="text-sm text-base-content/60">This log has no monster-targeted hits to group by part.</div>}
+    >
+      <div class="flex flex-col gap-4">
+        <Show when={monsters().length > 1}>
+          <div role="tablist" class="tabs tabs-box w-fit">
+            <For each={monsters()}>
+              {(m) => (
+                <button role="tab" class={['tab', { 'tab-active': activeMonster() === m.id }]} onClick={() => { setMonsterId(m.id); setSelectedPart(undefined) }}>
+                  {m.name}
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
+        <p class="text-sm text-base-content/70">
+          <Show
+            when={hasPartData(props.log)}
+            fallback={
+              <>
+                No part tags in this log yet (plugin builds that resolve parts write <code class="text-xs">part</code> on
+                your exact hits). Untagged and teammate rows appear under Unknown part — party award totals are not split by
+                part.
+              </>
+            }
+          >
+            Damage by monster part. Part tags come from your exact hits; teammate award deltas have no part, so ranking
+            within a part is only meaningful for hunters with tagged hits (usually you).
+          </Show>
+        </p>
+        <section class="card bg-base-200">
+          <div class="card-body p-4">
+            <Chart definition={movesBarChart(rows(), '#f26bb8')} height={Math.max(160, Math.min(rows().length, 15) * 26 + 60)} ariaLabel="Damage per monster part" />
+          </div>
+        </section>
+        <div class="grid gap-4 lg:grid-cols-[1fr_minmax(16rem,20rem)]">
+          <TableView
+            table={table}
+            onRowClick={(row) => setSelectedPart(row.original.part)}
+            rowClass={(row) => ({ 'bg-base-300/50': selected()?.part === row.original.part })}
+          />
+          <Show when={selected()}>
+            {(part) => (
+              <section class="card bg-base-200 h-fit">
+                <div class="card-body p-4 gap-3">
+                  <h3 class="font-medium">{part().name}</h3>
+                  <p class="text-xs text-base-content/60">Hunters ranked by damage to this part</p>
+                  <ul class="flex flex-col gap-2">
+                    <For each={part().hunters} fallback={<li class="text-sm opacity-50">No tagged hits</li>}>
+                      {(h) => (
+                        <li class="flex items-center gap-2 text-sm">
+                          <span class="inline-block size-2.5 rounded-full shrink-0" style={{ background: slotColor(h.slot) }} />
+                          <span class="flex-1 truncate">{h.name}</span>
+                          <Show when={h.estimated}><span class="badge badge-xs badge-warning badge-outline">est.</span></Show>
+                          <span class="tabular-nums">{formatInt(h.damage)}</span>
+                          <span class="text-xs text-base-content/50 w-12 text-right">{pct(h.share)}</span>
+                        </li>
+                      )}
+                    </For>
+                  </ul>
+                </div>
+              </section>
+            )}
+          </Show>
+        </div>
       </div>
     </Show>
   )

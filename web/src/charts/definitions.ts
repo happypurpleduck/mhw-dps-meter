@@ -4,7 +4,7 @@ import { scaleBand } from '@tanstack/charts/scales/band'
 import { tooltip } from '@tanstack/charts/tooltip'
 import type { FightLog } from '../schema/fightlog'
 import { slotColor } from '../schema/fightlog'
-import { damageCurves, rollingDps, intervalDps, type CurvePoint, type MoveRow, type RatePoint } from '../data/analysis'
+import { damageCurves, rollingDps, intervalDps, type CurvePoint, type RatePoint } from '../data/analysis'
 import { formatInt } from '../data/analysis'
 
 type Def = DomChartDefinition<any, any, any>
@@ -94,7 +94,7 @@ export function dpsCurveChart(log: FightLog, windowSeconds: number | null = 20):
 }
 
 /** Horizontal bars: damage per move, biggest first. */
-export function movesBarChart(moves: MoveRow[], color = '#52b8ff'): Def {
+export function movesBarChart(moves: { name: string; damage: number; hits: number }[], color = '#52b8ff'): Def {
   const rows = moves.slice(0, 15)
   return defineChart({
     marks: [
@@ -113,7 +113,8 @@ export function movesBarChart(moves: MoveRow[], color = '#52b8ff'): Def {
     },
     tooltip: {
       use: tooltip,
-      format: (point: { datum: MoveRow }) => `${point.datum.name}: ${formatInt(point.datum.damage)} (${point.datum.hits} hits)`,
+      format: (point: { datum: { name: string; damage: number; hits: number } }) =>
+        `${point.datum.name}: ${formatInt(point.datum.damage)} (${point.datum.hits} hits)`,
     },
   } as never) as unknown as Def
 }

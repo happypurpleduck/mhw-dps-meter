@@ -182,6 +182,90 @@ export function monsterBreakdown(log: FightLog): MonsterRow[] {
   })
 }
 
+export interface PartHunterRow {
+  slot: number
+  name: string
+  damage: number
+  hits: number
+  share: number
+  /** True when this row is entirely estimated award deltas (no part tags). */
+  estimated: boolean
+}
+
+export interface PartRow {
+  /** Part index, or null for hits with no resolvable part. */
+  part: number | null
+  name: string
+  damage: number
+  hits: number
+  share: number
+  hunters: PartHunterRow[]
+}
+
+/**
+ * Damage grouped by monster part. Exact local hits carry `part`; teammate rows and
+ * untagged hits fall under "Unknown part". Hunter ranking within a part only reflects
+ * hits that have that part tag (today: local hunter only).
+ */
+export function partBreakdown(log: FightLog, monsterId?: string | null): PartRow[] {
+  const hits = monsterId
+    ? log.hits.filter((h) => h.monster === monsterId)
+    : log.hits.filter((h) => h.monster)
+  const groups = new Map<string, PartRow>()
+  let total = 0
+  for (const hit of hits) {
+    total += hit.damage
+    const part = hit.part ?? null
+    const key = part == null ? 'unknown' : String(part)
+    let row = groups.get(key)
+    if (!row) {
+      row = {
+        part,
+        name: part == null ? 'Unknown part' : hit.partName ?? `Part ${part}`,
+        damage: 0,
+        hits: 0,
+        share: 0,
+        hunters: [],
+      }
+      groups.set(key, row)
+    } else if (part != null && row.name.startsWith('Part ') && hit.partName) {
+      row.name = hit.partName
+    }
+    row.damage += hit.damage
+    row.hits += 1
+
+    let hunter = row.hunters.find((h) => h.slot === hit.slot)
+    if (!hunter) {
+      hunter = {
+        slot: hit.slot,
+        name: playerBySlot(log, hit.slot)?.name ?? `Slot ${hit.slot + 1}`,
+        damage: 0,
+        hits: 0,
+        share: 0,
+        estimated: !!hit.estimated,
+      }
+      row.hunters.push(hunter)
+    }
+    hunter.damage += hit.damage
+    hunter.hits += 1
+    hunter.estimated = hunter.estimated && !!hit.estimated
+  }
+
+  const rows = [...groups.values()]
+  for (const row of rows) {
+    row.share = total ? row.damage / total : 0
+    for (const hunter of row.hunters) {
+      hunter.share = row.damage ? hunter.damage / row.damage : 0
+    }
+    row.hunters.sort((a, b) => b.damage - a.damage)
+  }
+  return rows.sort((a, b) => b.damage - a.damage)
+}
+
+export function hasPartData(log: FightLog): boolean {
+  return log.hits.some((h) => h.part != null && !h.estimated)
+}
+
 export interface HitStats {
   hits: number
   crits: number
