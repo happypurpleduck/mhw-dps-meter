@@ -195,6 +195,10 @@ chart shows the recorded interval rate rather than exact per-hit timing.
 
 **F6** (or the **Dump diagnostics** button in the F9 panel) re-reads the party (even in the hub) and writes `logs/live-debug.json` plus a one-line-per-second `logs/live-debug.log` while in a quest. The F9 panel shows the same data: detected game build and map, party size, per-slot names and raw award damage, the hit-hook call counter, and the monsters the game reports. `scripts/watch-live-debug.sh` tails these from a terminal.
 
+The September 11 quest-loading crash in action-name/cart detection is documented
+in [quest-loading-crash.md](docs/quest-loading-crash.md), including the fix and
+native memory regression checks.
+
 ## Fight logs
 
 Every quest (not training sessions, expeditions, or the Guiding Lands) is written as one JSON file next to the plugin, plus a listing file:
@@ -224,7 +228,7 @@ The files are meant to be consumed by an external viewer (a web UI in the style 
 | `players[]` | `slot` (0–3, matches HUD colour), `name`, `isLocal`, `weapon` (local hunter only), `damage`, `dps`, `percent`, `carts` (times that hunter carted; omitted when 0). Sorted by damage |
 | `monsters[]` | Large monsters seen: `id` (`m1`, `m2`, … referenced by hits/events), `type`, `name`, `variant`, `maxHealth`, `lastHealth`, `firstSeenT`, `diedT` |
 | `samples[]` | `{t, damage[4]}` — cumulative party damage per slot every 2 s (capped at 30 min). This is the only per-player timeline available for other hunters |
-| `hits[]` | One row per hit from the deal-damage hook: `t`, `slot`, `monster`, `damage`, `crit`, `tenderized`, `attackId`, `part` / `partName` (local hits when the part meter could be resolved; see `docs/part-damage.md`), `actionSet`, `actionId`, `action` (internal move name when resolvable). Teammate rows carry `estimated: true`, `attackId: -1`, and no crit/tenderize/part information. Capped at 50 000 |
+| `hits[]` | One row per hit from the deal-damage hook: `t`, `slot`, `monster`, `damage`, `crit`, `tenderized`, `attackId`, `part` / `partName` (local hits when the collision part could be resolved; see `docs/part-damage.md`), `actionSet`, `actionId`, `action` (internal move name when resolvable). Teammate rows carry `estimated: true`, `attackId: -1`, and no crit/tenderize/part information. Capped at 50 000 |
 | `events[]` | Timeline: `enrage` / `unenrage` / `death` / `flinch` (monster, `detail` = flinch action id), `cart` (hunter faint; `slot` when attributed, `detail` = hunter name), `weapon` (slot, `detail` = weapon type), `join` / `leave` (slot, `detail` = hunter name), `slotmatch` (slot, `detail` = how a teammate's hunter entity was matched to the slot). Capped at 5 000 |
 
 All `t` values are seconds on the same clock as `durationSeconds`.

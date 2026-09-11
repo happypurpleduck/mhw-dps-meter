@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 2,
+  "questName": "Part analysis fixture",
+  "startedAt": "2026-09-11T00:00:00Z",
+  "durationSeconds": 9,
+  "result": "complete",
+  "players": [
+    {
+      "slot": 0,
+      "name": "Hunter",
+      "isLocal": true,
+      "damage": 1274,
+      "dps": 0,
+      "percent": 0
+    },
+    {
+      "slot": 1,
+      "name": "Hunter",
+      "isLocal": false,
+      "damage": 90,
+      "dps": 0,
+      "percent": 0
+    },
+    {
+      "slot": 2,
+      "name": "Estimated hunter",
+      "isLocal": false,
+      "damage": 430,
+      "dps": 0,
+      "percent": 0
+    }
+  ],
+  "monsters": [
+    {
+      "id": "m1",
+      "name": "Anjanath",
+      "type": 0,
+      "maxHealth": 10000,
+      "lastHealth": 8000,
+      "firstSeenT": 0
+    },
+    {
+      "id": "m2",
+      "name": "Rathalos",
+      "type": 1,
+      "maxHealth": 10000,
+      "lastHealth": 8000,
+      "firstSeenT": 0
+    },
+    {
+      "id": "m3",
+      "name": "Rathalos",
+      "type": 1,
+      "maxHealth": 10000,
+      "lastHealth": 8000,
+      "firstSeenT": 0
+    }
+  ],
+  "hits": [
+    {
+      "t": 5,
+      "slot": 0,
+      "monster": "m1",
+      "part": 0,
+      "partName": "Head",
+      "damage": 80,
+      "crit": false,
+      "tenderized": true,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 0,
+      "slot": 0,
+      "monster": "m1",
+      "part": 0,
+      "partName": "Head",
+      "damage": 10,
+      "crit": true,
+      "tenderized": false,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 2,
+      "slot": 0,
+      "monster": "m1",
+      "part": 0,
+      "partName": "Head",
+      "damage": 30,
+      "crit": false,
+      "tenderized": true,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 4,
+      "slot": 1,
+      "monster": "m1",
+      "part": 0,
+      "partName": "Head",
+      "damage": 20,
+      "crit": false,
+      "tenderized": false,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 9,
+      "slot": 0,
+      "monster": "m1",
+      "part": 0,
+      "partName": "Head",
+      "damage": 40,
+      "crit": true,
+      "tenderized": false,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 3,
+      "slot": 0,
+      "monster": "m1",
+      "part": 1,
+      "partName": "Tail",
+      "damage": 100,
+      "crit": false,
+      "tenderized": false,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 1,
+      "slot": 0,
+      "monster": "m2",
+      "part": 0,
+      "partName": "Head",
+      "damage": 999,
+      "crit": false,
+      "tenderized": false,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 6,
+      "slot": 2,
+      "monster": "m1",
+      "part": 0,
+      "partName": "Head",
+      "damage": 300,
+      "crit": false,
+      "tenderized": false,
+      "estimated": true,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 7,
+      "slot": 0,
+      "monster": "m1",
+      "part": null,
+      "partName": null,
+      "damage": 15,
+      "crit": false,
+      "tenderized": false,
+      "estimated": false,
+      "attackId": 0,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 1,
+      "slot": 1,
+      "part": null,
+      "partName": null,
+      "damage": 70,
+      "crit": false,
+      "tenderized": false,
+      "estimated": true,
+      "attackId": -1,
+      "actionSet": 0,
+      "actionId": 0
+    },
+    {
+      "t": 8,
+      "slot": 2,
+      "part": null,
+      "partName": null,
+      "damage": 130,
+      "crit": false,
+      "tenderized": false,
+      "estimated": true,
+      "attackId": -1,
+      "actionSet": 0,
+      "actionId": 0,
+      "monster": null
+    }
+  ],
+  "samples": [
+    {
+      "t": 9,
+      "damage": [
+        9000,
+        9000,
+        9000,
+        0
+      ]
+    }
+  ]
+}

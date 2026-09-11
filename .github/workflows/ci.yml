@@ -62,6 +62,12 @@ jobs:
       - run: dotnet restore src/MhwDpsMeter/MhwDpsMeter.csproj --locked-mode
       - run: dotnet restore tests/PluginRegression/PluginRegression.csproj --locked-mode
       - run: dotnet run --project tests/PluginRegression -c Release --no-restore
+      - name: Restore native memory regression runner
+        if: runner.os == 'Windows'
+        run: dotnet restore tests/NativeMemoryRegression/NativeMemoryRegression.csproj --locked-mode
+      - name: Test protected native memory reads
+        if: runner.os == 'Windows'
+        run: dotnet run --project tests/NativeMemoryRegression -c Release --no-restore
       - name: Build plugin
         run: dotnet build src/MhwDpsMeter/MhwDpsMeter.csproj -c Release --no-restore -p:ContinuousIntegrationBuild=true -p:Deterministic=true -p:BuildStamp=${{ github.sha }}
       - name: Package shared Windows and Proton DLL

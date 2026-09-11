@@ -182,88 +182,123 @@ export function monsterBreakdown(log: FightLog): MonsterRow[] {
   })
 }
 
-export interface PartHunterRow {
-  slot: number
-  name: string
+export interface PartMetrics {
   damage: number
   hits: number
-  share: number
-  /** True when this row is entirely estimated award deltas (no part tags). */
+  dps: number
+  avg: number
+  max: number
+  critRate: number | null
+  tenderizedRate: number | null
+  /** Contains estimated award deltas; hit counts are rows and hit flags are unknown. */
   estimated: boolean
 }
 
-export interface PartRow {
-  /** Part index, or null for hits with no resolvable part. */
+export interface PartHunterRow extends PartMetrics {
+  slot: number
+  name: string
+  share: number
+}
+
+export interface PartRow extends PartMetrics {
   part: number | null
   name: string
-  damage: number
-  hits: number
   share: number
   hunters: PartHunterRow[]
 }
 
-/**
- * Damage grouped by monster part. Exact local hits carry `part`; teammate rows and
- * untagged hits fall under "Unknown part". Hunter ranking within a part only reflects
- * hits that have that part tag (today: local hunter only).
- */
-export function partBreakdown(log: FightLog, monsterId?: string | null): PartRow[] {
-  const hits = monsterId
-    ? log.hits.filter((h) => h.monster === monsterId)
-    : log.hits.filter((h) => h.monster)
-  const groups = new Map<string, PartRow>()
-  let total = 0
+/** Parts need a monster identity; estimated award deltas never establish a part. */
+export function hitPart(hit: FightLogHit): number | null {
+  return hit.estimated || hit.monster == null ? null : hit.part ?? null
+}
+
+/** A null monster selects unassigned damage, not a union of unrelated monster parts. */
+export function partHits(log: FightLog, monsterId: string | null, part: number | null): FightLogHit[] {
+  return log.hits.filter((h) => (h.monster ?? null) === monsterId && hitPart(h) === part)
+}
+
+function partMetrics(hits: FightLogHit[], duration: number): PartMetrics {
+  const stats = hitStats(hits)
+  const estimated = hits.some((h) => h.estimated)
+  return {
+    damage: stats.damage, hits: stats.hits, avg: stats.avg, max: stats.max,
+    dps: duration > 0 ? stats.damage / duration : 0,
+    critRate: estimated ? null : stats.critRate,
+    tenderizedRate: estimated ? null : stats.tenderizedRate,
+    estimated,
+  }
+}
+
+/** Per-part and per-hunter contributions, scoped to the selected monster. */
+export function partBreakdown(log: FightLog, monsterId: string | null): PartRow[] {
+  const hits = log.hits.filter((h) => (h.monster ?? null) === monsterId)
+  const groups = new Map<number | null, FightLogHit[]>()
   for (const hit of hits) {
-    total += hit.damage
-    const part = hit.part ?? null
-    const key = part == null ? 'unknown' : String(part)
-    let row = groups.get(key)
-    if (!row) {
-      row = {
-        part,
-        name: part == null ? 'Unknown part' : hit.partName ?? `Part ${part}`,
-        damage: 0,
-        hits: 0,
-        share: 0,
-        hunters: [],
-      }
-      groups.set(key, row)
-    } else if (part != null && row.name.startsWith('Part ') && hit.partName) {
-      row.name = hit.partName
-    }
-    row.damage += hit.damage
-    row.hits += 1
-
-    let hunter = row.hunters.find((h) => h.slot === hit.slot)
-    if (!hunter) {
-      hunter = {
-        slot: hit.slot,
-        name: playerBySlot(log, hit.slot)?.name ?? `Slot ${hit.slot + 1}`,
-        damage: 0,
-        hits: 0,
-        share: 0,
-        estimated: !!hit.estimated,
-      }
-      row.hunters.push(hunter)
-    }
-    hunter.damage += hit.damage
-    hunter.hits += 1
-    hunter.estimated = hunter.estimated && !!hit.estimated
+    const key = hitPart(hit)
+    const group = groups.get(key) ?? []
+    group.push(hit)
+    groups.set(key, group)
   }
+  const total = hits.reduce((sum, h) => sum + h.damage, 0)
+  return [...groups].map(([part, group]) => {
+    const metrics = partMetrics(group, log.durationSeconds)
+    const hunters = [...new Set(group.map((h) => h.slot))].map((slot) => {
+      const stats = partMetrics(group.filter((h) => h.slot === slot), log.durationSeconds)
+      return { ...stats, slot, name: playerBySlot(log, slot)?.name ?? `Slot ${slot + 1}`,
+        share: metrics.damage ? stats.damage / metrics.damage : 0 }
+    }).sort((a, b) => b.damage - a.damage)
+    return { ...metrics, part,
+      name: part == null ? 'Unknown part' : group.find((h) => h.partName)?.partName ?? `Part ${part}`,
+      share: total ? metrics.damage / total : 0, hunters }
+  }).sort((a, b) => b.damage - a.damage)
+}
 
-  const rows = [...groups.values()]
-  for (const row of rows) {
-    row.share = total ? row.damage / total : 0
-    for (const hunter of row.hunters) {
-      hunter.share = row.damage ? hunter.damage / row.damage : 0
+export interface HitTimeline {
+  damage: CurvePoint[]
+  dps: RatePoint[]
+  rolling: RatePoint[]
+}
+
+/** Rebuild part charts from hits, never from the whole-party award samples.
+ * Two-second bins include idle time and a final partial bin. Rolling windows use
+ * exact hit timestamps. Curves extend to the end of the hunt, even after the last hit.
+ */
+export function hitTimeline(log: FightLog, hits: FightLogHit[], windowSeconds = 20): HitTimeline {
+  const out: HitTimeline = { damage: [], dps: [], rolling: [] }
+  const sorted = hits.filter((h) => Number.isFinite(h.t) && h.t >= 0 && h.damage > 0)
+    .sort((a, b) => a.t - b.t)
+  const end = Math.max(Number.isFinite(log.durationSeconds) ? log.durationSeconds : 0, sorted.at(-1)?.t ?? 0, 0)
+  const window = Number.isFinite(windowSeconds) && windowSeconds > 0 ? windowSeconds : 20
+  const times = [0]
+  for (let t = 2; t < end; t += 2) times.push(t)
+  if (end > 0) times.push(end)
+  for (const slot of [...new Set(sorted.map((h) => h.slot))].sort()) {
+    const own = sorted.filter((h) => h.slot === slot)
+    const player = playerBySlot(log, slot)?.name ?? `Slot ${slot + 1}`
+    let right = 0, left = 0, cumulative = 0, rolling = 0, previous = 0, previousTime = 0
+    for (const t of times) {
+      if (t > 0 || end === 0) {
+        while (right < own.length && own[right]!.t <= t) {
+          const damage = own[right++]!.damage
+          cumulative += damage
+          rolling += damage
+        }
+      }
+      const cutoff = t - window
+      while (left < right && cutoff > 0 && own[left]!.t <= cutoff) rolling -= own[left++]!.damage
+      const dt = t - previousTime
+      out.damage.push({ t, damage: cumulative, slot, player })
+      out.dps.push({ t, dps: dt > 0 ? (cumulative - previous) / dt : 0, slot, player })
+      out.rolling.push({ t, dps: t > 0 ? rolling / Math.min(t, window) : 0, slot, player })
+      previous = cumulative
+      previousTime = t
     }
-    row.hunters.sort((a, b) => b.damage - a.damage)
   }
-  return rows.sort((a, b) => b.damage - a.damage)
+  return out
 }
 
 export function hasPartData(log: FightLog): boolean {
-  return log.hits.some((h) => h.part != null && !h.estimated)
+  return log.hits.some((h) => hitPart(h) != null)
 }
 
 export interface HitStats {

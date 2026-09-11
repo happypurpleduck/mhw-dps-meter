@@ -37,6 +37,7 @@ internal sealed class LiveDebugSnapshot
     public int HookHits { get; init; }
     public int HookCalls { get; init; }
     public int HookIgnored { get; init; }
+    public string PartCapture { get; init; } = "";
     public string HookLastHit { get; init; } = "";
     public string Monsters { get; init; } = "";
     public string DamageSource { get; init; } = "";
@@ -135,7 +136,7 @@ internal sealed class LiveDebugStore
                 $"party={snapshot.PartySize} layout={snapshot.Layout} " +
                 $"raw=[{string.Join(",", snapshot.Slots.Select(s => s.RawDamage))}] " +
                 $"shown=[{string.Join(",", snapshot.Slots.Where(s => s.Shown).Select(s => $"{s.Slot}:{s.ShownName}:{s.RawDamage}"))}] " +
-                $"hook={snapshot.HookTotal} calls={snapshot.HookCalls} hp={snapshot.FallbackLocalDamage} mon={snapshot.Monsters} err={snapshot.LastError}";
+                $"hook={snapshot.HookTotal} calls={snapshot.HookCalls} parts=[{snapshot.PartCapture}] hp={snapshot.FallbackLocalDamage} mon={snapshot.Monsters} err={snapshot.LastError}";
             RotateLogIfLarge();
             File.AppendAllText(_logPath, line + Environment.NewLine);
         }

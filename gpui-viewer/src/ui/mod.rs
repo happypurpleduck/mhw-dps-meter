@@ -83,7 +83,10 @@ pub struct ViewerApp {
     /// Which hunter's moves the Moves tab shows (None = local).
     pub(crate) moves_slot: Option<usize>,
     /// Which monster the Parts tab shows (None = first).
-    pub(crate) parts_monster: Option<String>,
+    // None picks the default; Some(None) selects damage with no monster attribution.
+    pub(crate) parts_monster: Option<Option<String>>,
+    /// None chooses the first tagged part; Some(None) selects Unknown part.
+    pub(crate) parts_selected: Option<Option<i32>>,
     /// Trial files ticked for comparison (at most two).
     pub(crate) compare: Vec<String>,
     _tasks: Vec<Task<()>>,
@@ -144,6 +147,7 @@ impl ViewerApp {
             show_flinches: false,
             moves_slot: None,
             parts_monster: None,
+            parts_selected: None,
             compare: Vec::new(),
             _tasks: Vec::new(),
             source_task: None,
@@ -166,6 +170,7 @@ impl ViewerApp {
             self.page = Page::Hunt(file);
             self.moves_slot = None;
             self.parts_monster = None;
+            self.parts_selected = None;
             cx.notify();
         }
     }
@@ -221,6 +226,7 @@ impl ViewerApp {
             self.page = first.map(Page::Hunt).unwrap_or(Page::Empty);
             self.moves_slot = None;
             self.parts_monster = None;
+            self.parts_selected = None;
         }
         self.loaded = Some(loaded);
         self.loading = false;

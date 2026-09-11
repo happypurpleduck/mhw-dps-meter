@@ -9,6 +9,8 @@ Address DAMAGE_ADDRESS 0x051C46B8
 Address SESSION_OFFSET 0x051C46B8
 Address QUEST_DATA_ADDRESS 0x0500ED30
 Address FUN_DEAL_DAMAGE 0x01CC5F80
+# Verified live 421810: damage-number caller carrying collision context.
+Address FUN_SHOW_DAMAGE_CONTEXT 0x002C3030
 
 Offset LevelOffsets 0xA8
 Offset PARTY_OFFSETS 0x1AB0

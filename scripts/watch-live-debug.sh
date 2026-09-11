@@ -24,7 +24,7 @@ if command -v jq >/dev/null 2>&1; then
         jq '{
           at, inQuest, questId, questName, elapsed, status, damageSource, lastError, layout,
           partySize, localName, hasPackedTable, damageBase, partyArray,
-          hookTotal, hookSlots, fallbackLocalDamage, overlayNames, overlayDamage,
+          hookTotal, hookSlots, partCapture, fallbackLocalDamage, overlayNames, overlayDamage,
           slots: [.slots[] | {slot, shown, shownName, rawDamage, partyName, sessionName, ptrOk, ptr, partyNameHex, why}]
         }' "$JSON" 2>/dev/null || cat "$JSON"
       else

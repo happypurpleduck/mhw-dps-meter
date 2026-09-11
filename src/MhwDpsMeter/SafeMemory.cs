@@ -12,6 +12,35 @@ internal static class SafeMemory
     private const ulong UserSpaceMin = 0x10000;
     private const ulong UserSpaceMax = 0x00007FFFFFFFFFFFul;
 
+    /// <summary>
+    /// Copies through the OS rather than dereferencing a possibly stale native pointer.
+    /// A VirtualQuery check followed by a raw read still races with entity teardown;
+    /// an AccessViolation from that read can terminate the process despite a catch.
+    /// </summary>
+    public static unsafe bool TryReadProtected<T>(nint address, out T value) where T : unmanaged
+    {
+        T copy = default;
+        value = default;
+        if (!TryCopy(address, &copy, (nuint)sizeof(T)))
+            return false;
+        value = copy;
+        return true;
+    }
+
+    public static unsafe bool TryReadProtectedBytes(nint address, Span<byte> bytes)
+    {
+        fixed (byte* destination = bytes)
+            return TryCopy(address, destination, (nuint)bytes.Length);
+    }
+
+    private static unsafe bool TryCopy(nint address, void* destination, nuint size) =>
+        LooksLikeUserPointer(address) && size > 0 && size - 1 <= UserSpaceMax - (ulong)address
+        && ReadProcessMemory((nint)(-1), address, destination, size, out var copied) && copied == size;
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern unsafe bool ReadProcessMemory(nint process, nint address, void* buffer, nuint size, out nuint copied);
+
     public static bool TryRead<T>(nint address, out T value) where T : unmanaged
     {
         value = default;

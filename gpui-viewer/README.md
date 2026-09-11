@@ -57,7 +57,7 @@ The browser build bundles Inter and IBM Plex Sans (`fonts/`, SIL OFL) because th
 - **Hunt list** (left): every quest and time trial from `index.json`, text filter, All/Quests/Trials toggle, sortable columns; click a row to open it.
 - **Overview**: party table with damage, DPS, carts and share; cumulative damage per hunter as a multi-series plot with red (monster death), orange (enrage) and yellow (hunter cart) markers; rolling DPS with a selectable window.
 - **Moves**: per-move breakdown per hunter (damage bar, share, hits, crit rate, avg, max, tenderized); your rows are exact, teammates' rows (plugin 0.4.0+) are estimated from award-table increments and labelled "(est.)". Toggle to hide `Common::` actions (hits registered after the move ended).
-- **Parts**: damage by monster part with a per-part top hunter; part tags exist only on your exact hits (see `docs/part-damage.md`).
+- **Parts**: select a monster and part to inspect damage, share, hunt DPS, hit count, average/largest hit, crit and tenderized rates, and every recorded hunter's contribution. Cumulative damage, 2-second interval DPS, and rolling DPS (10/20/30/60 seconds) are rebuilt from that part's hits. DPS uses the full hunt clock, including idle time. Untagged and estimated rows with a monster stay under Unknown part; rows without a monster appear under Unassigned damage with all hunter contributions and charts. Teammate estimates have no part tags or crit/tenderize rates. See [`docs/part-damage.md`](../docs/part-damage.md).
 - **Layout**: the hunt list and detail pane are separated by a draggable resizable panel.
 - **Monsters**: HP lost per large monster and how much of it was yours.
 - **Timeline**: enrage, unenrage, death, cart, weapon swaps, joins and leaves; flinches on request.

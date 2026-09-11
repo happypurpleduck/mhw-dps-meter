@@ -25,7 +25,7 @@ internal readonly record struct HitRecord(
 ///                   BOOL isCrit, int unk0, int unk1, char unk2, int attackId)
 /// The game only runs this for hits simulated on this client, so it can only ever
 /// attribute damage (and part) to the local player. Party damage comes from the award
-/// table. Part id is resolved from the monster part-health array around the call.
+/// table. Part id comes from a scoped hook on the caller that has the collision context.
 /// </summary>
 internal sealed class DamageTracker : IDisposable
 {
@@ -40,6 +40,24 @@ internal sealed class DamageTracker : IDisposable
         int unk1,
         byte unk2,
         int attackId);
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate void ShowDamageContextDelegate(nint controller, nint hitData, nint damageData);
+
+    [ThreadStatic] private static MonsterPartResolver.HitContext? _partContext;
+    private Hook<ShowDamageContextDelegate>? _partHook;
+    private int _partTagged;
+    private int _partUnknown;
+    private string _partLast = "none";
+    public string PartStatus { get; private set; } = "off";
+    public string PartDiagnostics
+    {
+        get
+        {
+            lock (_gate)
+                return $"{PartStatus}; tagged={_partTagged} unknown={_partUnknown} last={_partLast}";
+        }
+    }
 
     private readonly object _gate = new();
     private Hook<DealDamageDelegate>? _hook;
@@ -153,11 +171,78 @@ internal sealed class DamageTracker : IDisposable
             _hook.Enable();
             Status = $"hook 0x{address:X}";
             Log.Info($"MhwDpsMeter: damage hook enabled at 0x{address:X}.");
+            InstallPartHook(moduleBase, map);
         }
         catch (Exception ex)
         {
             Status = $"hook failed ({ex.GetType().Name})";
             Log.Warn($"MhwDpsMeter: {Status}: {ex.Message}");
+        }
+    }
+
+    private void InstallPartHook(nint moduleBase, AddressMap map)
+    {
+        if (!map.TryGetAddress("FUN_SHOW_DAMAGE_CONTEXT", out var rva) || rva == 0)
+        {
+            PartStatus = "no verified context hook for this map";
+            return;
+        }
+
+        try
+        {
+            var address = moduleBase + rva;
+            // Fail closed if the function changes or another mod has patched it.
+            byte[] expected = [0x40, 0x55, 0x56, 0x41, 0x55, 0x48, 0x81, 0xEC,
+                0x80, 0, 0, 0, 0x48, 0x8B, 0xF2, 0x4C, 0x8B, 0xE9];
+            if (!SafeMemory.TryReadBytes(address, expected.Length, out var actual)
+                || !actual.SequenceEqual(expected))
+            {
+                PartStatus = "context hook signature mismatch";
+                Log.Warn($"MhwDpsMeter: {PartStatus}.");
+                return;
+            }
+
+            _partHook = Hook.Create<ShowDamageContextDelegate>((long)address, OnShowDamageContext);
+            _partHook.Enable();
+            PartStatus = $"collision hook 0x{address:X}";
+            Log.Info($"MhwDpsMeter: {PartStatus}.");
+        }
+        catch (Exception ex)
+        {
+            PartStatus = $"context hook failed ({ex.GetType().Name})";
+            Log.Warn($"MhwDpsMeter: {PartStatus}: {ex.Message}");
+        }
+    }
+
+    private void OnShowDamageContext(nint controller, nint hitData, nint damageData)
+    {
+        var previous = _partContext;
+        _partContext = null;
+        try
+        {
+            try
+            {
+                // Training objects do not share the large-monster part layout.
+                if (RecordHits && !AcceptAllTargets
+                    && SafeMemory.TryRead<nint>(controller + 0x08, out var target))
+                {
+                    bool tracked;
+                    lock (_gate) tracked = _largeMonsters.Contains(target);
+                    if (tracked)
+                        _partContext = MonsterPartResolver.Capture(controller, hitData);
+                }
+            }
+            catch (Exception ex)
+            {
+                lock (_gate) _partLast = $"context read failed ({ex.GetType().Name})";
+            }
+
+            // The nested DealDamage callback consumes this context synchronously.
+            _partHook?.Original(controller, hitData, damageData);
+        }
+        finally
+        {
+            _partContext = previous;
         }
     }
 
@@ -169,6 +254,9 @@ internal sealed class DamageTracker : IDisposable
             _hits = 0;
             _calls = 0;
             _ignored = 0;
+            _partTagged = 0;
+            _partUnknown = 0;
+            _partLast = "none";
             _lastTarget = 0;
             _lastDamage = 0;
             _firstHitTimestamp = 0;
@@ -187,6 +275,16 @@ internal sealed class DamageTracker : IDisposable
             // already gone on unload
         }
 
+        try
+        {
+            _partHook?.Disable();
+        }
+        catch
+        {
+            // already gone on unload
+        }
+        _partHook = null;
+        PartStatus = "off";
         _hook = null;
         Status = "off";
         Reset();
@@ -241,19 +339,6 @@ internal sealed class DamageTracker : IDisposable
         int unk0, int unk1, byte unk2, int attackId)
     {
         var hook = _hook;
-        List<MonsterPartResolver.PartSample>? partsBefore = null;
-        try
-        {
-            // Snapshot flinch/break meters before the game applies damage so we can
-            // see which part changed. Training poles have no part array.
-            if (_recordHits && damage is > 0 and <= 100_000)
-                partsBefore = MonsterPartResolver.Snapshot(target);
-        }
-        catch
-        {
-            partsBefore = null;
-        }
-
         try
         {
             hook?.Original(target, damage, position, isTenderized, isCrit, unk0, unk1, unk2, attackId);
@@ -262,17 +347,12 @@ internal sealed class DamageTracker : IDisposable
         {
             try
             {
-                int? part = null;
-                try
-                {
-                    part = MonsterPartResolver.Resolve(target, position, partsBefore);
-                }
-                catch
-                {
-                    // part tagging is best-effort
-                }
-
-                Record(target, damage, isTenderized != 0, isCrit != 0, attackId, part);
+                var context = _partContext;
+                var part = context?.Match(target, position);
+                var reason = context is null ? "no hit context"
+                    : context.Value.Target != target || context.Value.Position != position
+                        ? "hit context mismatch" : context.Value.Status;
+                Record(target, damage, isTenderized != 0, isCrit != 0, attackId, part, reason);
             }
             catch
             {
@@ -281,7 +361,7 @@ internal sealed class DamageTracker : IDisposable
         }
     }
 
-    private void Record(nint target, int damage, bool tenderized, bool crit, int attackId, int? part)
+    private void Record(nint target, int damage, bool tenderized, bool crit, int attackId, int? part, string partReason)
     {
         lock (_gate)
         {
@@ -309,7 +389,12 @@ internal sealed class DamageTracker : IDisposable
             _hits++;
 
             if (_recordHits && _pending.Count < MaxPendingHits)
+            {
+                if (part is not null) _partTagged++;
+                else _partUnknown++;
+                _partLast = partReason;
                 _pending.Add(new HitRecord(now, target, damage, crit, tenderized, attackId, _actionSet, _actionId, part));
+            }
         }
     }
 }

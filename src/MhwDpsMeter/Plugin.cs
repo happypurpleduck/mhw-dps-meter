@@ -28,6 +28,7 @@ public sealed class Plugin : IPlugin
     private readonly DamageTracker _hits = new();
     private readonly HuntRecorder _recorder;
     private readonly PartyActionTracker _party;
+    private readonly HunterActionNames _actionNames;
     private readonly TimeTrial _trial;
     /// <summary>Award-table damage per slot at the previous poll; deltas feed teammate move attribution.</summary>
     private int[]? _prevSlotDamage;
@@ -78,6 +79,7 @@ public sealed class Plugin : IPlugin
 
     public Plugin()
     {
+        _actionNames = new HunterActionNames(IsHunterEntity);
         _recorder = new HuntRecorder(ResolveActionName);
         _party = new PartyActionTracker(ResolveEntityActionName, EntityLooksAlive, IsHunterEntity);
         _trial = new TimeTrial(ResolveActionName);
@@ -592,6 +594,7 @@ public sealed class Plugin : IPlugin
             $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
+            $"Part capture: {_hits.PartDiagnostics}\n" +
             $"Recorder: {_recorder.HitCount} hits ({_recorder.HitCoverage}), weapon {_recorder.LocalWeapon ?? "-"}\n" +
             $"Hunter entities: {_party.Diagnostics()}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
@@ -630,6 +633,7 @@ public sealed class Plugin : IPlugin
             HookCalls = _hits.Calls,
             HookIgnored = _hits.Ignored,
             HookLastHit = _hits.LastHit,
+            PartCapture = _hits.PartDiagnostics,
             Monsters = _monsterHp.LastMonsters,
             DamageSource = _damageSource,
             LastError = _reader.LastError,
@@ -773,14 +777,16 @@ public sealed class Plugin : IPlugin
         if (_carts is null || instance == 0)
             return;
 
-        var name = ResolveEntityActionName(instance, actionSet, actionId);
-        if (!CartTracker.LooksLikeDeathAction(name))
-            return;
-
+        // OnEntityAction includes non-hunter owners. Establish a party slot before
+        // touching action data; the name reader also validates the hunter's vtable.
         var slot = _party.SlotOf(instance);
         if (slot < 0 && instance == LocalPlayerInstance())
             slot = _snapshot?.LocalSlot ?? -1;
         if (slot < 0)
+            return;
+
+        var name = ResolveEntityActionName(instance, actionSet, actionId);
+        if (!CartTracker.LooksLikeDeathAction(name))
             return;
 
         var hunterName = _snapshot?.Members.FirstOrDefault(m => m.Slot == slot)?.Name;
@@ -821,31 +827,12 @@ public sealed class Plugin : IPlugin
     }
 
     /// <summary>Looks up the internal action name ("Attack00" style) from the local hunter's action list.</summary>
-    private static string? ResolveActionName(int actionSet, int actionId)
-    {
-        var player = Player.MainPlayer;
-        if (player is null || actionId < 0)
-            return null;
-
-        var list = player.ActionController.GetActionList(actionSet);
-        if (actionId >= list.Count)
-            return null;
-
-        return list[actionId]?.Name;
-    }
+    private string? ResolveActionName(int actionSet, int actionId) =>
+        _actionNames.Read(LocalPlayerInstance(), actionSet, actionId);
 
     /// <summary>Action name for any hunter entity, read from that entity's own action list.</summary>
-    private static string? ResolveEntityActionName(nint instance, int actionSet, int actionId)
-    {
-        if (instance == 0 || actionId < 0)
-            return null;
-
-        var list = new Entity(instance).ActionController.GetActionList(actionSet);
-        if (actionId >= list.Count)
-            return null;
-
-        return list[actionId]?.Name;
-    }
+    private string? ResolveEntityActionName(nint instance, int actionSet, int actionId) =>
+        _actionNames.Read(instance, actionSet, actionId);
 
     private static WeaponType? ReadLocalWeapon()
     {
@@ -877,7 +864,7 @@ public sealed class Plugin : IPlugin
     /// the game image. Freed or garbage pointers fail here instead of faulting later.
     /// </summary>
     private bool TryReadVtable(nint instance, out nint vtable) =>
-        SafeMemory.TryRead(instance, out vtable) && ModuleContains(vtable);
+        SafeMemory.TryReadProtected(instance, out vtable) && ModuleContains(vtable);
 
     /// <summary>
     /// Hunter entity pointers are remembered from past callbacks; a teammate who left may

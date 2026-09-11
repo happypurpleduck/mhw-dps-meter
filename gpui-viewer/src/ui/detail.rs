@@ -22,8 +22,8 @@ use super::{
     plots::{LinesPlot, Marker, Series, legend, slot_color},
 };
 use crate::analysis::{
-    damage_curves, format_date, format_duration, format_int, has_part_data, hit_stats, local_exact_hits, monster_breakdown,
-    move_breakdown, move_display_name, part_breakdown, pct, rolling_dps, interval_dps,
+    damage_curves, format_date, format_duration, format_int, hit_stats, local_exact_hits, monster_breakdown,
+    move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
 
@@ -262,137 +262,138 @@ impl ViewerApp {
     }
 
     fn render_parts(&mut self, log: &FightLog, cx: &mut Context<Self>) -> impl IntoElement {
-        if !log.hits.iter().any(|h| h.monster.is_some()) {
-            return v_flex().child(muted("This log has no monster-targeted hits to group by part.", cx));
+        if log.hits.is_empty() {
+            return v_flex().child(muted("No recorded damage to display.", cx));
         }
         let monsters = &log.monsters;
-        let monster_id = self
-            .parts_monster
-            .as_deref()
-            .filter(|id| monsters.iter().any(|m| m.id == *id))
-            .or_else(|| monsters.first().map(|m| m.id.as_str()));
-        let rows = part_breakdown(log, monster_id);
-        let top = rows.iter().map(|r| r.damage).max().unwrap_or(1).max(1) as f32;
-        let summary = if has_part_data(log) {
-            "Damage by monster part. Part tags come from your exact hits; teammate award deltas have no part."
-                .to_string()
-        } else {
-            "No part tags in this log yet. Untagged and teammate rows appear under Unknown part — party award totals are not split by part.".to_string()
+        let unassigned = part_breakdown(log, None);
+        let monster_id = match self.parts_monster.as_ref() {
+            Some(Some(id)) if monsters.iter().any(|m| m.id == *id) => Some(id.as_str()),
+            Some(None) if !unassigned.is_empty() => None,
+            _ => monsters.iter().find(|m| log.hits.iter().any(|h| h.monster.as_ref() == Some(&m.id))).map(|m| m.id.as_str())
+                .or_else(|| if unassigned.is_empty() { monsters.first().map(|m| m.id.as_str()) } else { None }),
         };
+        let mut choices: Vec<(Option<String>, SharedString)> = monsters.iter()
+            .map(|m| (Some(m.id.clone()), format!("{} · {}", m.name, m.id).into())).collect();
+        if !unassigned.is_empty() {
+            choices.push((None, "Unassigned damage".into()));
+        }
+        let rows = part_breakdown(log, monster_id);
+        let selected = self.parts_selected.and_then(|id| rows.iter().find(|r| r.part == id))
+            .or_else(|| rows.iter().find(|r| r.part.is_some())).or_else(|| rows.first());
+        let total: i64 = rows.iter().map(|r| r.damage).sum();
+        let tagged: i64 = rows.iter().filter(|r| r.part.is_some()).map(|r| r.damage).sum();
+        let coverage = if total > 0 { tagged as f32 / total as f32 } else { 0.0 };
+        let top = rows.iter().map(|r| r.damage).max().unwrap_or(1).max(1) as f32;
 
-        v_flex()
-            .gap_3()
-            .when(monsters.len() > 1, |this| {
-                this.child(
-                    TabBar::new("parts-monsters")
-                        .pill()
-                        .selected_index(
-                            monsters
-                                .iter()
-                                .position(|m| Some(m.id.as_str()) == monster_id)
-                                .unwrap_or(0),
-                        )
-                        .on_click(cx.listener({
-                            let ids: Vec<String> = monsters.iter().map(|m| m.id.clone()).collect();
-                            move |this, ix: &usize, _, cx| {
-                                this.parts_monster = ids.get(*ix).cloned();
-                                cx.notify();
-                            }
-                        }))
-                        .children(monsters.iter().map(|m| SharedString::from(m.name.clone()))),
-                )
-            })
-            .child(muted(summary, cx))
-            .child(
-                Table::new()
-                    .small()
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .rounded(cx.theme().radius)
-                    .child(
-                        TableHeader::new().child(
-                            TableRow::new()
-                                .child(TableHead::new().w(px(180.)).child("Part"))
-                                .child(TableHead::new().w(px(220.)).child("Damage"))
-                                .child(TableHead::new().w(px(64.)).text_right().child("Share"))
-                                .child(TableHead::new().w(px(48.)).text_right().child("Hits"))
-                                .child(TableHead::new().w(px(200.)).child("Most damage")),
-                        ),
-                    )
+        v_flex().gap_3()
+            .when(log.hits.iter().any(|h| h.estimated), |this| this.child(muted("Teammate damage was recorded as estimated totals without part tags. Known-part charts only include hunters with exact tagged hits.", cx)))
+            .when_some(unassigned.first(), |this, unknown| this.child(
+                card(cx)
+                    .child(muted(format!("{} recorded damage from {} has no monster or part attribution.",
+                        format_int(unknown.damage), unknown.hunters.iter().map(|h| h.name.as_str()).collect::<Vec<_>>().join(", ")), cx))
+                    .child(Button::new("parts-unassigned").small().label("View unassigned damage")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.parts_monster = Some(None);
+                            this.parts_selected = None;
+                            cx.notify();
+                        })))
+            ))
+            .when(choices.len() > 1, |this| this.child(
+                TabBar::new("parts-monsters").pill()
+                    .selected_index(choices.iter().position(|(id, _)| id.as_deref() == monster_id).unwrap_or(0))
+                    .on_click(cx.listener({
+                        let ids: Vec<Option<String>> = choices.iter().map(|(id, _)| id.clone()).collect();
+                        move |this, ix: &usize, _, cx| {
+                            this.parts_monster = ids.get(*ix).cloned();
+                            this.parts_selected = None;
+                            cx.notify();
+                        }
+                    }))
+                    .children(choices.iter().map(|(_, label)| label.clone())),
+            ))
+            .child(muted(if monster_id.is_some() {
+                format!("{} of this monster’s recorded damage has a known part. Select a part below to inspect its hunters and charts.", pct(coverage, 1))
+            } else {
+                "Monster and part not recorded. These charts show the available damage per hunter and may cover several monsters.".into()
+            }, cx))
+            .child(muted("Unknown part includes untagged damage assigned to the selected monster. Damage without a monster is listed separately under Unassigned damage.", cx))
+            .when(monster_id.is_some() && !rows.is_empty() && !rows.iter().any(|r| r.part.is_some()), |this| this.child(muted("No part tags recorded for this monster. Unknown part shows the available damage and timeline.", cx)))
+            .when(rows.is_empty(), |this| this.child(muted("No recorded hits on this monster.", cx)))
+            .when(!rows.is_empty(), |this| this.child(
+                Table::new().small().border_1().border_color(cx.theme().border).rounded(cx.theme().radius)
+                    .child(TableHeader::new().child(TableRow::new()
+                        .child(TableHead::new().w(px(150.)).child("Part"))
+                        .child(TableHead::new().w(px(160.)).child("Damage"))
+                        .child(TableHead::new().w(px(74.)).text_right().child("Share"))
+                        .child(TableHead::new().w(px(76.)).text_right().child("Hunt DPS"))
+                        .child(TableHead::new().w(px(76.)).text_right().child("Hits / rows"))
+                        .child(TableHead::new().w(px(64.)).text_right().child("Average"))
+                        .child(TableHead::new().w(px(64.)).text_right().child("Largest"))))
                     .child(TableBody::new().children(rows.iter().enumerate().map(|(ix, r)| {
-                        let frac = (r.damage as f32 / top).clamp(0.0, 1.0);
-                        let top_hunter = r.hunters.first().map(|h| {
-                            format!("{} {}", h.name, format_int(h.damage))
-                        }).unwrap_or_else(|| "—".into());
-                        let top_color = r.hunters.first().map(|h| slot_color(h.slot)).unwrap_or(cx.theme().muted_foreground);
-                        TableRow::new()
-                            .when(ix % 2 == 1, |row| row.bg(cx.theme().table_even))
-                            .child(
-                                TableCell::new().w(px(180.)).child(
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .child(div().child(r.name.clone()))
-                                        .when_some(r.part, |d, part| {
-                                            d.child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(cx.theme().muted_foreground)
-                                                    .child(format!("id {part}")),
-                                            )
-                                        }),
-                                ),
-                            )
-                            .child(
-                                TableCell::new().w(px(220.)).child(meter_bar(
-                                    frac,
-                                    Hsla::from(rgb(0xf26bb8)),
-                                    cx.theme().border,
-                                    format_int(r.damage),
-                                )),
-                            )
-                            .child(TableCell::new().w(px(64.)).text_right().child(pct(r.share, 1)))
-                            .child(TableCell::new().w(px(48.)).text_right().child(r.hits.to_string()))
-                            .child(
-                                TableCell::new().w(px(200.)).child(
-                                    h_flex()
-                                        .gap_2()
-                                        .items_center()
-                                        .child(div().size(px(8.)).rounded_full().bg(top_color))
-                                        .child(div().truncate().child(top_hunter)),
-                                ),
-                            )
+                        let part_id = r.part;
+                        let active = selected.is_some_and(|s| s.part == r.part);
+                        let button = Button::new(SharedString::from(format!("part-select-{ix}")))
+                            .xsmall().label(r.name.clone())
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.parts_selected = Some(part_id);
+                                cx.notify();
+                            }));
+                        TableRow::new().when(active, |row| row.bg(cx.theme().table_even))
+                            .child(TableCell::new().w(px(150.)).child(if active { button.primary() } else { button.ghost() }))
+                            .child(TableCell::new().w(px(160.)).child(meter_bar(r.damage as f32 / top, Hsla::from(rgb(0xf26bb8)), cx.theme().border, format_int(r.damage))))
+                            .child(TableCell::new().w(px(74.)).text_right().child(pct(r.share, 1)))
+                            .child(TableCell::new().w(px(76.)).text_right().child(format!("{:.1}", r.metrics.dps)))
+                            .child(TableCell::new().w(px(76.)).text_right().child(r.hits.to_string()))
+                            .child(TableCell::new().w(px(64.)).text_right().child(format!("{:.1}", r.metrics.avg)))
+                            .child(TableCell::new().w(px(64.)).text_right().child(format_int(r.metrics.max)))
                     }))),
-            )
-            .when_some(rows.first().cloned(), |this, part| {
-                this.child(
-                    card(cx)
-                        .child(div().font_medium().child(part.name.clone()))
-                        .child(muted("Hunters ranked by damage to this part", cx))
-                        .children(part.hunters.into_iter().map(|h| {
-                            h_flex()
-                                .gap_2()
-                                .items_center()
-                                .child(div().size(px(8.)).rounded_full().bg(slot_color(h.slot)))
-                                .child(div().flex_1().truncate().child(h.name.clone()))
-                                .when(h.estimated, |row| {
-                                    row.child(
-                                        gpui_kit::component::tag::Tag::warning()
-                                            .outline()
-                                            .xsmall()
-                                            .child("est."),
-                                    )
-                                })
-                                .child(div().child(format_int(h.damage)))
-                                .child(
-                                    div()
-                                        .w(px(48.))
-                                        .text_right()
-                                        .text_color(cx.theme().muted_foreground)
-                                        .child(pct(h.share, 1)),
-                                )
-                        })),
-                )
+            ))
+            .when_some(selected, |this, part| {
+                let hits = part_hits(log, monster_id, part.part);
+                let timeline = hit_timeline(log, &hits, self.dps_window);
+                let series = |kind| -> Vec<Series> { timeline.iter().map(|s| Series {
+                    label: part.hunters.iter().find(|h| h.slot == s.slot)
+                        .map(|h| format!("{}{}", h.name, if h.estimated { " (est.)" } else { "" }))
+                        .unwrap_or_else(|| format!("Slot {}", s.slot + 1)).into(),
+                    color: slot_color(s.slot),
+                    points: match kind { 0 => s.damage.clone(), 1 => s.dps.clone(), _ => s.rolling.clone() },
+                }).collect() };
+                let cumulative = series(0);
+                let direct = series(1);
+                let rolling = series(2);
+                this.child(div().text_lg().font_semibold().child(format!("{} · {}",
+                        monsters.iter().find(|m| Some(m.id.as_str()) == monster_id).map(|m| m.name.as_str()).unwrap_or("Unassigned damage"), part.name)))
+                    .child(h_flex().flex_wrap().gap_2()
+                        .child(stat_tile(if monster_id.is_some() { "Part damage" } else { "Unassigned damage" }, format_int(part.damage), format!("{} of recorded damage in this view", pct(part.share, 1)), None, cx))
+                        .child(stat_tile("Hunt DPS", format!("{:.1}", part.metrics.dps), format!("over {}", format_duration(log.duration_seconds)), None, cx))
+                        .child(stat_tile(if part.metrics.estimated { "Recorded rows" } else { "Hits" }, part.hits.to_string(), format!("avg {:.1} · largest {}", part.metrics.avg, format_int(part.metrics.max)), None, cx))
+                        .child(stat_tile("Crit / tenderized", format!("{} / {}", part_rate(part.metrics.crit_rate), part_rate(part.metrics.tenderized_rate)),
+                            if part.metrics.estimated { "Unavailable for estimated rows" } else { "Share of hits on this part" }.into(), None, cx)))
+                    .child(section_title("Hunter contributions", cx))
+                    .child(muted("DPS uses the full hunt duration. Shares and charts use recorded hits. Estimated rows are damage increments; crit and tenderize rates are unavailable.", cx))
+                    .child(render_part_hunters(part, cx))
+                    .child(card(cx)
+                        .child(div().font_semibold().child(format!("{} · Cumulative damage", part.name)))
+                        .child(div().h(px(240.)).w_full().child(LinesPlot::new(cumulative.clone(), Vec::new())))
+                        .child(legend(&cumulative, cx)))
+                    .child(card(cx)
+                        .child(div().font_semibold().child(format!("{} · DPS", part.name)))
+                        .child(muted("Damage in each 2-second interval / interval duration. Idle intervals stay at zero.", cx))
+                        .child(div().h(px(220.)).w_full().child(LinesPlot::new(direct.clone(), Vec::new())))
+                        .child(legend(&direct, cx)))
+                    .child(card(cx)
+                        .child(h_flex().justify_between().items_center()
+                            .child(div().font_semibold().child(format!("{} · Rolling DPS", part.name)))
+                            .child(h_flex().gap_1().children([10.0f32, 20.0, 30.0, 60.0].into_iter().map(|w| {
+                                let active = (self.dps_window - w).abs() < 0.5;
+                                let button = Button::new(SharedString::from(format!("part-window-{}", w as u32)))
+                                    .xsmall().label(format!("{}s", w as u32))
+                                    .on_click(cx.listener(move |this, _, _, cx| { this.dps_window = w; cx.notify(); }));
+                                if active { button.primary() } else { button.ghost() }
+                            }))))
+                        .child(div().h(px(220.)).w_full().child(LinesPlot::new(rolling.clone(), Vec::new())))
+                        .child(legend(&rolling, cx)))
             })
     }
 
@@ -685,4 +686,36 @@ pub(super) fn stat_tile(title: &'static str, value: String, desc: String, accent
         .child(div().text_xs().text_color(cx.theme().muted_foreground).child(title))
         .child(div().text_2xl().font_semibold().when_some(accent, |this, c| this.text_color(c)).child(value))
         .child(div().text_xs().text_color(cx.theme().muted_foreground).truncate().child(desc))
+}
+
+fn part_rate(rate: Option<f32>) -> String {
+    rate.map(|r| pct(r, 1)).unwrap_or_else(|| "—".into())
+}
+
+fn render_part_hunters(part: &PartRow, cx: &App) -> impl IntoElement {
+    Table::new().small().border_1().border_color(cx.theme().border).rounded(cx.theme().radius)
+        .child(TableHeader::new().child(TableRow::new()
+            .child(TableHead::new().w(px(145.)).child("Hunter"))
+            .child(TableHead::new().w(px(75.)).text_right().child("Damage"))
+            .child(TableHead::new().w(px(65.)).text_right().child("Share"))
+            .child(TableHead::new().w(px(75.)).text_right().child("Hunt DPS"))
+            .child(TableHead::new().w(px(76.)).text_right().child("Hits / rows"))
+            .child(TableHead::new().w(px(60.)).text_right().child("Average"))
+            .child(TableHead::new().w(px(60.)).text_right().child("Largest"))
+            .child(TableHead::new().w(px(60.)).text_right().child("Crit"))
+            .child(TableHead::new().w(px(80.)).text_right().child("Tenderized"))))
+        .child(TableBody::new().children(part.hunters.iter().enumerate().map(|(ix, h)| {
+            TableRow::new().when(ix % 2 == 1, |r| r.bg(cx.theme().table_even))
+                .child(TableCell::new().w(px(145.)).child(h_flex().gap_2().items_center()
+                    .child(div().size(px(8.)).rounded_full().bg(slot_color(h.slot)))
+                    .child(div().truncate().child(format!("{}{}", h.name, if h.estimated { " (est.)" } else { "" })))))
+                .child(TableCell::new().w(px(75.)).text_right().child(format_int(h.damage)))
+                .child(TableCell::new().w(px(65.)).text_right().child(pct(h.share, 1)))
+                .child(TableCell::new().w(px(75.)).text_right().child(format!("{:.1}", h.metrics.dps)))
+                .child(TableCell::new().w(px(76.)).text_right().child(h.hits.to_string()))
+                .child(TableCell::new().w(px(60.)).text_right().child(format!("{:.1}", h.metrics.avg)))
+                .child(TableCell::new().w(px(60.)).text_right().child(format_int(h.metrics.max)))
+                .child(TableCell::new().w(px(60.)).text_right().child(part_rate(h.metrics.crit_rate)))
+                .child(TableCell::new().w(px(80.)).text_right().child(part_rate(h.metrics.tenderized_rate)))
+        })))
 }

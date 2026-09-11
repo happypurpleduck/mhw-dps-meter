@@ -166,6 +166,27 @@ pub fn monster_breakdown(log: &FightLog) -> Vec<MonsterRow> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct PartMetrics {
+    pub dps: f32,
+    pub avg: f32,
+    pub max: i64,
+    pub crit_rate: Option<f32>,
+    pub tenderized_rate: Option<f32>,
+    pub estimated: bool,
+}
+
+fn part_metrics(hits: &[&Hit], duration: f32) -> PartMetrics {
+    let stats = hit_stats(hits.iter().copied());
+    let estimated = hits.iter().any(|h| h.estimated);
+    PartMetrics {
+        dps: if duration > 0.0 { stats.damage as f32 / duration } else { 0.0 },
+        avg: stats.avg(), max: stats.max, estimated,
+        crit_rate: (!estimated).then(|| stats.crit_rate()),
+        tenderized_rate: (!estimated).then(|| if stats.hits > 0 { stats.tenderized as f32 / stats.hits as f32 } else { 0.0 }),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct PartHunterRow {
     pub slot: usize,
     pub name: String,
@@ -173,6 +194,7 @@ pub struct PartHunterRow {
     pub hits: usize,
     pub share: f32,
     pub estimated: bool,
+    pub metrics: PartMetrics,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -183,81 +205,109 @@ pub struct PartRow {
     pub hits: usize,
     pub share: f32,
     pub hunters: Vec<PartHunterRow>,
+    pub metrics: PartMetrics,
 }
 
 pub fn has_part_data(log: &FightLog) -> bool {
-    log.hits.iter().any(|h| h.part.is_some() && !h.estimated)
+    log.hits.iter().any(|h| hit_part(h).is_some())
 }
 
-/// Damage grouped by monster part. Untagged / teammate rows land under "Unknown part".
-pub fn part_breakdown(log: &FightLog, monster_id: Option<&str>) -> Vec<PartRow> {
-    let hits = log.hits.iter().filter(|h| match monster_id {
-        Some(id) => h.monster.as_deref() == Some(id),
-        None => h.monster.is_some(),
-    });
-    let mut groups: BTreeMap<String, PartRow> = BTreeMap::new();
-    let mut total = 0i64;
-    for hit in hits {
-        total += hit.damage;
-        let key = hit
-            .part
-            .map(|p| p.to_string())
-            .unwrap_or_else(|| "unknown".into());
-        let row = groups.entry(key).or_insert_with(|| PartRow {
-            part: hit.part,
-            name: match hit.part {
-                None => "Unknown part".into(),
-                Some(p) => hit.part_name.clone().unwrap_or_else(|| format!("Part {p}")),
-            },
-            damage: 0,
-            hits: 0,
-            share: 0.0,
-            hunters: Vec::new(),
-        });
-        if hit.part.is_some()
-            && row.name.starts_with("Part ")
-            && let Some(name) = &hit.part_name
-        {
-            row.name = name.clone();
-        }
-        row.damage += hit.damage;
-        row.hits += 1;
+/// Parts need a monster identity; award deltas cannot establish which part was hit.
+pub fn hit_part(hit: &Hit) -> Option<i32> {
+    if hit.estimated || hit.monster.is_none() { None } else { hit.part }
+}
 
-        if let Some(hunter) = row.hunters.iter_mut().find(|h| h.slot == hit.slot) {
-            hunter.damage += hit.damage;
-            hunter.hits += 1;
-            hunter.estimated = hunter.estimated && hit.estimated;
-        } else {
-            let name = log
-                .players
-                .iter()
-                .find(|p| p.slot == hit.slot)
-                .map(|p| p.name.clone())
-                .unwrap_or_else(|| format!("Slot {}", hit.slot + 1));
-            row.hunters.push(PartHunterRow {
-                slot: hit.slot,
-                name,
-                damage: hit.damage,
-                hits: 1,
-                share: 0.0,
-                estimated: hit.estimated,
-            });
-        }
+/// None selects unassigned damage, not a union of unrelated monster parts.
+pub fn part_hits<'a>(log: &'a FightLog, monster_id: Option<&str>, part: Option<i32>) -> Vec<&'a Hit> {
+    log.hits.iter().filter(|h| hit_part(h) == part && h.monster.as_deref() == monster_id).collect()
+}
+
+/// Damage and all hunter contributions, scoped to the selected monster.
+pub fn part_breakdown(log: &FightLog, monster_id: Option<&str>) -> Vec<PartRow> {
+    let mut groups: BTreeMap<Option<i32>, Vec<&Hit>> = BTreeMap::new();
+    let mut total = 0;
+    for hit in log.hits.iter().filter(|h| h.monster.as_deref() == monster_id) {
+        total += hit.damage;
+        groups.entry(hit_part(hit)).or_default().push(hit);
     }
-    let mut rows: Vec<PartRow> = groups.into_values().collect();
-    for row in &mut rows {
-        row.share = if total > 0 { row.damage as f32 / total as f32 } else { 0.0 };
-        for hunter in &mut row.hunters {
-            hunter.share = if row.damage > 0 {
-                hunter.damage as f32 / row.damage as f32
-            } else {
-                0.0
-            };
+    let mut rows: Vec<_> = groups.into_iter().map(|(part, hits)| {
+        let damage: i64 = hits.iter().map(|h| h.damage).sum();
+        let mut by_slot: BTreeMap<usize, Vec<&Hit>> = BTreeMap::new();
+        for hit in &hits { by_slot.entry(hit.slot).or_default().push(hit); }
+        let mut hunters: Vec<_> = by_slot.into_iter().map(|(slot, own)| {
+            let own_damage: i64 = own.iter().map(|h| h.damage).sum();
+            PartHunterRow {
+                slot,
+                name: log.players.iter().find(|p| p.slot == slot).map(|p| p.name.clone()).unwrap_or_else(|| format!("Slot {}", slot + 1)),
+                damage: own_damage, hits: own.len(),
+                share: if damage > 0 { own_damage as f32 / damage as f32 } else { 0.0 },
+                estimated: own.iter().any(|h| h.estimated),
+                metrics: part_metrics(&own, log.duration_seconds),
+            }
+        }).collect();
+        hunters.sort_by(|a, b| b.damage.cmp(&a.damage));
+        PartRow {
+            part,
+            name: match part {
+                None => "Unknown part".into(),
+                Some(id) => hits.iter().find_map(|h| h.part_name.clone()).unwrap_or_else(|| format!("Part {id}")),
+            },
+            damage, hits: hits.len(),
+            share: if total > 0 { damage as f32 / total as f32 } else { 0.0 },
+            hunters, metrics: part_metrics(&hits, log.duration_seconds),
         }
-        row.hunters.sort_by(|a, b| b.damage.cmp(&a.damage));
-    }
+    }).collect();
     rows.sort_by(|a, b| b.damage.cmp(&a.damage));
     rows
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitTimeline {
+    pub slot: usize,
+    pub damage: Vec<(f32, f32)>,
+    pub dps: Vec<(f32, f32)>,
+    pub rolling: Vec<(f32, f32)>,
+}
+
+/// Part curves use hit timestamps, never whole-party award samples. Include idle
+/// bins, the final partial interval, and the remainder of the hunt after last hit.
+pub fn hit_timeline(log: &FightLog, hits: &[&Hit], window: f32) -> Vec<HitTimeline> {
+    let mut sorted: Vec<_> = hits.iter().copied().filter(|h| h.t.is_finite() && h.t >= 0.0 && h.damage > 0).collect();
+    sorted.sort_by(|a, b| a.t.total_cmp(&b.t));
+    let end = log.duration_seconds.max(0.0).max(sorted.last().map(|h| h.t).unwrap_or(0.0));
+    let end = if end.is_finite() { end } else { sorted.last().map(|h| h.t).unwrap_or(0.0) };
+    let window = if window.is_finite() && window > 0.0 { window } else { 20.0 };
+    let mut times = vec![0.0];
+    let mut t = 2.0;
+    while t < end { times.push(t); t += 2.0; }
+    if end > 0.0 { times.push(end); }
+    let mut groups: BTreeMap<usize, Vec<&Hit>> = BTreeMap::new();
+    for hit in sorted { groups.entry(hit.slot).or_default().push(hit); }
+    groups.into_iter().map(|(slot, own)| {
+        let mut series = HitTimeline { slot, damage: Vec::new(), dps: Vec::new(), rolling: Vec::new() };
+        let (mut right, mut left, mut cumulative, mut rolling, mut previous, mut previous_time) = (0, 0, 0i64, 0i64, 0i64, 0.0);
+        for &t in &times {
+            if t > 0.0 || end == 0.0 {
+                while right < own.len() && own[right].t <= t {
+                    cumulative += own[right].damage;
+                    rolling += own[right].damage;
+                    right += 1;
+                }
+            }
+            let cutoff = t - window;
+            while left < right && cutoff > 0.0 && own[left].t <= cutoff {
+                rolling -= own[left].damage;
+                left += 1;
+            }
+            let dt = t - previous_time;
+            series.damage.push((t, cumulative as f32));
+            series.dps.push((t, if dt > 0.0 { (cumulative - previous) as f32 / dt } else { 0.0 }));
+            series.rolling.push((t, if t > 0.0 { rolling as f32 / t.min(window) } else { 0.0 }));
+            previous = cumulative;
+            previous_time = t;
+        }
+        series
+    }).collect()
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -598,6 +648,85 @@ mod tests {
         let unknown = rows.iter().find(|r| r.part.is_none()).unwrap();
         assert_eq!(unknown.damage, 80);
         assert!(has_part_data(&log));
+    }
+
+    fn part_fixture() -> FightLog {
+        FightLog::parse(include_str!("../../tests/fixtures/part-detail.json")).unwrap()
+    }
+
+    #[test]
+    fn part_detail_metrics_and_unknown_estimates() {
+        let log = part_fixture();
+        let rows = part_breakdown(&log, Some("m1"));
+        let head = rows.iter().find(|r| r.part == Some(0)).unwrap();
+        assert_eq!((head.damage, head.hits), (180, 5));
+        assert_eq!((head.metrics.dps, head.metrics.avg, head.metrics.max), (20.0, 36.0, 80));
+        assert_eq!((head.metrics.crit_rate, head.metrics.tenderized_rate), (Some(0.4), Some(0.4)));
+        assert_eq!(head.hunters.iter().map(|h| (h.slot, h.damage, h.hits)).collect::<Vec<_>>(), vec![(0, 160, 4), (1, 20, 1)]);
+        assert!((head.hunters[0].metrics.dps - 160.0 / 9.0).abs() < 0.001);
+        let unknown = rows.iter().find(|r| r.part.is_none()).unwrap();
+        assert_eq!(unknown.damage, 315);
+        assert_eq!((unknown.metrics.crit_rate, unknown.metrics.tenderized_rate), (None, None));
+        assert!(part_hits(&log, Some("m1"), Some(0)).iter().all(|h| !h.estimated));
+        assert_eq!(part_breakdown(&log, Some("m2"))[0].damage, 999);
+        assert!(part_breakdown(&log, Some("m3")).is_empty());
+    }
+
+    #[test]
+    fn unassigned_teammate_damage_stays_visible_without_double_counting() {
+        let mut log = part_fixture();
+        let unassigned = part_breakdown(&log, None);
+        assert_eq!(unassigned.len(), 1);
+        assert_eq!((unassigned[0].part, unassigned[0].damage, unassigned[0].hits), (None, 200, 2));
+        assert!(unassigned[0].metrics.estimated);
+        assert_eq!(unassigned[0].metrics.crit_rate, None);
+        assert_eq!(unassigned[0].hunters.iter().map(|h| (h.slot, h.damage)).collect::<Vec<_>>(), vec![(2, 130), (1, 70)]);
+        let curves = hit_timeline(&log, &part_hits(&log, None, None), 20.0);
+        assert_eq!((curves[0].slot, curves[0].damage.last().unwrap().1), (1, 70.0));
+        assert_eq!((curves[1].slot, curves[1].damage.last().unwrap().1), (2, 130.0));
+        let monster_damage: i64 = log.monsters.iter().flat_map(|m| part_breakdown(&log, Some(&m.id))).map(|r| r.damage).sum();
+        assert_eq!(monster_damage + unassigned[0].damage, log.hits.iter().map(|h| h.damage).sum::<i64>());
+        assert!(part_hits(&log, None, Some(0)).is_empty());
+
+        log.hits.retain(|h| h.monster.is_none());
+        log.monsters.clear();
+        assert_eq!(part_breakdown(&log, None)[0].damage, 200);
+        // A part id without a monster cannot identify a body part, even in an exact row.
+        log.hits[0].estimated = false;
+        log.hits[0].part = Some(0);
+        log.hits[0].part_name = Some("Head".into());
+        assert_eq!(part_breakdown(&log, None).iter().map(|r| r.part).collect::<Vec<_>>(), vec![None]);
+        assert!(!has_part_data(&log));
+    }
+
+    #[test]
+    fn part_curves_rebuild_hits_with_idle_and_partial_intervals() {
+        let log = part_fixture();
+        let timeline = hit_timeline(&log, &part_hits(&log, Some("m1"), Some(0)), 4.0);
+        assert_eq!(timeline[0].damage, vec![(0.0, 0.0), (2.0, 40.0), (4.0, 40.0), (6.0, 120.0), (8.0, 120.0), (9.0, 160.0)]);
+        assert_eq!(timeline[0].dps.iter().map(|p| p.1).collect::<Vec<_>>(), vec![0.0, 20.0, 0.0, 40.0, 0.0, 40.0]);
+        assert_eq!(timeline[0].rolling.iter().map(|p| p.1).collect::<Vec<_>>(), vec![0.0, 20.0, 10.0, 20.0, 20.0, 10.0]);
+        assert_eq!(timeline[1].damage.last(), Some(&(9.0, 20.0)));
+        let tail = hit_timeline(&log, &part_hits(&log, Some("m1"), Some(1)), 4.0);
+        assert_eq!(tail[0].damage.last(), Some(&(9.0, 100.0)));
+        assert_eq!(tail[0].rolling.last(), Some(&(9.0, 0.0)));
+    }
+
+    #[test]
+    fn part_charts_accept_old_empty_and_zero_duration_logs() {
+        let mut log = part_fixture();
+        for hit in &mut log.hits { hit.part = None; hit.part_name = None; }
+        assert_eq!(part_breakdown(&log, Some("m1")).iter().map(|r| r.part).collect::<Vec<_>>(), vec![None]);
+        assert!(hit_timeline(&log, &[], 20.0).is_empty());
+        log.duration_seconds = 0.0;
+        log.hits.truncate(1);
+        log.hits[0].t = 0.0;
+        log.hits[0].damage = 10;
+        let hits: Vec<_> = log.hits.iter().collect();
+        let curves = hit_timeline(&log, &hits, 20.0);
+        assert_eq!(curves[0].damage, vec![(0.0, 10.0)]);
+        assert_eq!(curves[0].dps, vec![(0.0, 0.0)]);
+        assert_eq!(part_breakdown(&log, Some("m1"))[0].metrics.dps, 0.0);
     }
 
     #[test]

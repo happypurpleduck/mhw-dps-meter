@@ -143,3 +143,22 @@ export function compareCurvesChart(series: { label: string; color: string; point
     },
   } as never) as unknown as Def
 }
+
+/** Hit-derived part curves, grouped by slot even when hunters share a name. */
+export function partTimelineChart(rows: CurvePoint[] | RatePoint[], metric: 'damage' | 'dps', label: string): Def {
+  const data = rows.map((d) => ({ t: d.t, slot: d.slot, player: d.player,
+    value: 'damage' in d ? d.damage : d.dps }))
+  return defineChart({
+    marks: [lineY(data, { id: `part-${metric}`, x: 't', y: 'value', z: 'slot',
+      stroke: (d: { slot: number }) => slotColor(d.slot), strokeWidth: 2 })],
+    scales: {
+      x: { scale: scaleLinear, nice: true, axis: { label: 'Hunt time (s)' } },
+      y: { scale: scaleLinear, nice: true, grid: true, axis: { label } },
+    },
+    tooltip: { use: tooltip, format: (point: { datum: { player: string; value: number; t: number } }) => {
+      const d = point.datum
+      const value = metric === 'damage' ? formatInt(d.value) : `${d.value.toFixed(1)} DPS`
+      return `${d.player}: ${value} @ ${d.t.toFixed(1)}s`
+    } },
+  } as never) as unknown as Def
+}

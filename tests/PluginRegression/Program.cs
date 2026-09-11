@@ -118,7 +118,7 @@ Equal(1, noAwards.SlotWeapons().Single().Slot, "weapon discovery works without a
 
 var actionName = "WP_GS";
 var recorder = new HuntRecorder((_, _) => actionName);
-var hit = new HitRecord(Stopwatch.GetTimestamp(), 0, 100, false, false, 1, 1, 1);
+var hit = new HitRecord(Stopwatch.GetTimestamp(), 0, 100, false, false, 1, 1, 1, null);
 recorder.ObserveWeapon(0, WeaponType.GreatSword, 0);
 recorder.AddHits(1, [hit], 0);
 actionName = "WP_DB";
@@ -149,6 +149,47 @@ Equal(false, CartTracker.LooksLikeDeathAction("Common::IDLE"), "idle is not deat
 Equal(false, CartTracker.LooksLikeDeathAction("DIESEL"), "token must be bounded");
 Equal(false, CartTracker.LooksLikeDeathAction(null), "null action is not death");
 
+// Quest-load crash: a non-hunter action owner yielded action pointer 0x3231;
+// Action.Name then dereferenced 0x3251 and terminated the game outside managed catches.
+nint hunterEntity = 0x200000, actionArray = 0x300000, actionObject = 0x400000, actionText = 0x500000;
+var actionNames = new HunterActionNames(instance => instance == hunterEntity);
+void SetActionMemory(int set = 0, string name = "Common::DIE")
+{
+    SafeMemory.Values.Clear();
+    var list = hunterEntity + 0x61C8 + 0x68 + set * 0x10;
+    SafeMemory.Values[list] = actionArray;
+    SafeMemory.Values[list + 8] = 54;
+    SafeMemory.Values[actionArray + 53 * 8] = actionObject;
+    SafeMemory.Values[actionObject + 0x20] = actionText;
+    var bytes = System.Text.Encoding.UTF8.GetBytes(name + "\0");
+    for (var i = 0; i < bytes.Length; i++) SafeMemory.Values[actionText + i] = bytes[i];
+}
+SetActionMemory();
+Equal("Common::DIE", actionNames.Read(hunterEntity, 0, 53), "valid hunter death action preserves cart detection");
+Equal<string?>(null, actionNames.Read(hunterEntity + 1, 0, 53), "non-hunter callback owner rejected");
+Equal<string?>(null, actionNames.Read(0, 0, 53), "null action owner rejected");
+Equal<string?>(null, actionNames.Read(hunterEntity, -1, 53), "negative action set rejected");
+Equal<string?>(null, actionNames.Read(hunterEntity, 4, 53), "action set past final list rejected");
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, -1), "negative action id rejected");
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 54), "action id at count rejected");
+SafeMemory.Values[actionArray + 53 * 8] = (nint)0x3231;
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 53), "actual crash action pointer skipped safely");
+SetActionMemory();
+SafeMemory.Values[actionObject + 0x20] = (nint)0x700000;
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 53), "unreadable action name rejected");
+SetActionMemory();
+SafeMemory.Values[hunterEntity + 0x61C8 + 0x68 + 8] = int.MaxValue;
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 53), "corrupt action count bounded");
+SetActionMemory();
+SafeMemory.Values.Remove(actionArray + 53 * 8);
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 53), "torn action list skipped");
+SetActionMemory(3, "WP_02::RANBU");
+Equal("WP_02::RANBU", actionNames.Read(hunterEntity, 3, 53), "last supported action set and weapon name preserved");
+SetActionMemory(name: new string('A', 256));
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 53), "unterminated name bounded to 256 bytes");
+SetActionMemory(name: "");
+Equal<string?>(null, actionNames.Read(hunterEntity, 0, 53), "empty name remains unknown");
+
 var cartRecorder = new HuntRecorder((_, _) => null);
 cartRecorder.AddCart(12.5f, 0, "Local");
 cartRecorder.AddCart(40f, null, null);
@@ -162,15 +203,104 @@ Equal<int?>(null, cartRecorder.Events().First(e => e.Type == "cart" && Math.Abs(
 Equal("Head", MonsterParts.Display(0, 2), "Anjanath head part name");
 Equal("Part 99", MonsterParts.Display(0, 99), "unknown part retains id");
 
-var head = new MonsterPartResolver.PartSample(2, 100f, 0, 0x20000, 0x1F8);
-var body = new MonsterPartResolver.PartSample(3, 200f, 1, 0x201F8, 0x1F8);
-var afterHeadDrop = new[] { head with { Health = 40f }, body };
-var afterCounter = new[] { head, body with { Counter = 2 } };
-Equal(2, MonsterPartResolver.ResolveFromDiff([head, body], afterHeadDrop), "largest flinch-meter drop wins");
-Equal(3, MonsterPartResolver.ResolveFromDiff([head, body], afterCounter), "counter rise identifies part when health unchanged");
-Equal<int?>(null, MonsterPartResolver.ResolveFromDiff([head], [head]), "no change yields no part");
-Equal(2, MonsterPartResolver.MatchPosition([head, body], 2), "small position treated as part index");
-Equal(3, MonsterPartResolver.MatchPosition([head, body], 0x201F8 + 0x10), "position inside part struct");
+// The game's damage-number callback leaves meters unchanged. Parts must come from
+// the synchronous caller context, including slot zero and post-break remapping.
+Equal(0, MonsterParts.FromNormalSlot(30, 0), "Tobi head uses collision slot zero");
+Equal(2, MonsterParts.FromNormalSlot(0, 0), "Anjanath normal slot skips severable meters");
+Equal(6, MonsterParts.FromNormalSlot(0, 4), "Anjanath tail canonical id");
+Equal<int?>(null, MonsterParts.FromNormalSlot(0, 15), "missing part mapping stays unknown");
+
+nint controller = 0x100000, target = 0x200000, hitData = 0x300000, collision = 0x400000;
+void SetupPart(int type, int slot, int state = 0)
+{
+    SafeMemory.Values.Clear();
+    SafeMemory.Values[controller + 0x08] = target;
+    SafeMemory.Values[hitData + 0x28] = collision;
+    SafeMemory.Values[collision + 0x60] = slot;
+    SafeMemory.Values[controller + slot * 0x1F8 + 0x208] = state;
+    SafeMemory.Values[target + 0x12280] = type;
+}
+SetupPart(30, 0);
+var context = MonsterPartResolver.Capture(controller, hitData);
+Equal(0, context.Match(target, hitData + 0xE0), "unchanged meters still tag Tobi head");
+Equal<int?>(null, context.Match(target + 1, hitData + 0xE0), "another target cannot inherit context");
+Equal<int?>(null, context.Match(target, hitData + 0xE4), "another position cannot inherit context");
+SetupPart(0, 0, 1);
+SafeMemory.Values[collision + 0x80] = 4;
+Equal(6, MonsterPartResolver.Capture(controller, hitData).Part, "broken part uses alternate collision slot");
+SafeMemory.Values[collision + 0x80] = -1;
+Equal<int?>(null, MonsterPartResolver.Capture(controller, hitData).Part, "invalid alternate is not guessed");
+SetupPart(30, 16);
+Equal<int?>(null, MonsterPartResolver.Capture(controller, hitData).Part, "out-of-range collision rejected");
+SetupPart(999, 0);
+Equal<int?>(null, MonsterPartResolver.Capture(controller, hitData).Part, "unknown monster mapping stays unknown");
+SafeMemory.Values.Clear();
+Equal<int?>(null, MonsterPartResolver.Capture(controller, hitData).Part, "unreadable context stays unknown");
+
+// Exercise both production detours with a native original that emits two damage
+// numbers without changing any part meter. Nested calls must restore their scope.
+const long numberAddress = 0x141CC5F80, contextAddress = 0x1402C3030;
+byte[] contextPrologue = [0x40, 0x55, 0x56, 0x41, 0x55, 0x48, 0x81, 0xEC,
+    0x80, 0, 0, 0, 0x48, 0x8B, 0xF2, 0x4C, 0x8B, 0xE9];
+void Emit(nint position) => SharpPluginLoader.Core.Memory.Hook.Invoke(numberAddress,
+    target, 25, position, 0, 0, 0, 0, (byte)0, 0);
+SetupPart(30, 0);
+SafeMemory.Values[new nint(contextAddress)] = contextPrologue;
+SharpPluginLoader.Core.Memory.Hook.Originals[numberAddress] = _ => { };
+SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress] = args =>
+{
+    var data = (nint)args[1];
+    if (data == hitData)
+    {
+        // An unreadable nested context must not borrow the outer head tag.
+        SharpPluginLoader.Core.Memory.Hook.Invoke(contextAddress, controller, hitData + 0x1000, (nint)0);
+    }
+    Emit(data + 0xE0);
+};
+using (var damage = new DamageTracker())
+{
+    damage.UpdateMonsters([target]);
+    damage.RecordHits = true;
+    damage.Install(new nint(0x140000000), AddressMap.TryLoadEmbedded(421810)!);
+    Equal(true, damage.PartStatus.StartsWith("collision hook"), "verified part hook installed");
+    SharpPluginLoader.Core.Memory.Hook.Invoke(contextAddress, controller, hitData, (nint)0);
+    var recorded = damage.DrainHits();
+    Equal(2, recorded.Count, "nested native calls retain both damage numbers");
+    Equal<int?>(null, recorded[0].Part, "unreadable nested hit stays unknown");
+    Equal(0, recorded[1].Part, "outer hit retains head after nested call");
+    Emit(hitData + 0xE0);
+    Equal<int?>(null, damage.DrainHits().Single().Part, "expired context cannot tag later damage");
+    Equal(75, damage.LocalDamage, "part capture preserves total damage");
+    Equal(true, damage.PartDiagnostics.Contains("tagged=1 unknown=2"), "capture coverage is observable");
+    damage.Reset();
+    Equal(true, damage.PartDiagnostics.Contains("tagged=0 unknown=0"), "hunt reset clears capture counts");
+
+    var nativeOriginal = SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress];
+    SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress] = _ => throw new InvalidOperationException("native failure");
+    try { SharpPluginLoader.Core.Memory.Hook.Invoke(contextAddress, controller, hitData, (nint)0); }
+    catch (System.Reflection.TargetInvocationException) { }
+    Emit(hitData + 0xE0);
+    Equal<int?>(null, damage.DrainHits().Single().Part, "exception unwinds hit context");
+    SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress] = nativeOriginal;
+
+    damage.AcceptAllTargets = true;
+    SharpPluginLoader.Core.Memory.Hook.Invoke(contextAddress, controller, hitData, (nint)0);
+    Equal(true, damage.DrainHits().All(h => h.Part is null), "training does not read monster parts");
+}
+Equal(false, SharpPluginLoader.Core.Memory.Hook.Detours.ContainsKey(contextAddress), "unload disables context hook");
+SafeMemory.Values[new nint(contextAddress)] = new byte[contextPrologue.Length];
+using (var badSignature = new DamageTracker())
+{
+    badSignature.Install(new nint(0x140000000), AddressMap.TryLoadEmbedded(421810)!);
+    Equal("context hook signature mismatch", badSignature.PartStatus, "changed native function is not hooked");
+    Equal(true, badSignature.Hooked, "part hook failure preserves damage capture");
+}
+using (var oldBuild = new DamageTracker())
+{
+    oldBuild.Install(new nint(0x140000000), AddressMap.TryLoadEmbedded(421631)!);
+    Equal("no verified context hook for this map", oldBuild.PartStatus, "unverified build leaves parts unknown");
+}
+SafeMemory.Values.Clear();
 
 Equal(true, AddressMap.TryLoadEmbedded(421810)!.TryGetOffsets("QUEST_EXTRA_DATA_OFFSETS", out var deathOffsets)
     && deathOffsets is [0x17370], "421810 map has quest death extras");

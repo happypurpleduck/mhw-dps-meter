@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <!-- Run on Windows/Proton to exercise the actual OS copy, not simulated memory. -->
+  <ItemGroup>
+    <Compile Include="../../src/MhwDpsMeter/SafeMemory.cs" Link="SafeMemory.cs" />
+    <Compile Include="../../src/MhwDpsMeter/HunterActionNames.cs" Link="HunterActionNames.cs" />
+    <PackageReference Include="SharpPluginLoader.Core" Version="0.0.7.2" />
+  </ItemGroup>
+</Project>
