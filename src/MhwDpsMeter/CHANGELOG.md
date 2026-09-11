@@ -1,5 +1,17 @@
 # MHW DPS Meter
 
+## 0.6.1
+
+### Patch Changes
+
+- e07e70e: Fix missing monster-part tags on build 421810 by reading the hit collision context
+  instead of comparing part meters around the damage-number callback. Translate
+  normal part slots to canonical names and expose capture coverage in diagnostics.
+- e07e70e: Fix a quest-loading crash in cart detection when a general action callback supplies
+  a non-hunter owner. Require an identified party slot before inspecting cart actions,
+  and validate hunters, action-list bounds, pointers and bounded names using protected
+  OS memory copies. Invalid or stale action data now leaves the name unknown.
+
 ## 0.6.0
 
 ### Minor Changes
