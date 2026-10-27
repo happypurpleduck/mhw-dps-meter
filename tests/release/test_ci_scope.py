@@ -120,8 +120,14 @@ class ScopeTests(unittest.TestCase):
                     git("commit", "-qm", "move across component scopes")
                     head = git("rev-parse", "HEAD")
 
-                    paths = scope.changed_paths(base, head)
-                    self.assertCountEqual(paths, (source, destination))
+                    result = subprocess.run(
+                        [sys.executable, str(ROOT / "scripts/ci_scope.py"), base, head],
+                        cwd=repo,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
                     self.assertEqual(
-                        scope.select_jobs(paths), (True, True, True)
+                        result.stdout.splitlines(),
+                        ["plugin=true", "viewer=true", "web=true"],
                     )
