@@ -30,7 +30,7 @@ This document fixes **meaning** before calculations and UI. Implementation statu
 
 ## Next break / remaining cycles
 
-Read canonical normal part metadata from `data/monster-parts.json`, preserving its original MonsterData.xml order while excluding severable entries when mapping collision normal slot ordinals. The draft stores `breakThresholds` and `tenderizeIds` for all 653 entries across 72 supported monster definitions.
+Read canonical normal part metadata from `data/monster-parts.json`, preserving its original MonsterData.xml order while excluding severable entries when mapping collision normal slot ordinals. The draft stores `breakThresholds` and `tenderizeIds` for all 652 entries across 72 supported monster definitions.
 
 For a breakable normal part with observed flinch counter `c`, proposed `nextBreakThreshold` is the first defined threshold strictly greater than `c`. If none exists, return unknown/not-applicable based on game semantics **after validation**. Current gauge `remaining/max` and this cycle count are **not HP damage**. Multi-stage behavior, resets and counter semantics must be verified on real monsters, particularly with Partbreaker.
 
