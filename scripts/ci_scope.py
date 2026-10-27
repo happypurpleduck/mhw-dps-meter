@@ -35,8 +35,10 @@ def select_jobs(paths):
 def changed_paths(base, head):
     # Checkout has full history; use the merge base so commits only on the
     # target branch cannot broaden the PR's CI scope.
+    # Disable rename detection so both sides of a cross-component move are
+    # classified. A removed plugin/viewer path must not be hidden by its new name.
     raw = subprocess.check_output(
-        ["git", "diff", "--name-only", "-z", f"{base}...{head}"]
+        ["git", "diff", "--no-renames", "--name-only", "-z", f"{base}...{head}"]
     )
     return [path.decode("utf-8") for path in raw.split(b"\0") if path]
 

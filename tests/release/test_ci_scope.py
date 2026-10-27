@@ -88,3 +88,40 @@ class ScopeTests(unittest.TestCase):
                 result.stdout.splitlines(),
                 ["plugin=false", "viewer=false", "web=true"],
             )
+
+    def test_cross_component_renames_run_full_matrix(self):
+        """Git rename detection must not hide a changed source component."""
+        for source, destination in (
+            ("src/MhwDpsMeter/A.cs", "web/src/A.cs"),
+            ("gpui-viewer/src/A.rs", "web/src/A.rs"),
+            ("web/src/A.ts", "gpui-viewer/src/A.ts"),
+        ):
+            with self.subTest(source=source, destination=destination):
+                with tempfile.TemporaryDirectory() as directory:
+                    repo = Path(directory)
+
+                    def git(*args):
+                        return subprocess.check_output(
+                            ["git", "-C", str(repo), *args], text=True
+                        ).strip()
+
+                    git("init", "-q", "-b", "main")
+                    git("config", "user.name", "CI scope test")
+                    git("config", "user.email", "ci-scope@example.invalid")
+                    source_path = repo / source
+                    source_path.parent.mkdir(parents=True, exist_ok=True)
+                    source_path.write_text("unchanged content\n")
+                    git("add", ".")
+                    git("commit", "-qm", "initial")
+                    base = git("rev-parse", "HEAD")
+
+                    (repo / destination).parent.mkdir(parents=True, exist_ok=True)
+                    git("mv", source, destination)
+                    git("commit", "-qm", "move across component scopes")
+                    head = git("rev-parse", "HEAD")
+
+                    paths = scope.changed_paths(base, head)
+                    self.assertCountEqual(paths, (source, destination))
+                    self.assertEqual(
+                        scope.select_jobs(paths), (True, True, True)
+                    )
