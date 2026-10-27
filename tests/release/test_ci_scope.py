@@ -1,6 +1,9 @@
 """Keep PR CI scoping conservative and deterministic."""
 import importlib.util
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,3 +46,45 @@ class ScopeTests(unittest.TestCase):
 
     def test_unknown_paths_fail_closed(self):
         self.assertEqual(scope.select_jobs(["new-top-level-file"]), (True, True, True))
+
+    def test_base_branch_changes_do_not_expand_pr_scope(self):
+        """Use divergent real Git branches to test the CLI's diff and selection."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+
+            def git(*args):
+                return subprocess.check_output(
+                    ["git", "-C", str(repo), *args], text=True
+                ).strip()
+
+            git("init", "-q", "-b", "main")
+            git("config", "user.name", "CI scope test")
+            git("config", "user.email", "ci-scope@example.invalid")
+            (repo / "web").mkdir()
+            (repo / "src").mkdir()
+            (repo / "web" / "view.ts").write_text("original web\n")
+            (repo / "src" / "plugin.cs").write_text("original plugin\n")
+            git("add", ".")
+            git("commit", "-qm", "initial")
+
+            git("switch", "-qc", "web-only")
+            (repo / "web" / "view.ts").write_text("changed web\n")
+            git("commit", "-qam", "web change")
+            head = git("rev-parse", "HEAD")
+
+            git("switch", "-q", "main")
+            (repo / "src" / "plugin.cs").write_text("changed plugin\n")
+            git("commit", "-qam", "plugin change")
+            base = git("rev-parse", "HEAD")
+
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts/ci_scope.py"), base, head],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertEqual(
+                result.stdout.splitlines(),
+                ["plugin=false", "viewer=false", "web=true"],
+            )
