@@ -13,7 +13,7 @@ WORKFLOW = (Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml")
 
 def job_section(source, name):
     match = re.search(
-        rf"(?ms)^  {name}:\n(.*?)(?=^  [a-z_-]+:\n|\\Z)", source
+        rf"(?ms)^  {name}:\n(.*?)(?=^  [a-z_-]+:\n|\Z)", source
     )
     if match is None:
         raise AssertionError(f"CI job {name} missing")
@@ -47,7 +47,7 @@ class RequiredCheckContextTests(unittest.TestCase):
                     self.assertRegex(
                         step,
                         r"(?m)^        if: env.RUN_COMPONENT == 'true'"
-                        r"(?: && \\(runner\\.os == '(?:Windows|Linux)'\\))?$",
+                        r"(?: && \(runner\.os == '(?:Windows|Linux)'\))?$",
                     )
 
     def test_native_check_names_stay_platform_specific(self):
