@@ -69,39 +69,49 @@ jobs:
   plugin:
     name: Plugin (${{ matrix.os }})
     needs: scope
-    # Keep check contexts visible: skip jobs, not the entire workflow.
-    if: github.event_name != 'pull_request' || needs.scope.outputs.plugin == 'true'
+    # Expand both platform check contexts, even when plugin work is unnecessary.
     timeout-minutes: 20
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-2022]
+    env:
+      RUN_COMPONENT: ${{ github.event_name != 'pull_request' || needs.scope.outputs.plugin == 'true' }}
     steps:
+      - name: Not affected by PR
+        if: env.RUN_COMPONENT != 'true'
+        run: echo "plugin checks not needed for this PR"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.RUN_COMPONENT == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        if: env.RUN_COMPONENT == 'true'
         with:
           global-json-file: global.json
           cache: true
           cache-dependency-path: '**/packages.lock.json'
       - run: dotnet restore src/MhwDpsMeter/MhwDpsMeter.csproj --locked-mode
+        if: env.RUN_COMPONENT == 'true'
       - run: dotnet restore tests/PluginRegression/PluginRegression.csproj --locked-mode
+        if: env.RUN_COMPONENT == 'true'
       - run: dotnet run --project tests/PluginRegression -c Release --no-restore
+        if: env.RUN_COMPONENT == 'true'
       - name: Restore native memory regression runner
-        if: runner.os == 'Windows'
+        if: env.RUN_COMPONENT == 'true' && (runner.os == 'Windows')
         run: dotnet restore tests/NativeMemoryRegression/NativeMemoryRegression.csproj --locked-mode
       - name: Test protected native memory reads
-        if: runner.os == 'Windows'
+        if: env.RUN_COMPONENT == 'true' && (runner.os == 'Windows')
         run: dotnet run --project tests/NativeMemoryRegression -c Release --no-restore
       - name: Build plugin
+        if: env.RUN_COMPONENT == 'true'
         run: dotnet build src/MhwDpsMeter/MhwDpsMeter.csproj -c Release --no-restore -p:ContinuousIntegrationBuild=true -p:Deterministic=true -p:BuildStamp=${{ github.sha }}
       - name: Package shared Windows and Proton DLL
-        if: runner.os == 'Linux'
+        if: env.RUN_COMPONENT == 'true' && (runner.os == 'Linux')
         run: python3 scripts/release.py package --product plugin
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: runner.os == 'Linux'
+        if: env.RUN_COMPONENT == 'true' && (runner.os == 'Linux')
         with:
           name: plugin
           path: dist/artifacts/*.zip
@@ -111,7 +121,6 @@ jobs:
   viewer:
     name: Viewer (${{ matrix.platform }})
     needs: scope
-    if: github.event_name != 'pull_request' || needs.scope.outputs.viewer == 'true'
     timeout-minutes: 90
     runs-on: ${{ matrix.os }}
     strategy:
@@ -125,23 +134,30 @@ jobs:
             platform: windows
             target: x86_64-pc-windows-msvc
     env:
+      RUN_COMPONENT: ${{ github.event_name != 'pull_request' || needs.scope.outputs.viewer == 'true' }}
       CARGO_TARGET_DIR: ${{ github.workspace }}/gpui-viewer/target
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_RELEASE_DEBUG: '0'
     steps:
+      - name: Not affected by PR
+        if: env.RUN_COMPONENT != 'true'
+        run: echo "viewer checks not needed for this PR"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.RUN_COMPONENT == 'true'
         with:
           persist-credentials: false
       - name: Install Linux libraries
-        if: runner.os == 'Linux'
+        if: env.RUN_COMPONENT == 'true' && (runner.os == 'Linux')
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential clang cmake pkg-config libfontconfig-dev \
             libwayland-dev libwebkit2gtk-4.1-dev libxkbcommon-x11-dev libx11-xcb-dev \
             libssl-dev libzstd-dev libvulkan-dev vulkan-validationlayers
       - name: Install Rust
+        if: env.RUN_COMPONENT == 'true'
         run: rustup toolchain install 1.96.0 --profile minimal --target ${{ matrix.target }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        if: env.RUN_COMPONENT == 'true'
         with:
           workspaces: gpui-viewer -> target
           key: ${{ matrix.target }}-1.96.0
@@ -149,14 +165,18 @@ jobs:
           # master build keeps a base cache available to new PRs.
           save-if: true
       - name: Test viewer
+        if: env.RUN_COMPONENT == 'true'
         working-directory: gpui-viewer
         run: cargo +1.96.0 test --locked --release --target ${{ matrix.target }} --lib
       - name: Build viewer
+        if: env.RUN_COMPONENT == 'true'
         working-directory: gpui-viewer
         run: cargo +1.96.0 build --locked --release --target ${{ matrix.target }} --bin mhw-log-viewer
       - name: Package viewer
+        if: env.RUN_COMPONENT == 'true'
         run: python scripts/release.py package --product viewer --platform ${{ matrix.platform }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: env.RUN_COMPONENT == 'true'
         with:
           name: viewer-${{ matrix.platform }}
           path: dist/artifacts/*
@@ -166,25 +186,35 @@ jobs:
   web:
     name: SolidJS web viewer
     needs: scope
-    if: github.event_name != 'pull_request' || needs.scope.outputs.web == 'true'
     timeout-minutes: 15
     runs-on: ubuntu-24.04
+    env:
+      RUN_COMPONENT: ${{ github.event_name != 'pull_request' || needs.scope.outputs.web == 'true' }}
     steps:
+      - name: Not affected by PR
+        if: env.RUN_COMPONENT != 'true'
+        run: echo "web checks not needed for this PR"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.RUN_COMPONENT == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: env.RUN_COMPONENT == 'true'
         with:
           node-version: '22'
       - name: Install pinned pnpm
+        if: env.RUN_COMPONENT == 'true'
         run: npm install -g pnpm@10.34.5
       - name: Install web dependencies
+        if: env.RUN_COMPONENT == 'true'
         working-directory: web
         run: pnpm install --frozen-lockfile
       - name: Test web viewer
+        if: env.RUN_COMPONENT == 'true'
         working-directory: web
         run: pnpm test
       - name: Typecheck and build web viewer
+        if: env.RUN_COMPONENT == 'true'
         working-directory: web
         run: pnpm build
 
