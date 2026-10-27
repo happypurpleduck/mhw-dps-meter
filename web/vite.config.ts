@@ -9,8 +9,9 @@ export default defineConfig({
   build: { target: 'esnext' },
   server: { port: 5173, open: false },
   test: {
-    // jsdom makes Vitest resolve Solid's browser build (the node build is the SSR runtime).
-    environment: 'jsdom',
+    // These unit tests need no DOM. The Solid Vite plugin supplies browser
+    // export conditions in Vitest; avoid an undeclared jsdom dependency.
+    environment: 'node',
     include: ['tests/**/*.test.ts'],
   },
 })

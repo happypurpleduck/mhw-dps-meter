@@ -8,3 +8,15 @@ updates:
     directory: /
     schedule:
       interval: monthly
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+  - package-ecosystem: npm
+    directory: /gpui-viewer/www
+    schedule:
+      interval: monthly
+  - package-ecosystem: cargo
+    directory: /gpui-viewer
+    schedule:
+      interval: monthly
