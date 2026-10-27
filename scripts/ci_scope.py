@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Conservatively select expensive PR jobs; unknown paths always get full CI.
 
-Uses exact PR base/head commits rather than a diff against a merge ref, so
-classification stays correct for rebases and for fork pull requests.
+Compare the PR head with its merge base, ignoring changes made only on the
+base branch after divergence (including when a PR is rebased or from a fork).
 """
 import subprocess
 import sys
@@ -33,9 +33,10 @@ def select_jobs(paths):
 
 
 def changed_paths(base, head):
-    # The job checks out the full history, including both PR commits.
+    # Checkout has full history; use the merge base so commits only on the
+    # target branch cannot broaden the PR's CI scope.
     raw = subprocess.check_output(
-        ["git", "diff", "--name-only", "-z", base, head]
+        ["git", "diff", "--name-only", "-z", f"{base}...{head}"]
     )
     return [path.decode("utf-8") for path in raw.split(b"\0") if path]
 
