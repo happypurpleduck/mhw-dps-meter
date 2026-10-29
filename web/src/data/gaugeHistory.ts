@@ -47,6 +47,60 @@ function metricValue(s: FightLogGaugeSample, key: string): number | null {
   return null
 }
 
+
+/** Counts stored, *not expected*, observations for one monster and selected metric.
+ * No hunt-wide coverage percentage or authority can be inferred from this log. */
+export interface GaugeCoverage {
+  observations: number
+  usable: number
+  missingMetric: number
+  invalidTime: number
+  outOfOrder: number
+  gapsOver6s: number
+  sourceChanges: number
+  clockBoundaries: number
+  nonDefaultSource: number
+}
+
+export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, metric: string): GaugeCoverage {
+  const coverage: GaugeCoverage = {
+    observations: 0, usable: 0, missingMetric: 0, invalidTime: 0,
+    outOfOrder: 0, gapsOver6s: 0, sourceChanges: 0, clockBoundaries: 0,
+    nonDefaultSource: 0,
+  }
+  let previousCapture: { t: number; source: string } | undefined
+  let lastUsableT: number | undefined
+  let wasAdjusted = false
+  for (const sample of samples) {
+    if (sample.monster !== monster) continue
+    coverage.observations++
+    const boundary = sample.clockBoundary ?? (Boolean(sample.clockAdjusted) && !wasAdjusted)
+    wasAdjusted = Boolean(sample.clockAdjusted)
+    if (boundary) coverage.clockBoundaries++
+    if (sample.source !== 'local-unverified') coverage.nonDefaultSource++
+    const t = sample.t
+    if (!Number.isFinite(t) || t < 0) {
+      coverage.invalidTime++
+      previousCapture = undefined
+      continue
+    }
+    if (previousCapture && t >= previousCapture.t) {
+      if (t - previousCapture.t > 6) coverage.gapsOver6s++
+      if (sample.source !== previousCapture.source) coverage.sourceChanges++
+    }
+    previousCapture = { t, source: sample.source }
+    if (metricValue(sample, metric) === null) {
+      coverage.missingMetric++
+    } else if (lastUsableT !== undefined && t < lastUsableT) {
+      coverage.outOfOrder++
+    } else {
+      coverage.usable++
+      lastUsableT = t
+    }
+  }
+  return coverage
+}
+
 /** Do not connect lines across missing state, a clock correction, or a >6s capture gap. */
 /** Observations without a consecutive valid neighbor are not line segments. */
 export function isolatedGaugePoints(points: GaugePoint[]): GaugePoint[] {

@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -496,9 +496,22 @@ impl ViewerApp {
             .child(muted("Local-unverified, non-authoritative sampled readings. Gauge progress is NOT HP part damage, per-hunter KO/status contribution or an exact proc/break event.", cx))
             .child(monster_buttons);
         if choices.is_empty() {
-            panel = panel.child(muted("This monster has no usable numeric gauge readings.", cx));
+            let stored = log.gauge_samples.iter().filter(|sample| sample.monster == selected_id).count();
+            panel = panel.child(muted(format!("This monster has {stored} stored observation(s) but no usable numeric gauge readings."), cx));
         } else {
             panel = panel.child(metric_buttons);
+            if let Some(metric) = chosen {
+                let coverage = gauge_coverage(&log.gauge_samples, selected_id, metric);
+                panel = panel.child(muted(format!(
+                    "Stored samples for this monster: {}; selected metric usable: {}; metric missing/invalid: {}; invalid timestamps: {}; out-of-order readings: {}.",
+                    coverage.observations, coverage.usable, coverage.missing_metric,
+                    coverage.invalid_time, coverage.out_of_order,
+                ), cx));
+                panel = panel.child(muted(format!(
+                    "Observed boundaries: {} gaps over 6s, {} source changes, {} clock boundaries; {} non-default source label(s) (authority unverified). These are stored-observation counts, not a percentage of hunt coverage.",
+                    coverage.gaps_over_6s, coverage.source_changes, coverage.clock_boundaries, coverage.non_default_source,
+                ), cx));
+            }
             panel = panel.child(muted(
                 format!("Percent of sampled maximum; {}. Unknown readings, clock corrections, source changes and gaps over 6s are not interpolated.",
                     chosen.map(|m| m.label()).unwrap_or_default()),
@@ -530,7 +543,10 @@ impl ViewerApp {
             }
         }
         if log.gauge_clock_discontinuities > 0 || log.gauge_samples_dropped > 0 {
-            panel = panel.child(muted("Gauge capture clock or recording gaps present: do not align these curves with hit/DPS times as exact events.", cx));
+            panel = panel.child(muted(format!(
+                "Hunt-wide quality: {} due observation interval(s) omitted by recording cap; {} clock correction(s). These cannot be assigned to this monster. Do not align gauge curves with hit/DPS times as exact events.",
+                log.gauge_samples_dropped, log.gauge_clock_discontinuities,
+            ), cx));
         }
         panel.into_any_element()
     }

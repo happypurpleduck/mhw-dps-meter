@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeLog } from '../src/data/parse'
-import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints } from '../src/data/gaugeHistory'
+import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage } from '../src/data/gaugeHistory'
 import { gaugeHistoryChart } from '../src/charts/definitions'
 
 describe('experimental gauge history', () => {
@@ -135,6 +135,50 @@ describe('experimental gauge history', () => {
     expect(isolatedGaugePoints(points)).toEqual([])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm2', 'stamina').map(p => p.segment))
       .toEqual(['segment-1', 'segment-1'])
+  })
+
+  it('reports metric-specific stored-sample quality without inventing hunt coverage', () => {
+    const log = normalizeLog({ questName: 'Partial capture', players: [],
+      gaugeSamplesDropped: 9, gaugeClockDiscontinuities: 1,
+      gaugeSamples: [
+        { t: 0, monster: 'm1', source: 'local-unverified', stamina: 10, maxStamina: 100 },
+        { t: 0, monster: 'm2', source: 'local-unverified', stamina: 40, maxStamina: 100 },
+        { t: 2, monster: 'm1', source: 'local-unverified', stamina: 20, maxStamina: 100 },
+        { t: 2, monster: 'm2', source: 'local-unverified', stamina: 50, maxStamina: 100 },
+        { t: 4, monster: 'm1', source: 'local-unverified', stamina: null },
+        { t: 12, monster: 'm1', source: 'unknown', stamina: 30, maxStamina: 100 },
+        { t: 14, monster: 'm1', source: 'unknown', stamina: 40, maxStamina: 100 },
+        { t: 'bad', monster: 'm1', source: 'local-unverified', clockBoundary: true, stamina: 90, maxStamina: 100 },
+        { t: 16, monster: 'm1', source: 'local-unverified', stamina: 50, maxStamina: 100 },
+        { t: 18, monster: 'm1', source: 'local-unverified', stamina: 60, maxStamina: 100 },
+        { t: 17, monster: 'm1', source: 'local-unverified', stamina: 65, maxStamina: 100 },
+        { t: 20, monster: 'm1', source: 'local-unverified', stamina: null },
+        { t: 22, monster: 'm1', source: 'local-unverified', stamina: 70, maxStamina: 100 },
+      ] })
+    expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')).toEqual({
+      observations: 11, usable: 7, missingMetric: 2, invalidTime: 1,
+      outOfOrder: 1, gapsOver6s: 1, sourceChanges: 1, clockBoundaries: 1,
+      nonDefaultSource: 2,
+    })
+    expect(gaugeCoverage(log.gaugeSamples, 'm2', 'stamina')).toEqual({
+      observations: 2, usable: 2, missingMetric: 0, invalidTime: 0,
+      outOfOrder: 0, gapsOver6s: 0, sourceChanges: 0, clockBoundaries: 0,
+      nonDefaultSource: 0,
+    })
+    expect(gaugeCoverage([], 'm1', 'stamina').observations).toBe(0)
+    expect(log.gaugeSamplesDropped).toBe(9) // hunt-wide; never allocated to m1 or m2
+  })
+
+  it('keeps alternating one-point source sequences isolated', () => {
+    const log = normalizeLog({ questName: 'Alternating sources', players: [], gaugeSamples: [
+      { t: 0, monster: 'm1', source: 'local-unverified', stamina: 10, maxStamina: 100 },
+      { t: 2, monster: 'm1', source: 'unknown', stamina: 20, maxStamina: 100 },
+      { t: 4, monster: 'm1', source: 'local-unverified', stamina: 30, maxStamina: 100 },
+    ] })
+    const points = gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina')
+    expect(points.map(p => p.segment)).toEqual(['segment-1', 'segment-2', 'segment-3'])
+    expect(isolatedGaugePoints(points)).toHaveLength(3)
+    expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina').sourceChanges).toBe(2)
   })
 
 })

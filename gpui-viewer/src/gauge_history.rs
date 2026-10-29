@@ -105,6 +105,57 @@ pub fn gauge_segments(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
 }
 
 
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GaugeCoverage {
+    pub observations: usize,
+    pub usable: usize,
+    pub missing_metric: usize,
+    pub invalid_time: usize,
+    pub out_of_order: usize,
+    pub gaps_over_6s: usize,
+    pub source_changes: usize,
+    pub clock_boundaries: usize,
+    pub non_default_source: usize,
+}
+
+/// Counts *stored* observations for one monster/metric, not gameplay coverage.
+/// The reader does not establish host authority or how much of the hunt was observed.
+pub fn gauge_coverage(samples: &[GaugeSample], monster: &str, metric: &GaugeMetric) -> GaugeCoverage {
+    let mut coverage = GaugeCoverage::default();
+    let mut previous_capture: Option<(f32, &str)> = None;
+    let mut last_usable_t: Option<f32> = None;
+    let mut was_adjusted = false;
+    for sample in samples.iter().filter(|sample| sample.monster == monster) {
+        coverage.observations += 1;
+        let boundary = sample.clock_boundary.unwrap_or(sample.clock_adjusted && !was_adjusted);
+        was_adjusted = sample.clock_adjusted;
+        if boundary { coverage.clock_boundaries += 1; }
+        if sample.source != "local-unverified" { coverage.non_default_source += 1; }
+        if !sample.t.is_finite() || sample.t < 0.0 {
+            coverage.invalid_time += 1;
+            previous_capture = None;
+            continue;
+        }
+        if let Some((prev_t, prev_source)) = previous_capture {
+            if sample.t >= prev_t {
+                if sample.t - prev_t > 6.0 { coverage.gaps_over_6s += 1; }
+                if sample.source != prev_source { coverage.source_changes += 1; }
+            }
+        }
+        previous_capture = Some((sample.t, sample.source.as_str()));
+        if value(sample, metric).is_none() {
+            coverage.missing_metric += 1;
+        } else if last_usable_t.is_some_and(|t| sample.t < t) {
+            coverage.out_of_order += 1;
+        } else {
+            coverage.usable += 1;
+            last_usable_t = Some(sample.t);
+        }
+    }
+    coverage
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterInterval {
     pub start_t: f32,
@@ -160,6 +211,49 @@ mod tests {
 
 
 
+
+
+    #[test]
+    fn coverage_reports_stored_metric_quality_without_inferred_hunt_coverage() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","stamina":10,"maxStamina":100},
+          {"t":0,"monster":"m2","source":"local-unverified","stamina":40,"maxStamina":100},
+          {"t":2,"monster":"m1","source":"local-unverified","stamina":20,"maxStamina":100},
+          {"t":2,"monster":"m2","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":4,"monster":"m1","source":"local-unverified"},
+          {"t":12,"monster":"m1","source":"unknown","stamina":30,"maxStamina":100},
+          {"t":14,"monster":"m1","source":"unknown","stamina":40,"maxStamina":100},
+          {"t":-1,"monster":"m1","source":"local-unverified","clockBoundary":true},
+          {"t":16,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":18,"monster":"m1","source":"local-unverified","stamina":60,"maxStamina":100},
+          {"t":17,"monster":"m1","source":"local-unverified","stamina":65,"maxStamina":100},
+          {"t":20,"monster":"m1","source":"local-unverified"},
+          {"t":22,"monster":"m1","source":"local-unverified","stamina":70,"maxStamina":100}
+        ]"#).unwrap();
+        let m1 = gauge_coverage(&samples, "m1", &GaugeMetric::Stamina);
+        assert_eq!(m1, GaugeCoverage {
+            observations: 11, usable: 7, missing_metric: 2, invalid_time: 1,
+            out_of_order: 1, gaps_over_6s: 1, source_changes: 1,
+            clock_boundaries: 1, non_default_source: 2,
+        });
+        let m2 = gauge_coverage(&samples, "m2", &GaugeMetric::Stamina);
+        assert_eq!(m2, GaugeCoverage {
+            observations: 2, usable: 2, ..GaugeCoverage::default()
+        });
+        assert_eq!(gauge_coverage(&[], "m1", &GaugeMetric::Stamina), GaugeCoverage::default());
+    }
+
+    #[test]
+    fn alternating_single_reading_sources_stay_isolated() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","stamina":10,"maxStamina":100},
+          {"t":2,"monster":"m1","source":"unknown","stamina":20,"maxStamina":100},
+          {"t":4,"monster":"m1","source":"local-unverified","stamina":30,"maxStamina":100}
+        ]"#).unwrap();
+        let segments = gauge_segments(&samples, "m1", &GaugeMetric::Stamina);
+        assert_eq!(segments.iter().map(Vec::len).collect::<Vec<_>>(), vec![1, 1, 1]);
+        assert_eq!(gauge_coverage(&samples, "m1", &GaugeMetric::Stamina).source_changes, 2);
+    }
 
     #[test]
     fn history_does_not_join_readings_across_provenance_changes() {

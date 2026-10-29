@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import type { FightLog } from '../schema/fightlog'
-import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints } from '../data/gaugeHistory'
+import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage } from '../data/gaugeHistory'
 import { observedCounterIntervals } from '../data/gaugeCounterIntervals'
 import { gaugeHistoryChart } from '../charts/definitions'
 import { Chart } from '../lib/Chart'
@@ -18,6 +18,7 @@ export function GaugeHistory(props: { log: FightLog }) {
   const last = () => points().at(-1)
   const hasTrend = () => points().some((p, i) => i > 0 && points()[i - 1]?.segment === p.segment)
   const isolated = createMemo(() => isolatedGaugePoints(points()))
+  const coverage = createMemo(() => gaugeCoverage(props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? ''))
   const counterIntervals = createMemo(() => observedCounterIntervals(
     props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? '',
   ))
@@ -34,13 +35,21 @@ export function GaugeHistory(props: { log: FightLog }) {
               <For each={monsters()}>{m => <option value={m.id}>{m.name} ({m.id})</option>}</For>
             </select>
           </div>
-          <Show when={options().length} fallback={<p class="text-sm text-base-content/60">Samples for this monster contain no usable numeric gauge readings.</p>}>
+          <Show when={options().length} fallback={<p class="text-sm text-base-content/60">This monster has {props.log.gaugeSamples.filter(s => s.monster === monster()).length} stored observation(s) but no usable numeric gauge readings.</p>}>
             <div role="group" aria-label="Gauge metric" class="flex flex-wrap gap-1">
               <For each={options()}>{metric => (
                 <button type="button" class={['btn btn-xs', activeMetric()?.key === metric.key ? 'btn-primary' : 'btn-ghost']}
                   aria-pressed={activeMetric()?.key === metric.key ? 'true' : 'false'}
                   onClick={() => setMetric(metric.key)}>{metric.label}</button>
               )}</For>
+            </div>
+            <div class="text-xs text-base-content/70" aria-label="Selected gauge sample coverage">
+              Stored samples for this monster: {coverage().observations}; selected metric usable: {coverage().usable};
+              metric missing/invalid: {coverage().missingMetric}; invalid timestamps: {coverage().invalidTime};
+              out-of-order readings: {coverage().outOfOrder}.
+              Observed boundaries: {coverage().gapsOver6s} gaps over 6s, {coverage().sourceChanges} source changes,
+              {coverage().clockBoundaries} clock boundaries; {coverage().nonDefaultSource} non-default source label(s) (authority unverified).
+              These are counts of stored observations, not a percentage of hunt coverage.
             </div>
             <div class="text-xs text-base-content/60">
               Percent of sampled maximum; {activeMetric()?.label}. Missing readings, capture-clock discontinuities, changes of observation source and gaps over 6s break the line.
@@ -68,9 +77,13 @@ export function GaugeHistory(props: { log: FightLog }) {
                 </ul>
               </div>
             </Show>
-            <Show when={props.log.gaugeSamplesDropped > 0 || props.log.gaugeClockDiscontinuities > 0}>
-              <p class="text-xs text-warning">Recording gaps or adjusted timestamps are present. Compare captured gauge time to DPS or hit timestamps only with caution.</p>
-            </Show>
+          </Show>
+          <Show when={props.log.gaugeSamplesDropped > 0 || props.log.gaugeClockDiscontinuities > 0}>
+            <p class="text-xs text-warning">
+              Hunt-wide quality: {props.log.gaugeSamplesDropped} due observation interval(s) omitted by recording cap;
+              {props.log.gaugeClockDiscontinuities} clock correction(s). These totals cannot be assigned to the selected monster.
+              Gauge timestamps must not be treated as exact hit or DPS event times.
+            </p>
           </Show>
         </Show>
       </div>
