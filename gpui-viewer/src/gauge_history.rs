@@ -107,12 +107,13 @@ mod tests {
           {"t":4,"monster":"m1","source":"local-unverified","stamina":60,"maxStamina":100},
           {"t":14,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
           {"t":15,"monster":"m1","source":"local-unverified","stamina":40,"maxStamina":100,"clockAdjusted":true},
-          {"t":16,"monster":"m1","source":"local-unverified","stamina":30,"maxStamina":100}
+          {"t":16,"monster":"m1","source":"local-unverified","stamina":30,"maxStamina":100},
+          {"t":40,"monster":"m1","source":"local-unverified","stamina":20,"maxStamina":100}
         ]"#).unwrap();
         assert_eq!(available_metrics(&samples, "m1").iter().map(GaugeMetric::key).collect::<Vec<_>>(), vec!["stamina", "ailment:7"]);
         let lines = gauge_segments(&samples, "m1", &GaugeMetric::Stamina);
         let expected = [vec![(0.0, 80.0)], vec![(4.0, 60.0)], vec![(14.0, 50.0)],
-            vec![(15.0, 40.0), (16.0, 30.0)]];
+            vec![(15.0, 40.0), (16.0, 30.0)], vec![(40.0, 20.0)]];
         assert_eq!(lines.len(), expected.len(), "missing state and clock adjustments split the timeline");
         for (actual, expected) in lines.iter().zip(expected.iter()) {
             assert_eq!(actual.len(), expected.len());

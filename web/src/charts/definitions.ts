@@ -172,7 +172,7 @@ export function gaugeHistoryChart(points: { t: number; value: number; segment: s
     })],
     scales: {
       x: { scale: scaleLinear, nice: true, axis: { label: 'Capture timeline (s)' } },
-      y: { scale: scaleLinear, nice: true, grid: true, axis: { label: `${label} (%)` } },
+      y: { scale: scaleLinear().domain([0, 100]), grid: true, axis: { label: `${label} (%)` } },
     },
     tooltip: {
       use: tooltip,

@@ -439,6 +439,7 @@ impl ViewerApp {
             .or_else(|| choices.first());
         let active_metric = chosen.map(|m| m.key());
         let mut series = Vec::new();
+        let mut isolated = Vec::new();
         let mut last_value: Option<(f32, f32)> = None;
         let mut has_trend = false;
         if let Some(metric) = chosen {
@@ -446,8 +447,15 @@ impl ViewerApp {
                 if let Some(last) = points.last() {
                     last_value = Some(*last);
                 }
+                if points.len() == 1 {
+                    isolated.push(points[0]);
+                }
                 if points.len() > 1 {
                     has_trend = true;
+                }
+                // Keep singleton segments in the plot's time domain even
+                // though a line cannot be drawn from one observation.
+                if !points.is_empty() {
                     series.push(Series {
                         label: metric.label().into(),
                         color: cx.theme().primary,
@@ -499,9 +507,16 @@ impl ViewerApp {
             }
             if has_trend {
                 panel = panel.child(div().h(px(235.)).w_full()
-                    .child(LinesPlot::new(series, Vec::new())));
+                    .child(LinesPlot::new(series, Vec::new()).with_y_max(100.0)));
             } else {
                 panel = panel.child(muted("Only isolated observations; a trend needs at least two consecutive valid samples.", cx));
+            }
+            if !isolated.is_empty() {
+                panel = panel.child(muted(format!(
+                    "{} isolated valid reading(s), shown without connecting lines (latest five):", isolated.len()), cx));
+                for &(t, pct) in isolated.iter().rev().take(5) {
+                    panel = panel.child(muted(format!("  {:.1}% at {:.1}s (isolated)", pct, t), cx));
+                }
             }
         }
         if log.gauge_clock_discontinuities > 0 || log.gauge_samples_dropped > 0 {

@@ -48,6 +48,11 @@ function metricValue(s: FightLogGaugeSample, key: string): number | null {
 }
 
 /** Do not connect lines across missing state, a clock correction, or a >6s capture gap. */
+/** Observations without a consecutive valid neighbor are not line segments. */
+export function isolatedGaugePoints(points: GaugePoint[]): GaugePoint[] {
+  return points.filter((p, i) => points[i - 1]?.segment !== p.segment && points[i + 1]?.segment !== p.segment)
+}
+
 export function gaugeHistoryPoints(samples: FightLogGaugeSample[], monster: string, key: string): GaugePoint[] {
   const points: GaugePoint[] = []
   let segment = 0

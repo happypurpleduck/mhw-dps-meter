@@ -42,6 +42,14 @@ impl LinesPlot {
         Self { series, markers, x_max, y_max: nice_ceiling(y_max), x_unit: "s" }
     }
 
+    /// Pin an explicitly normalized metric to a fixed vertical scale. The
+    /// default remains data-adaptive for damage and DPS charts.
+    pub fn with_y_max(mut self, y_max: f32) -> Self {
+        if y_max.is_finite() && y_max > 0.0 {
+            self.y_max = y_max;
+        }
+        self
+    }
 }
 
 /// Rounds up to 1, 2 or 5 times a power of ten so the top grid line is a round number.
@@ -150,4 +158,21 @@ pub fn slot_color(slot: usize) -> Hsla {
         _ => (0xf2, 0x6b, 0xb8),
     };
     rgb(((r as u32) << 16) | ((g as u32) << 8) | b as u32).into()
+}
+
+#[cfg(test)]
+mod gauge_scale_tests {
+    use super::*;
+
+    #[test]
+    fn percent_scale_keeps_isolated_observations_in_time_domain() {
+        let connected = Series { label: "Stamina".into(), color: rgb(0x8b5cf6).into(), points: vec![(0.0, 3.0), (2.0, 5.0)] };
+        let isolated = Series { label: "Stamina".into(), color: rgb(0x8b5cf6).into(), points: vec![(40.0, 1.0)] };
+        let adaptive = LinesPlot::new(vec![connected.clone(), isolated.clone()], Vec::new());
+        assert_eq!(adaptive.x_max, 40.0);
+        assert_eq!(adaptive.y_max, 5.0);
+        let percent = LinesPlot::new(vec![connected, isolated], Vec::new()).with_y_max(100.0);
+        assert_eq!(percent.x_max, 40.0);
+        assert_eq!(percent.y_max, 100.0);
+    }
 }

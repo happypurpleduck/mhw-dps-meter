@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import type { FightLog } from '../schema/fightlog'
-import { availableGaugeMetrics, gaugeHistoryPoints } from '../data/gaugeHistory'
+import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints } from '../data/gaugeHistory'
 import { gaugeHistoryChart } from '../charts/definitions'
 import { Chart } from '../lib/Chart'
 
@@ -15,6 +15,7 @@ export function GaugeHistory(props: { log: FightLog }) {
   const points = createMemo(() => gaugeHistoryPoints(props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? ''))
   const last = () => points().at(-1)
   const hasTrend = () => points().some((p, i) => i > 0 && points()[i - 1]?.segment === p.segment)
+  const isolated = createMemo(() => isolatedGaugePoints(points()))
 
   return (
     <section class="card bg-base-200">
@@ -41,6 +42,14 @@ export function GaugeHistory(props: { log: FightLog }) {
             </div>
             <Show when={hasTrend()} fallback={<p class="text-sm text-base-content/60">Only isolated observations. A trend requires two consecutive valid samples.</p>}>
               <Chart definition={gaugeHistoryChart(points(), activeMetric()?.label ?? 'Gauge')} height={250} ariaLabel="Observed local monster gauge history" />
+            </Show>
+            <Show when={isolated().length > 0}>
+              <div class="text-xs text-base-content/70">
+                <p>{isolated().length} isolated valid reading(s) (not joined by a line; latest five):</p>
+                <ul class="list-disc pl-5" aria-label="Isolated gauge observations">
+                  <For each={isolated().slice(-5).reverse()}>{p => <li>{p.value.toFixed(1)}% at {p.t.toFixed(1)}s</li>}</For>
+                </ul>
+              </div>
             </Show>
             <Show when={props.log.gaugeSamplesDropped > 0 || props.log.gaugeClockDiscontinuities > 0}>
               <p class="text-xs text-warning">Recording gaps or adjusted timestamps are present. Compare captured gauge time to DPS or hit timestamps only with caution.</p>

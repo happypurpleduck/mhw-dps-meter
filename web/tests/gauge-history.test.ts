@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeLog } from '../src/data/parse'
-import { availableGaugeMetrics, gaugeHistoryPoints } from '../src/data/gaugeHistory'
+import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints } from '../src/data/gaugeHistory'
+import { gaugeHistoryChart } from '../src/charts/definitions'
 
 describe('experimental gauge history', () => {
   it('preserves old logs, missing values and multi-monster identity', () => {
@@ -18,6 +19,7 @@ describe('experimental gauge history', () => {
       { t: 15, monster: 'm1', source: 'local-unverified', stamina: 40, maxStamina: 100, clockAdjusted: true },
       { t: 16, monster: 'm1', source: 'local-unverified', stamina: 30, maxStamina: 100 },
       { t: 18, monster: 'm1', source: 'local-unverified', stamina: 100, maxStamina: 0 },
+      { t: 40, monster: 'm1', source: 'local-unverified', stamina: 20, maxStamina: 100 },
     ] })
     expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([
       { key: 'stamina', label: 'Stamina remaining' },
@@ -25,8 +27,12 @@ describe('experimental gauge history', () => {
       { key: 'part:2', label: 'Head flinch remaining' },
     ])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina').map(({t, value, segment}) => [t,value,segment])).toEqual([
-      [0,80,'segment-1'], [4,60,'segment-2'], [14,50,'segment-3'], [15,40,'segment-4'], [16,30,'segment-4'],
+      [0,80,'segment-1'], [4,60,'segment-2'], [14,50,'segment-3'], [15,40,'segment-4'], [16,30,'segment-4'], [40,20,'segment-5'],
     ])
+    const points = gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina')
+    expect(isolatedGaugePoints(points).map(p => p.t)).toEqual([0, 4, 14, 40])
+    const chart = gaugeHistoryChart(points, 'Stamina') as unknown as {scales: {y: {scale: {domain: () => number[]}}}}
+    expect(chart.scales.y.scale.domain()).toEqual([0, 100])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm2', 'stamina').map(p => p.value)).toEqual([40])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment:7').map(p => p.value)).toEqual([20])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'part:2').map(p => p.value)).toEqual([60])
