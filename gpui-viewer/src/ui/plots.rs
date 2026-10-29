@@ -77,8 +77,8 @@ impl Plot for LinesPlot {
             return;
         }
 
-        let x = ScaleLinear::new(vec![0.0f64, self.x_max as f64], vec![LEFT_GUTTER, width]);
-        let y = ScaleLinear::new(vec![0.0f64, self.y_max as f64], vec![height, 6.0]);
+        let x = ScaleLinear::new(vec![0.0f64, self.x_max as f64], [LEFT_GUTTER, width]);
+        let y = ScaleLinear::new(vec![0.0f64, self.y_max as f64], [height, 6.0]);
 
         // Grid + y labels at 4 even steps.
         let y_ticks: Vec<f32> = (0..=4).map(|i| self.y_max * i as f32 / 4.0).collect();
