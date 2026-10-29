@@ -521,7 +521,7 @@ impl ViewerApp {
                 }
             }
             if !counter_intervals.is_empty() {
-                panel = panel.child(muted("Observed counter increases between consecutive valid local samples (latest five); these are intervals, NOT exact proc/break times or hunter attribution.", cx));
+                panel = panel.child(muted("Observed counter increases between consecutive valid same-source samples (latest five); these are intervals, NOT exact proc/break times or hunter attribution.", cx));
                 for change in counter_intervals.iter().rev().take(5) {
                     panel = panel.child(muted(format!(
                         "  +{} ({} to {}) observed between {:.1}s and {:.1}s",

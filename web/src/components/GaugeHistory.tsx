@@ -60,7 +60,7 @@ export function GaugeHistory(props: { log: FightLog }) {
             </Show>
             <Show when={counterIntervals().length > 0}>
               <div class="text-xs text-base-content/70">
-                <p>Observed counter increases between consecutive valid local samples (latest five). These are capture intervals, not exact proc/break times or hunter attribution.</p>
+                <p>Observed counter increases between consecutive valid same-source samples (latest five). These are capture intervals, not exact proc/break times or hunter attribution.</p>
                 <ul class="list-disc pl-5" aria-label="Observed gauge counter intervals">
                   <For each={counterIntervals().slice(-5).reverse()}>{change => (
                     <li>+{change.increase} ({change.before} to {change.after}) observed between {change.startT.toFixed(1)}s and {change.endT.toFixed(1)}s</li>
