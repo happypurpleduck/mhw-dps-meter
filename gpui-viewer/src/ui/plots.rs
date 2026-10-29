@@ -83,7 +83,7 @@ impl Plot for LinesPlot {
         // Grid + y labels at 4 even steps.
         let y_ticks: Vec<f32> = (0..=4).map(|i| self.y_max * i as f32 / 4.0).collect();
         Grid::new()
-            .y(y_ticks.iter().filter_map(|v| y.tick(&(*v as f64))).map(px).collect())
+            .y(y_ticks.iter().filter_map(|v| y.tick(&(*v as f64))).map(px).collect::<Vec<Pixels>>())
             .stroke(cx.theme().border)
             .dash_array(&[px(4.), px(2.)])
             .paint(&bounds, window);
