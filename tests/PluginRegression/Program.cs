@@ -376,6 +376,88 @@ generationRecorder.ObserveMonsters(2, [hurt]);
 generationRecorder.ObserveMonsters(3, [respawn]);
 Equal(4, generationRecorder.Monsters().Length, "HP reset receives another fight monster ID");
 
+// A successful empty/nonempty enumeration is positive evidence of a monster
+// disappearing. If that address comes back with an identical type, name and
+// only a small HP recovery, it is still a *new* fight-local generation.
+// A torn/failed native enumeration must NOT be interpreted as a disappearance.
+var samePointer = (nint)0xB0000;
+var oldSame = new Monster
+{
+    Instance = samePointer, MaxHealth = 1000f, Hp = 900f,
+    Type = MonsterType.LargeMonster, Name = "Same monster", Variant = 0
+};
+var newSame = new Monster
+{
+    Instance = samePointer, MaxHealth = 1000f, Hp = 1000f,
+    Type = MonsterType.LargeMonster, Name = "Same monster", Variant = 0
+};
+var lifecycleHp = new MonsterHpTracker();
+var lifecycleRecorder = new HuntRecorder((_, _) => null);
+var lifecyclePoller = new MonsterGaugePoller();
+var lifecycleGaugeReads = 0;
+MonsterGaugeState[] LifecycleRead(IReadOnlyList<MonsterState> states)
+{
+    lifecycleGaugeReads++;
+    return states.Select(m => observed with { Instance = m.Instance, Name = m.Name }).ToArray();
+}
+void ObserveLifecycle(float time, double monotonic)
+{
+    HuntGaugeObservation.CaptureBeforePartyGuard(
+        () => null, time, monotonic, "local", true,
+        lifecycleHp.LastPollComplete, lifecycleHp.LastTracked,
+        lifecyclePoller, lifecycleRecorder, LifecycleRead);
+}
+Monster.ReadAll = () => [oldSame];
+Equal(100, lifecycleHp.Poll(), "first monster starts with 100 real damage");
+ObserveLifecycle(0, 900);
+Equal(1, lifecycleRecorder.Monsters().Length, "first monster is m1");
+Equal("m1", lifecycleRecorder.GaugeSamples().Single().Monster,
+    "first gauge sample belongs to original lifetime");
+
+// Native enumeration tears: the tracker retains the last known state,
+// but the recorder must not mistakenly remove m1.
+Monster.ReadAll = () => throw new InvalidOperationException("Transient torn monster enumeration");
+Equal(100, lifecycleHp.Poll(), "failed enumeration retains prior cumulative damage");
+Equal(false, lifecycleHp.LastPollComplete, "failed enumeration is not a known empty list");
+ObserveLifecycle(1, 901);
+Equal(1, lifecycleRecorder.Monsters().Length, "failed enumeration preserves original m1");
+Monster.ReadAll = () => [oldSame];
+Equal(100, lifecycleHp.Poll(), "recovery from torn enumeration does not double-count");
+ObserveLifecycle(1.1f, 901.1);
+Equal(1, lifecycleRecorder.Monsters().Length,
+    "reappearance after an unverified list must NOT create m2");
+
+// A real, successfully enumerated empty list is an observed despawn.
+Monster.ReadAll = () => [];
+Equal(100, lifecycleHp.Poll(), "complete empty list banks old 100 damage");
+Equal(true, lifecycleHp.LastPollComplete, "empty enumeration is successful");
+ObserveLifecycle(2, 902);
+Equal(1, lifecycleRecorder.Monsters().Length, "despawn preserves historical m1");
+Equal<string?>(null, lifecycleRecorder.SingleLiveMonsterId(),
+    "despawn removes stale monster from the live attribution map");
+Monster.ReadAll = () => [newSame];
+Equal(100, lifecycleHp.Poll(), "reused pointer starts at full health without invented damage");
+Equal(false, MonsterGeneration.Changed(
+    new MonsterState(samePointer, oldSame.Type, oldSame.Name, 0, 1000, 900),
+    lifecycleHp.LastTracked.Single()),
+    "only the observed disappearance, not identity/HP heuristics, identifies new generation");
+ObserveLifecycle(4, 904);
+Equal(2, lifecycleRecorder.Monsters().Length, "same-pointer identical reappearance gets m2");
+Equal("m1", lifecycleRecorder.Monsters()[0].Id, "original m1 remains in historical list");
+Equal("m2", lifecycleRecorder.Monsters()[1].Id, "replacement gets a distinct fight-local ID");
+Equal("m2", lifecycleRecorder.GaugeSamples().Last().Monster,
+    "new gauge sample belongs to the replacement generation");
+Equal(3, lifecycleGaugeReads,
+    "failed enumeration recovery and true replacement each perform a fresh native read");
+
+newSame.Hp = 970;
+Monster.ReadAll = () => [newSame];
+Equal(130, lifecycleHp.Poll(), "damage on the second lifetime adds to banked first damage");
+ObserveLifecycle(4.2f, 904.2);
+Equal(2, lifecycleRecorder.Monsters().Length, "ordinary damage does not create m3");
+Monster.ReadAll = () => [other];
+
+
 
 var gaugeRecorder = new HuntRecorder((_, _) => null);
 gaugeRecorder.ObserveMonsters(0, [gaugeInput]);

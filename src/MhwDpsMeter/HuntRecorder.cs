@@ -109,6 +109,18 @@ internal sealed class HuntRecorder
                 if (string.IsNullOrEmpty(entry.Name) && !string.IsNullOrEmpty(state.Name))
                     entry.Name = state.Name;
             }
+
+            // This method is called only after a complete native enumeration.
+            // Forget absent pointers from the *live* map, not the fight history.
+            // If the game later reuses one of those addresses, the replacement
+            // must receive a new mN even if its type/name/HP look identical.
+            // A failed or torn enumeration never reaches this method.
+            var present = monsters.Select(m => m.Instance).ToHashSet();
+            foreach (var instance in _monsters.Keys.Where(key => !present.Contains(key)).ToArray())
+            {
+                _monsters.Remove(instance);
+                _previousMonsterStates.Remove(instance);
+            }
         }
     }
 

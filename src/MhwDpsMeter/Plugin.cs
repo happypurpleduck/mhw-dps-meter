@@ -1086,7 +1086,9 @@ public sealed class Plugin : IPlugin
                     _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
                     _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
                 }
-                _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+                // Never interpret a torn final enumeration as disappearance.
+                if (_monsterHp.LastPollComplete)
+                    _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
                 _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), _snapshot?.LocalSlot ?? 0);
                 if (snapshot is not null)
                 {
