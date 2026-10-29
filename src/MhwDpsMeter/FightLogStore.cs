@@ -143,6 +143,7 @@ internal sealed class FightLogStore
             Monsters = recorder.Monsters(),
             Samples = samples,
             Hits = recorder.Hits(),
+            GaugeSamples = recorder.GaugeSamples(),
             Events = recorder.Events()
         };
 

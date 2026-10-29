@@ -3,13 +3,13 @@ using System.Text.Json.Serialization;
 namespace MhwDpsMeter;
 
 /// <summary>
-/// On-disk fight log. Schema 2 is a superset of the original (schema-less) files:
+/// On-disk fight log. Schema 3 is a superset of the original (schema-less) files:
 /// every old top-level field keeps its name, so old logs still deserialize and a
 /// web viewer needs a single parser. New fields default to empty when absent.
 /// </summary>
 internal sealed class FightLog
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public const string KindQuest = "quest";
     public const string KindTrial = "trial";
 
@@ -86,11 +86,40 @@ internal sealed class FightLog
     [JsonPropertyName("hits")]
     public FightLogHit[] Hits { get; set; } = [];
 
+    /// <summary>Opt-in client-local sampled readings, not host-authoritative.</summary>
+    [JsonPropertyName("gaugeSamples")]
+    public FightLogGaugeSample[] GaugeSamples { get; set; } = [];
+
     [JsonPropertyName("events")]
     public FightLogEvent[] Events { get; set; } = [];
 
     [JsonIgnore]
     public string FileName { get; set; } = "";
+}
+
+/// <summary>Read-only local observation, independent of hit or buildup attribution.</summary>
+internal sealed class FightLogGaugeSample
+{
+    [JsonPropertyName("t")]
+    public float T { get; set; }
+
+    [JsonPropertyName("monster")]
+    public string Monster { get; set; } = "";
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = "local-unverified";
+
+    [JsonPropertyName("stamina")]
+    public float? Stamina { get; set; }
+
+    [JsonPropertyName("maxStamina")]
+    public float? MaxStamina { get; set; }
+
+    [JsonPropertyName("parts")]
+    public MonsterPartGauge[] Parts { get; set; } = [];
+
+    [JsonPropertyName("ailments")]
+    public MonsterAilmentGauge[] Ailments { get; set; } = [];
 }
 
 internal sealed class FightLogPlayer

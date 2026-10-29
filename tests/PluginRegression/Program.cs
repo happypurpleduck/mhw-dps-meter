@@ -88,6 +88,15 @@ Equal<int?>(5, observed.Parts[0].NextBreakThreshold, "part cycle uses definition
 Equal(7, observed.Ailments[0].Id, "KO status id");
 Equal(75f, observed.Ailments[0].Buildup, "KO buildup");
 Equal(2, observed.Ailments[0].Procs, "KO proc count");
+
+var gaugeRecorder = new HuntRecorder((_, _) => null);
+gaugeRecorder.ObserveMonsters(0, [gaugeInput]);
+gaugeRecorder.ObserveGauges(0, [observed]);
+gaugeRecorder.ObserveGauges(1, [observed]);
+gaugeRecorder.ObserveGauges(2.1f, [observed]);
+Equal(2, gaugeRecorder.GaugeSamples().Length, "two-second state capture cadence");
+Equal("local-unverified", gaugeRecorder.GaugeSamples()[0].Source, "never claims host authority");
+Equal("m1", gaugeRecorder.GaugeSamples()[0].Monster, "stable fight-local monster link");
 SafeMemory.Values[gaugeMonster + 0x1C0F0] = -1f;
 SafeMemory.Values[partController + 0x40 + 0x10] = -5f;
 var invalidGauge = MonsterGaugeReader.Read([gaugeInput]).Single();

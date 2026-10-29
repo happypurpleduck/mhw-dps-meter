@@ -302,6 +302,7 @@ public sealed class Plugin : IPlugin
                 && _buildConfirmed && _gameBuild == 421810
                 ? MonsterGaugeReader.Read(_monsterHp.LastTracked)
                 : [];
+            _recorder.ObserveGauges(_elapsedSeconds, _gaugeStates);
             _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
             _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);

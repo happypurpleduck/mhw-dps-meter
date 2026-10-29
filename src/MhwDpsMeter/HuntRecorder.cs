@@ -17,6 +17,10 @@ internal sealed class HuntRecorder
     private readonly object _gate = new();
     private readonly List<FightLogHit> _hits = [];
     private readonly List<FightLogEvent> _events = [];
+    private readonly List<FightLogGaugeSample> _gaugeSamples = [];
+    private readonly Dictionary<string, float> _lastGaugeSampleTime = [];
+    private const int MaxGaugeSamples = 3600;
+    private const float GaugeSamplePeriod = 2f;
     /// <summary>Latest monster entry per instance; the game reuses instances, so a second
     /// Beotodus spawning after the first died gets its own entry ("m2") under the same pointer.</summary>
     private readonly Dictionary<nint, FightLogMonster> _monsters = [];
@@ -50,6 +54,8 @@ internal sealed class HuntRecorder
         {
             _hits.Clear();
             _events.Clear();
+            _gaugeSamples.Clear();
+            _lastGaugeSampleTime.Clear();
             _monsters.Clear();
             _allMonsters.Clear();
             _weaponBySlot.Clear();
@@ -95,6 +101,47 @@ internal sealed class HuntRecorder
                     entry.Name = state.Name;
             }
         }
+    }
+
+    /// <summary>Captures sparse locally observed state, not attribution to a hunter.</summary>
+    public void ObserveGauges(float elapsed, IReadOnlyList<MonsterGaugeState> gauges)
+    {
+        if (gauges.Count == 0)
+            return;
+
+        lock (_gate)
+        {
+            foreach (var gauge in gauges)
+            {
+                if (_gaugeSamples.Count >= MaxGaugeSamples)
+                    break;
+                if (!_monsters.TryGetValue(gauge.Instance, out var monster))
+                    continue;
+                if (gauge.Stamina is null && gauge.Parts.Length == 0 && gauge.Ailments.Length == 0)
+                    continue;
+                if (_lastGaugeSampleTime.TryGetValue(monster.Id, out var previous)
+                    && elapsed < previous + GaugeSamplePeriod)
+                    continue;
+
+                _lastGaugeSampleTime[monster.Id] = elapsed;
+                _gaugeSamples.Add(new FightLogGaugeSample
+                {
+                    T = Math.Max(0, elapsed),
+                    Monster = monster.Id,
+                    Source = "local-unverified",
+                    Stamina = gauge.Stamina,
+                    MaxStamina = gauge.MaxStamina,
+                    Parts = gauge.Parts.ToArray(),
+                    Ailments = gauge.Ailments.ToArray()
+                });
+            }
+        }
+    }
+
+    public FightLogGaugeSample[] GaugeSamples()
+    {
+        lock (_gate)
+            return _gaugeSamples.OrderBy(sample => sample.T).ToArray();
     }
 
     /// <summary>Records join/leave events when the roster changes between polls.</summary>
