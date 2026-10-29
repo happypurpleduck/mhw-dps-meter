@@ -113,6 +113,26 @@ Equal(2, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
 SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)0;
 Equal(1, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
     "real null terminator stops even when later pointer is non-null");
+SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)1;
+Equal(1, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
+    "HunterPie terminal pointer 1 stops even when later slot is non-null");
+SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)0;
+
+// Alatreon's canonical part 3 is an elemental explosion counter, not the
+// ordinary +0x18 flinch cycle. Retain ordinary neighboring part snapshots.
+var alatreon = gaugeInput with { Type = (MonsterType)87, Name = "Alatreon" };
+var alatreonChest = partController + 0x40 + 0x1F8;
+SafeMemory.Values[alatreonChest + 0x0C] = 120f;
+SafeMemory.Values[alatreonChest + 0x10] = 90f;
+SafeMemory.Values[alatreonChest + 0x18] = 2;
+var alatreonSnapshot = MonsterGaugeReader.Read([alatreon]).Single();
+Equal(false, alatreonSnapshot.Parts.Any(p => p.Part == 3),
+    "Alatreon elemental exception must never masquerade as head flinch count");
+Equal(true, alatreonSnapshot.Parts.Any(p => p.Part == 4 && p.CompletedFlinches == 2),
+    "Alatreon nonexceptional neighboring part remains readable");
+SafeMemory.Values.Remove(alatreonChest + 0x0C);
+SafeMemory.Values.Remove(alatreonChest + 0x10);
+SafeMemory.Values.Remove(alatreonChest + 0x18);
 
 // The expensive memory reader has its own cadence and does not need party data.
 var gaugePoller = new MonsterGaugePoller();
@@ -138,17 +158,57 @@ Equal<MonsterGaugeState[]?>(null, gaugePoller.Tick(1.4f, false, true, [gaugeInpu
     "turning off experimental feature disables all gauge reads");
 Equal(0, gaugePoller.Current.Length, "disabled readings never remain on overlay");
 
+// The quest clock may move backwards from 300s to 10s on timer-source change.
+// Scheduler receives strictly monotonic time instead, so reads keep flowing.
+gaugePoller.Reset();
+gaugeReadCalls = 0;
+Equal(1, gaugePoller.Tick(300.0, true, true, [gaugeInput], Sample)!.Length,
+    "large quest timestamp does not affect the independent cadence");
+float questClockAfterSwitch = 10f;
+Equal<MonsterGaugeState[]?>(null, gaugePoller.Tick(300.4, true, true, [gaugeInput], Sample),
+    "elapsed monotonic time, not restarted hunt clock, controls refresh");
+Equal(1, gaugePoller.Tick(301.1, true, true, [gaugeInput], Sample)!.Length,
+    "monotonic polling continues after quest clock jumps backward");
+Equal(2, gaugeReadCalls, "clock switch does not stall reads until quest catches up");
+Equal(10f, questClockAfterSwitch, "observation timestamp may still reflect changed quest clock");
+
+// Test the same plugin integration seam with no usable party snapshot, not
+// merely the raw MonsterGaugePoller called by itself.
+var integrationPoller = new MonsterGaugePoller();
+var integrationRecorder = new HuntRecorder((_, _) => null);
+var integrationReadCalls = 0;
+MonsterGaugeState[] IntegrationReader(IReadOnlyList<MonsterState> _) { integrationReadCalls++; return [observed]; }
+var missingParty = HuntGaugeObservation.CaptureBeforePartyGuard(
+    null, 300f, 400.0, true, true, [gaugeInput],
+    integrationPoller, integrationRecorder, IntegrationReader);
+Equal<PartySnapshot?>(null, missingParty, "party snapshot remains unavailable");
+Equal(1, integrationReadCalls, "integration reads monster gauges despite missing party data");
+Equal(1, integrationRecorder.GaugeSamples().Length, "integration records a gauge with no party snapshot");
+Equal(1, integrationRecorder.Monsters().Length, "integration still tracks the monster when party data fails");
+HuntGaugeObservation.CaptureBeforePartyGuard(
+    null, 10f, 401.1, true, true, [gaugeInput],
+    integrationPoller, integrationRecorder, IntegrationReader);
+Equal(2, integrationReadCalls, "integrated reader refreshes across backwards hunt clock jump");
+Equal(1, integrationRecorder.GaugeSamples().Length, "recorder waits for independent 2s interval");
+HuntGaugeObservation.CaptureBeforePartyGuard(
+    null, 10.2f, 402.2, true, true, [gaugeInput],
+    integrationPoller, integrationRecorder, IntegrationReader);
+Equal(2, integrationRecorder.GaugeSamples().Length,
+    "monotonic recorder accepts new sample despite backwards hunt clock jump");
+Equal(10.2f, integrationRecorder.GaugeSamples()[0].T,
+    "hunt-relative timestamp is retained and snapshots are sorted on export");
+
 
 var gaugeRecorder = new HuntRecorder((_, _) => null);
 gaugeRecorder.ObserveMonsters(0, [gaugeInput]);
-gaugeRecorder.ObserveGauges(0, [observed]);
-gaugeRecorder.ObserveGauges(1, [observed]);
-gaugeRecorder.ObserveGauges(2.1f, [observed]);
+gaugeRecorder.ObserveGauges(0, 0.0, [observed]);
+gaugeRecorder.ObserveGauges(1, 1.0, [observed]);
+gaugeRecorder.ObserveGauges(2.1f, 2.1, [observed]);
 Equal(2, gaugeRecorder.GaugeSamples().Length, "two-second state capture cadence");
 Equal("local-unverified", gaugeRecorder.GaugeSamples()[0].Source, "never claims host authority");
 Equal("m1", gaugeRecorder.GaugeSamples()[0].Monster, "stable fight-local monster link");
 for (var sampleIndex = 2; sampleIndex < HuntRecorder.MaxGaugeSamples + 3; sampleIndex++)
-    gaugeRecorder.ObserveGauges(sampleIndex * 2.1f, [observed]);
+    gaugeRecorder.ObserveGauges(sampleIndex * 2.1f, sampleIndex * 2.1, [observed]);
 Equal(HuntRecorder.MaxGaugeSamples, gaugeRecorder.GaugeSamples().Length,
     "bounded gauge samples never exceed global cap");
 Equal(3, gaugeRecorder.GaugeSamplesDropped,

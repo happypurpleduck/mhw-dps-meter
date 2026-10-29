@@ -91,6 +91,11 @@ internal static class MonsterGaugeReader
         for (var i = 0; i < Math.Min(MaxNormalParts, parts.Count); i++)
         {
             var part = parts[i];
+            // HunterPie uses a special elemental explosion counter for Alatreon
+            // (monster 87, canonical part index 3), NOT the ordinary +0x18
+            // flinch count. Omit the exceptional part until independently verified.
+            if (type == 87 && part.Id == 3)
+                continue;
             var address = controller + NormalPartBase + i * NormalPartStride;
             if (!SafeMemory.TryReadProtected<float>(address + 0x0C, out var max)
                 || !SafeMemory.TryReadProtected<float>(address + 0x10, out var remaining)
@@ -111,12 +116,12 @@ internal static class MonsterGaugeReader
         var result = new List<MonsterAilmentGauge>();
         for (var i = 0; i < MaxAilments; i++)
         {
-            // Zero is the proposed packed-list terminator; an unreadable or invalid
+            // Values 0 and 1 terminate the proposed HunterPie packed list; an unreadable or invalid
             // individual entry is not proof that no later slots are valid. Bounded
             // scan remains conservative until live list-layout verification in #17.
             if (!SafeMemory.TryReadProtected<nint>(monster + AilmentsOffset + i * 8, out var ptr))
                 continue;
-            if (ptr == 0)
+            if (ptr <= 1)
                 break;
             if (!SafeMemory.LooksLikeUserPointer(ptr))
                 continue;

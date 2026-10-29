@@ -8,9 +8,9 @@ namespace MhwDpsMeter;
 /// </summary>
 internal sealed class MonsterGaugePoller
 {
-    public const float RefreshIntervalSeconds = 1.0f;
+    public const double RefreshIntervalSeconds = 1.0;
 
-    private float _nextRefreshAt;
+    private double _nextRefreshAt;
     public MonsterGaugeState[] Current { get; private set; } = [];
 
     public void Reset()
@@ -19,10 +19,11 @@ internal sealed class MonsterGaugePoller
         _nextRefreshAt = 0;
     }
 
+    /// <param name="monotonicSeconds">Elapsed process-monotonic time, never the jump-prone quest timer.</param>
     /// <returns>A fresh sample only if a new protected read was performed,
     /// otherwise null. Current remains available between refreshes.</returns>
     public MonsterGaugeState[]? Tick(
-        float elapsed, bool enabled, bool enumerationComplete,
+        double monotonicSeconds, bool enabled, bool enumerationComplete,
         IReadOnlyList<MonsterState> monsters,
         Func<IReadOnlyList<MonsterState>, MonsterGaugeState[]> reader)
     {
@@ -37,10 +38,10 @@ internal sealed class MonsterGaugePoller
         if (Current.Any(g => !monsters.Any(m => m.Instance == g.Instance)))
             Reset();
 
-        if (elapsed < _nextRefreshAt)
+        if (monotonicSeconds < _nextRefreshAt)
             return null;
 
-        _nextRefreshAt = elapsed + RefreshIntervalSeconds;
+        _nextRefreshAt = monotonicSeconds + RefreshIntervalSeconds;
         try
         {
             Current = reader(monsters);

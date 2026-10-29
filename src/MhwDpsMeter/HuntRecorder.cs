@@ -18,10 +18,10 @@ internal sealed class HuntRecorder
     private readonly List<FightLogHit> _hits = [];
     private readonly List<FightLogEvent> _events = [];
     private readonly List<FightLogGaugeSample> _gaugeSamples = [];
-    private readonly Dictionary<string, float> _lastGaugeSampleTime = [];
+    private readonly Dictionary<string, double> _lastGaugeSampleTime = [];
     public const int MaxGaugeSamples = 3600;
     private int _gaugeSamplesDropped;
-    private const float GaugeSamplePeriod = 2f;
+    private const double GaugeSamplePeriod = 2.0;
     /// <summary>Latest monster entry per instance; the game reuses instances, so a second
     /// Beotodus spawning after the first died gets its own entry ("m2") under the same pointer.</summary>
     private readonly Dictionary<nint, FightLogMonster> _monsters = [];
@@ -105,8 +105,9 @@ internal sealed class HuntRecorder
         }
     }
 
-    /// <summary>Captures sparse locally observed state, not attribution to a hunter.</summary>
-    public void ObserveGauges(float elapsed, IReadOnlyList<MonsterGaugeState> gauges)
+    /// <summary>Captures sparse locally observed state, not attribution to a hunter.
+    /// Scheduling uses a process-monotonic timebase independent of the hunt timestamp.</summary>
+    public void ObserveGauges(float elapsed, double monotonicSeconds, IReadOnlyList<MonsterGaugeState> gauges)
     {
         if (gauges.Count == 0)
             return;
@@ -120,10 +121,10 @@ internal sealed class HuntRecorder
                 if (gauge.Stamina is null && gauge.Parts.Length == 0 && gauge.Ailments.Length == 0)
                     continue;
                 if (_lastGaugeSampleTime.TryGetValue(monster.Id, out var previous)
-                    && elapsed < previous + GaugeSamplePeriod)
+                    && monotonicSeconds < previous + GaugeSamplePeriod)
                     continue;
 
-                _lastGaugeSampleTime[monster.Id] = elapsed;
+                _lastGaugeSampleTime[monster.Id] = monotonicSeconds;
                 if (_gaugeSamples.Count >= MaxGaugeSamples)
                 {
                     // Count due samples only, not repeated 100ms polls.

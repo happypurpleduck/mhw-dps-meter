@@ -291,18 +291,16 @@ public sealed class Plugin : IPlugin
             // Monster enumeration happens even when the party table is temporarily unreadable.
             // Gauge capture must never depend on the party snapshot's success.
             _elapsedSeconds = HuntElapsedSeconds();
-            var snapshot = ReadPartyWithFallbacks();
-            if (_monsterHp.LastPollComplete)
-                _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
-
             var enabled = _settings.ExperimentalMonsterGauges && _mapMatchesBuild
                 && _buildConfirmed && _gameBuild == 421810;
-            var sampled = _gaugePoller.Tick(
-                _elapsedSeconds, enabled, _monsterHp.LastPollComplete,
-                _monsterHp.LastTracked, MonsterGaugeReader.Read);
+            // The same integration seam is exercised with a null party snapshot
+            // in PluginRegression. Always observe monsters before the early return.
+            var snapshot = HuntGaugeObservation.CaptureBeforePartyGuard(
+                ReadPartyWithFallbacks(), _elapsedSeconds,
+                Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency,
+                enabled, _monsterHp.LastPollComplete, _monsterHp.LastTracked,
+                _gaugePoller, _recorder, MonsterGaugeReader.Read);
             _gaugeStates = _gaugePoller.Current;
-            if (sampled is { Length: > 0 })
-                _recorder.ObserveGauges(_elapsedSeconds, sampled);
 
             if (snapshot is null)
                 return;
