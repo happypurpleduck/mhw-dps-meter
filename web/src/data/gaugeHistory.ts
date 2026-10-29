@@ -47,10 +47,17 @@ function metricValue(s: FightLogGaugeSample, key: string): number | null {
   const number = Number(id)
   if (!Number.isInteger(number)) return null
   if (kind === 'ailment' || kind === 'ailment-duration') {
-    const entry = (s.ailments ?? []).find(a => a.id === number)
-    if (!entry) return null
-    return kind === 'ailment' ? fraction(entry.buildup, entry.maxBuildup)
-      : fraction(entry.duration, entry.maxDuration)
+    // Imported/partial captures may repeat a status ID with different fields.
+    // Discovery accepts any valid pair, so charting must do the same; do not
+    // combine a numerator from one record with a maximum from another.
+    for (const entry of s.ailments ?? []) {
+      if (entry.id !== number) continue
+      const measured = kind === 'ailment'
+        ? fraction(entry.buildup, entry.maxBuildup)
+        : fraction(entry.duration, entry.maxDuration)
+      if (measured !== null) return measured
+    }
+    return null
   }
   if (kind === 'part') {
     const entry = (s.parts ?? []).find(p => p.part === number)

@@ -337,4 +337,34 @@ describe('experimental gauge history', () => {
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment-duration:8')).toEqual([])
   })
 
+  it('plots the first valid same-entry pair when status IDs repeat in partial imports', () => {
+    const sample = (t: number, ailments: Record<string, unknown>[], monster = 'm1') =>
+      ({ t, monster, source: 'local-unverified', ailments })
+    const log = normalizeLog({ questName: 'Duplicate partial ailment IDs', players: [], gaugeSamples: [
+      sample(0, [
+        { id: 7, name: 'KO', buildup: 20, maxBuildup: 100 },
+        { id: 7, name: 'KO', duration: 5, maxDuration: 10 },
+      ]),
+      sample(1, [{ id: 7, name: 'KO', duration: 9, maxDuration: 0 },
+        { id: 7, name: 'KO', duration: 2, maxDuration: 10 },
+        { id: 7, name: 'KO', buildup: 60, maxBuildup: 100 }]),
+      sample(2, [{ id: 7, name: 'KO', buildup: 90, maxBuildup: 0, duration: 3 },
+        { id: 7, name: 'KO', buildup: 40, maxBuildup: 100, maxDuration: 10 }]),
+      sample(0, [{ id: 7, name: 'KO', duration: 9, maxDuration: 10 }], 'm2'),
+    ] })
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([
+      { key: 'ailment:7', label: 'KO buildup' },
+      { key: 'ailment-duration:7', label: 'KO duration remaining' },
+    ])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment:7').map(p => p.value))
+      .toEqual([20, 60, 40])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment-duration:7').map(p => p.value))
+      .toEqual([50, 20])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm2', 'ailment-duration:7').map(p => p.value))
+      .toEqual([90])
+    expect(gaugeCoverage(log.gaugeSamples, 'm1', 'ailment-duration:7')).toMatchObject({
+      usable: 2, missingMetric: 1, observations: 3,
+    })
+  })
+
 })

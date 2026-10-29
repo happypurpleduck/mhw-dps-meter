@@ -43,14 +43,14 @@ fn pct(value: f32, max: f32) -> Option<f32> {
 fn value(sample: &GaugeSample, metric: &GaugeMetric) -> Option<f32> {
     match metric {
         GaugeMetric::Stamina => pct(sample.stamina?, sample.max_stamina?),
-        GaugeMetric::Ailment(id, _) => {
-            let a = sample.ailments.iter().find(|a| a.id == *id)?;
-            pct(a.buildup?, a.max_buildup?)
-        }
-        GaugeMetric::AilmentDuration(id, _) => {
-            let a = sample.ailments.iter().find(|a| a.id == *id)?;
-            pct(a.duration?, a.max_duration?)
-        }
+        GaugeMetric::Ailment(id, _) => sample.ailments.iter()
+            .filter(|a| a.id == *id)
+            .find_map(|a| a.buildup.zip(a.max_buildup)
+                .and_then(|(current, max)| pct(current, max))),
+        GaugeMetric::AilmentDuration(id, _) => sample.ailments.iter()
+            .filter(|a| a.id == *id)
+            .find_map(|a| a.duration.zip(a.max_duration)
+                .and_then(|(current, max)| pct(current, max))),
         GaugeMetric::Part(id, _) => {
             let p = sample.parts.iter().find(|p| p.part == *id)?;
             pct(p.remaining, p.max)
@@ -276,6 +276,38 @@ mod tests {
 
 
 
+
+
+    #[test]
+    fn partial_duplicate_ailment_ids_use_first_valid_pair_per_metric() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","buildup":20,"maxBuildup":100},
+            {"id":7,"name":"KO","duration":5,"maxDuration":10}]},
+          {"t":1,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":9,"maxDuration":0},
+            {"id":7,"name":"KO","duration":2,"maxDuration":10},
+            {"id":7,"name":"KO","buildup":60,"maxBuildup":100}]},
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","buildup":90,"maxBuildup":0,"duration":3},
+            {"id":7,"name":"KO","buildup":40,"maxBuildup":100,"maxDuration":10}]},
+          {"t":0,"monster":"m2","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":9,"maxDuration":10}]}
+        ]"#).unwrap();
+        assert_eq!(available_metrics(&samples, "m1").iter().map(GaugeMetric::key).collect::<Vec<_>>(),
+            vec!["ailment:7", "ailment-duration:7"]);
+        let buildup = GaugeMetric::Ailment(7, "KO".into());
+        let duration = GaugeMetric::AilmentDuration(7, "KO".into());
+        let buildup_values = gauge_segments(&samples, "m1", &buildup).into_iter()
+            .flatten().map(|(_, p)| p).collect::<Vec<_>>();
+        let duration_values = gauge_segments(&samples, "m1", &duration).into_iter()
+            .flatten().map(|(_, p)| p).collect::<Vec<_>>();
+        assert_eq!(buildup_values, vec![20.0, 60.0, 40.0]);
+        assert_eq!(duration_values, vec![50.0, 20.0]);
+        assert_eq!(gauge_segments(&samples, "m2", &duration), vec![vec![(0.0, 90.0)]]);
+        let c = gauge_coverage(&samples, "m1", &duration);
+        assert_eq!((c.observations, c.usable, c.missing_metric), (3, 2, 1));
+    }
 
     #[test]
     fn ailment_duration_is_independent_from_buildup_and_missing_is_not_zero() {
