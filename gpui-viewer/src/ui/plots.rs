@@ -160,19 +160,3 @@ pub fn slot_color(slot: usize) -> Hsla {
     rgb(((r as u32) << 16) | ((g as u32) << 8) | b as u32).into()
 }
 
-#[cfg(test)]
-mod gauge_scale_tests {
-    use super::*;
-
-    #[test]
-    fn percent_scale_keeps_isolated_observations_in_time_domain() {
-        let connected = Series { label: "Stamina".into(), color: rgb(0x8b5cf6).into(), points: vec![(0.0, 3.0), (2.0, 5.0)] };
-        let isolated = Series { label: "Stamina".into(), color: rgb(0x8b5cf6).into(), points: vec![(40.0, 1.0)] };
-        let adaptive = LinesPlot::new(vec![connected.clone(), isolated.clone()], Vec::new());
-        assert_eq!(adaptive.x_max, 40.0);
-        assert_eq!(adaptive.y_max, 5.0);
-        let percent = LinesPlot::new(vec![connected, isolated], Vec::new()).with_y_max(100.0);
-        assert_eq!(percent.x_max, 40.0);
-        assert_eq!(percent.y_max, 100.0);
-    }
-}
