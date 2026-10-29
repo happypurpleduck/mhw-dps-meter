@@ -1,0 +1,94 @@
+# Combat analytics — runtime verification and evidence matrix
+
+**Owner issue:** [#17](https://github.com/happypurpleduck/mhw-dps-meter/issues/17), prerequisite for release of [draft #16](https://github.com/happypurpleduck/mhw-dps-meter/pull/16). No checked-off runtime test below means it has passed: **no gameplay validation has yet been attached** as of 2026-10-26. Green CI does not establish correctness of game-memory layouts.
+
+## Working build and truth tiers
+
+- Game: Monster Hunter: World Iceborne Steam; prototype reads only on **confirmed 421810**, with F9 **Experimental monster gauges** enabled. Existing address map also contains 421631 for other functionality; experimental gauges do not run there.
+- Upstream reference: HunterPie's MHW monster entity and C# structs. The offset numbers below are *candidate layouts copied from the upstream implementation*; they were **not** proven by this PR on a live 421810 executable.
+- Existing independently documented 421810 collision-context hook and its hit source are covered in [part-damage.md](../part-damage.md). Do not mistake those verified hit-path addresses for verification of the newly added ailment/part-gauge readers.
+- Runtime measurements should be verified with live controlled conditions and a second observability method (HunterPie comparison, native debugger/traces as appropriate), not one sampled value.
+
+## Candidate native field map (all `+offset` relative to the named base)
+
+| Field | Candidate reader layout | Source | Current proof |
+| --- | --- | --- | --- |
+| Monster HP | entity pointer+0x7670→struct max+0x60/current+0x64 | SPL/HunterPie | pre-existing code, outside new validation |
+| Stamina | monster +0x1C0F0 = current float; +0x1C0F4 = maximum float | HunterPie MHWMonster.GetMonsterStaminaData | **unverified in new draft** |
+| Part-controller pointer | monster +0x1D058 | HunterPie MHWMonster.GetMonsterParts | **unverified** |
+| Normal part slot | controller +0x40 + index*0x1F8 (index skips severable definitions) | HunterPie MHWMonster.GetMonsterParts | **unverified** |
+| Normal part fields | normal part struct max+0x0C, remaining+0x10, counter+0x18 | HunterPie MHWMonsterPartStructure | **unverified** |
+| Ailment pointer list | monster +0x1BC40; up to 32 pointers, 8B apart (draft cap) | HunterPie MHWMonster.GetMonsterAilments | **unverified** |
+| Ailment value struct | list pointer +0x148; owner+0x00, ailment id+0x10, max duration+0x14, buildup+0x30, max buildup+0x40, duration+0x70, counter+0x78 | HunterPie MHWMonsterAilmentStructure | **unverified** |
+| Enrage | monster +0x1BE30, MHWMonsterStatusStructure | HunterPie MHWMonster.GetMonsterEnrage | deferred |
+| Tenderize regions | monster +0x1C458, ten MHWTenderizeInfoStructure | HunterPie MHWMonster.GetMonsterPartTenderizes | deferred |
+| Severable part array | part controller +0x1FC8, separate from normal | HunterPie MHWMonster.GetMonsterParts | deferred: independently bound and validate scan |
+| Hit context | FUN_SHOW_DAMAGE_CONTEXT and FUN_DEAL_DAMAGE map entries, with collision slot and alternate selection | existing docs/part-damage.md and runtime tests | **already verified for 421810 collision tagging**, not buildup |
+
+Some offsets are read from structs with custom layout/alignment. Validate actual stride and each field, not just numerical plausibility. A meter value equal to some plausible number can still be a wrong offset, false owner or stale guest copy.
+
+## Safety and data semantics checks
+
+- Strict build identity and safe fallback: only exact supported build and known map; disabled/default mode adds no new memory polls; no best-guess map on an unknown executable. Note current `ApplyMap` can load fallback maps for unrelated legacy features — that does not authorize experimental reads.
+- Never directly dereference stale memory; use `SafeMemory.TryReadProtected` or equivalently safe OS copy, bounded reads, valid user-pointer checks, alignment/owner/struct bounds. No game writes or unverified function detours.
+- Bound all arrays and traversals, notably HunterPie upstream sever loop requires independent scrutiny (avoid unbounded pointer walk). Distinguish deleted monster vs transient unreadable monster; do not silently retain stale values.
+- Structural invariants: finite float; max > 0 where appropriate; current in validated range; counter sane; owner matches expected monster pointer; known vs unknown ailment id; normal/sever namespace mapping.
+- Generation: on monster reuse/respawn, new fight-local id (`m2`) and reset historical counters. Don't leak previous monster state/party identity into current fight. Reset on quest exit/reload.
+- Time: emit observation timestamps from hunt clock; timestamps of counter changes seen in poll are *not* precise in-between proc times.
+- Host authority: local values on a multiplayer guest may be stale/non-authoritative. Record exactly what was observed and label `local-unverified`; do not call it verified until validated against actual host. Host/solo identification itself must be verified.
+- Snapshot performance: no explosion of per-poll allocations/IO; bound samples (initial draft two seconds per monster, 3600 overall), monitor game frame time, CPU, memory, log size on long hunts.
+
+## Live acceptance matrix (all currently unchecked)
+
+| ID | Environment & encounter | Required evidence/result |
+| --- | --- | --- |
+| V01 | Windows, solo Anjanath on 421810 | HP + stamina compare, normal collision part ordinals and nonzero gauges |
+| V02 | Anjanath head with 5 flinch cycles, legs, head break | break threshold semantics, counter reset / staged break |
+| V03 | Rathalos head, tail, wing | no mapping drift and separate normal/sever logic |
+| V04 | Hammer KO attacks/actual stun | ailment id=7, buildup/max/proc and active duration, no false hunter attribution |
+| V05 | Poison and paralysis with decay/procs | id mapping, progression, duration, resets, skipped polls |
+| V06 | Exhaust attacks vs monster stamina | two independent values; valid causality not asserted from simultaneous change |
+| V07 | Sever tail with severing weapon | sever meter identity and event, no normal-slot collision |
+| V08 | Partbreaker on/off | HP hit damage separated from flinch/break progress |
+| V09 | Tenderize + wait for expiry | region id mapping, timer direction, hit tenderize separate |
+| V10 | Enrage/unenrage with SPL callbacks | status duration/counter and event deduplication |
+| V11 | Two alive monsters and quest join-in-progress | stable fight ids, correct hit targeting and sample routing |
+| V12 | Same monster pointer reused, new instance | no inherited old gauges, `m2` identity |
+| V13 | Solo vs multiplayer host vs guest | values/authority differences recorded; guests never silently claimed exact |
+| V14 | Windows quest load / failure / abandon / restart, feature off/on | no crash, stale record, duplicate completion or background poll |
+| V15 | Linux Proton and SPL `ucrtbase.dll` injector | same safety/behavior, no load/crash/regression |
+| V16 | Training area / time trials F7/F8; party DPS | pre-existing metrics unaffected; no phantom monster gauges |
+| V17 | Unreadable/invalid pointer, huge counter, non-finite values | clean omission and diagnostics, never 0 masquerading as a reading |
+| V18 | Longer multi-monster hunt | bounded JSON size, history readers, CPU/frame overhead |
+
+All rows require observed result, pass/fail, build/runtime evidence. Not every test can run without the game; incomplete rows must remain explicitly unverified.
+
+## Evidence template for GitHub issue / PR
+
+~~~text
+Test ID:
+Date / tester:
+Plugin commit and build stamp:
+MonsterHunterWorld executable game build (and hash if possible):
+SPL version + loader type:
+Windows version or Proton version + compositor:
+Solo / host / guest / joined-late:
+Monster / quest / weapon / target part / ailment:
+Expected behavior from an independent reference:
+Recorded actual state and timeline (include sample JSON or F6 debug excerpt):
+Observed differences, transient read failures, proc/reset anomalies:
+Crash/freezes/frametime regression:
+Status: PASS / FAIL / INCONCLUSIVE / NOT RUN
+Attachments / file link:
+Follow-up fix issue/commit:
+~~~
+
+Avoid publishing personally identifying party names, save details or private telemetry in public evidence.
+
+## CI versus runtime
+
+As of 2026-10-26, [CI run 40233131193](https://github.com/happypurpleduck/mhw-dps-meter/actions/runs/40233131193) for draft #16 commit `d25e015db729bfbe6e86b7fb97ffea6701cf075a` reported pass for plugin Ubuntu 24.04 / Windows 2022; Viewer Linux / Windows; Release tooling. This is a **static/test pass**, not gameplay validation and not applicable to later commits until rerun. Existing `tests/PluginRegression` simulated structs and native memory regression are useful safety checks but do not prove addresses or host behavior.
+
+## Merge gate
+
+A PR touching new memory reads must remain draft/unreleased until test evidence, build compatibility and provenance are documented. If real runtime validation cannot be performed, keep code opt-in/unreleased or a research-only branch; document precisely why it is not release-ready. Never weaken crash prevention or falsely claim verification just to clear a checklist.
