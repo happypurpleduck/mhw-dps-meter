@@ -51,6 +51,16 @@ internal sealed class HuntRecorder
         get { lock (_gate) return _hits.Count; }
     }
 
+    /// <summary>Read-only hook-time identity snapshot; never resolves stale native
+    /// pointers. Returning unknown means the hit must not be relabeled on drain.</summary>
+    public (string? Id, int? Type) CaptureMonsterIdentity(nint instance)
+    {
+        lock (_gate)
+            return _monsters.TryGetValue(instance, out var monster)
+                ? (monster.Id, monster.Type)
+                : (null, null);
+    }
+
     public void Reset()
     {
         lock (_gate)
@@ -265,15 +275,21 @@ internal sealed class HuntRecorder
                 if (_hits.Count >= MaxHits)
                     return;
 
-                _monsters.TryGetValue(hit.Target, out var monster);
+                // Hook-time identity wins over current pointer mapping: buffered
+                // m1 hits must never become m2 after a same-address respawn,
+                // and hits from before any known identity stay unknown.
+                FightLogMonster? monster = null;
+                if (!hit.HasMonsterIdentity)
+                    _monsters.TryGetValue(hit.Target, out monster);
+                var identityType = hit.HasMonsterIdentity ? hit.MonsterType : monster?.Type;
                 string? partName = null;
-                if (hit.Part is int partId && monster is not null)
-                    partName = MonsterParts.Name(monster.Type, partId);
+                if (hit.Part is int partId && identityType is int monsterType)
+                    partName = MonsterParts.Name(monsterType, partId);
                 _hits.Add(new FightLogHit
                 {
                     T = Math.Max(0f, timeOf(hit)),
                     Slot = Math.Max(0, localSlot),
-                    Monster = monster?.Id,
+                    Monster = hit.HasMonsterIdentity ? hit.MonsterId : monster?.Id,
                     Damage = hit.Damage,
                     Crit = hit.Crit,
                     Tenderized = hit.Tenderized,

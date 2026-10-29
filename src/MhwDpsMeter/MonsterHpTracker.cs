@@ -62,8 +62,15 @@ internal sealed class MonsterHpTracker
                 // A failed HP/type read does not mean this instance despawned.
                 seen.Add(monster.Instance);
                 described.Add(Describe(monster));
-                if (!TryState(monster, out var state))
+                if (!TryState(monster, out var state, out var confirmedUntracked))
+                {
+                    // A verified small/excluded or low-HP entity at this
+                    // address is positive evidence the former large monster
+                    // is gone. Only unreadable type/HP should remain "seen".
+                    if (confirmedUntracked)
+                        seen.Remove(monster.Instance);
                     continue;
+                }
 
                 seen.Add(state.Instance);
                 var rawDealt = (int)Math.Clamp(state.MaxHealth - Math.Max(state.Health, 0f), 0f, state.MaxHealth);
@@ -139,19 +146,30 @@ internal sealed class MonsterHpTracker
         }
     }
 
-    private bool TryState(Monster monster, out MonsterState state)
+    private bool TryState(Monster monster, out MonsterState state, out bool confirmedUntracked)
     {
         state = default;
+        confirmedUntracked = false;
         try
         {
             var type = monster.Type;
             if (!IsTracked(type))
+            {
+                confirmedUntracked = true;
                 return false;
+            }
 
             var instance = monster.Instance;
             var max = monster.MaxHealth;
+            // Readable low-max-HP entities are not large monsters, even
+            // if their type enum isn't on the explicit exclusion list.
+            if (float.IsFinite(max) && max is >= 0f and < 800f)
+            {
+                confirmedUntracked = true;
+                return false;
+            }
             var hp = monster.Health;
-            if (instance == 0 || max is < 800f or > 50_000_000f || float.IsNaN(max) || float.IsNaN(hp))
+            if (instance == 0 || max is > 50_000_000f || !float.IsFinite(max) || !float.IsFinite(hp))
                 return false;
 
             var variant = (int)monster.Variant;

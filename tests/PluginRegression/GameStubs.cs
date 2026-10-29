@@ -12,7 +12,13 @@ namespace SharpPluginLoader.Core.Entities
         public float Hp { get; set; } = 8000;
         public bool FailHealthRead { get; set; }
         public float Health => FailHealthRead ? throw new InvalidOperationException("Unreadable HP") : Hp;
-        public MonsterType Type { get; init; } = MonsterType.LargeMonster;
+        private MonsterType _type = MonsterType.LargeMonster;
+        public bool FailTypeRead { get; set; }
+        public MonsterType Type
+        {
+            get => FailTypeRead ? throw new InvalidOperationException("Unreadable type") : _type;
+            init => _type = value;
+        }
         public string Name { get; init; } = "Test monster";
         public int Variant { get; init; }
     }

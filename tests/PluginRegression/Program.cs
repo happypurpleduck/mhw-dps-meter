@@ -57,6 +57,64 @@ Equal(4000, hp.Poll(), "real despawn banks damage");
 other.Hp = 7000;
 Equal(5000, hp.Poll(), "damage after despawn remains cumulative");
 
+// A complete native enumeration that positively identifies a SmallBarrel or
+// another excluded/too-small entity at a prior large-monster address must
+// retire the old monster; a failed HP/type read must NOT retire it.
+var oldTrackedPointer = (nint)0xD0000;
+var trackedFixture = new Monster { Instance = oldTrackedPointer, Hp = 900, MaxHealth = 1000 };
+var untrackedFixture = new Monster
+{
+    Instance = oldTrackedPointer, MaxHealth = 1000, Hp = 1000,
+    Type = MonsterType.SmallBarrel
+};
+var smallHealthFixture = new Monster
+{
+    Instance = oldTrackedPointer, MaxHealth = 500, Hp = 500,
+    Type = MonsterType.LargeMonster
+};
+var untrackedHp = new MonsterHpTracker();
+var untrackedRecorder = new HuntRecorder((_, _) => null);
+Monster.ReadAll = () => [trackedFixture];
+Equal(100, untrackedHp.Poll(), "large tracked monster starts with 100 damage");
+untrackedRecorder.ObserveMonsters(0, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal(1, untrackedRecorder.Monsters().Length, "original large monster has m1");
+
+trackedFixture.FailTypeRead = true;
+Monster.ReadAll = () => [trackedFixture];
+Equal(100, untrackedHp.Poll(), "transient unreadable type preserves tracked fallback damage");
+Equal(true, untrackedHp.LiveInstances.Contains(oldTrackedPointer),
+    "transient unreadable type preserves a known pointer");
+untrackedRecorder.ObserveMonsters(1, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal("m1", untrackedRecorder.SingleLiveMonsterId(),
+    "transient unreadable type retains m1");
+trackedFixture.FailTypeRead = false;
+
+Monster.ReadAll = () => [untrackedFixture];
+Equal(100, untrackedHp.Poll(), "excluded replacement banks previous large-monster damage");
+Equal(false, untrackedHp.LiveInstances.Contains(oldTrackedPointer),
+    "explicit excluded replacement removes stale large-monster hook target");
+untrackedRecorder.ObserveMonsters(2, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal<string?>(null, untrackedRecorder.SingleLiveMonsterId(),
+    "recorder live identity is retired when SmallBarrel reuses pointer");
+Equal(1, untrackedRecorder.Monsters().Length,
+    "old large monster remains in historical record after excluded replacement");
+
+Monster.ReadAll = () => [trackedFixture];
+Equal(200, untrackedHp.Poll(),
+    "tracked entity reusing excluded pointer starts a separate 100-damage lifecycle");
+untrackedRecorder.ObserveMonsters(3, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal(2, untrackedRecorder.Monsters().Length,
+    "reappearing large monster receives m2 after excluded replacement");
+Monster.ReadAll = () => [smallHealthFixture];
+Equal(200, untrackedHp.Poll(), "small readable max-HP replacement banks exactly once");
+Equal(0, untrackedHp.LiveInstances.Count,
+    "readable sub-800 HP replacement is not a large-monster hook target");
+untrackedRecorder.ObserveMonsters(4, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal<string?>(null, untrackedRecorder.SingleLiveMonsterId(),
+    "sub-800 HP replacement also retires the live monster ID");
+Monster.ReadAll = () => [other]; // restore prior simulated game state
+
+
 // Identity-reuse regression. A first 1,000-HP monster takes only 100 damage.
 // The new monster has the same native address but a different type, so the
 // original 25%-of-max-HP heuristic alone would fail to bank its first 100.
@@ -722,6 +780,60 @@ using (var damage = new DamageTracker())
     Equal(true, damage.PartDiagnostics.Contains("tagged=1 unknown=2"), "capture coverage is observable");
     damage.Reset();
     Equal(true, damage.PartDiagnostics.Contains("tagged=0 unknown=0"), "hunt reset clears capture counts");
+
+    // Real damage detour: capture identity at hook time rather than consulting
+    // the latest pointer map when buffered HitRecords are finally drained.
+    // Reuse the same target with different monster lifetimes between drains.
+    var queuedRecorder = new HuntRecorder((_, _) => null);
+    var queuedM1 = new MonsterState(target, (MonsterType)30, "Old native monster", 0, 1000, 900);
+    var queuedM2 = queuedM1 with { Name = "New native monster", Health = 1000 };
+    queuedRecorder.ObserveMonsters(0, [queuedM1]);
+    damage.SetMonsterIdentityResolver(queuedRecorder.CaptureMonsterIdentity);
+    damage.UpdateMonsters([target]);
+    Emit(hitData + 0xE0); // m1 hit buffered in production detour
+    Equal("m1", damage.DrainHits().Single().MonsterId,
+        "native hook captures m1 identity synchronously");
+
+    Emit(hitData + 0xE0); // m1 queued before complete empty enumeration
+    queuedRecorder.ObserveMonsters(1, [], Array.Empty<nint>());
+    damage.UpdateMonsters([]);
+    Equal<string?>(null, queuedRecorder.SingleLiveMonsterId(),
+        "confirmed disappearance retires live monster map");
+    var queuedM1Hits = damage.DrainHits();
+    queuedRecorder.AddHits(1.1f, queuedM1Hits, 0);
+    Equal("m1", queuedRecorder.Hits().Last().Monster,
+        "m1 hit buffered before disappearance retains m1 when drained later");
+
+    queuedRecorder.ObserveMonsters(2, [queuedM2]);
+    damage.UpdateMonsters([target]);
+    Emit(hitData + 0xE0); // m2 buffered but not drained
+    queuedRecorder.ObserveMonsters(3, [queuedM2 with { Name = "Replacement again" }]);
+    Emit(hitData + 0xE0); // m3 buffered
+    var reassigned = damage.DrainHits();
+    Equal("m2", reassigned[0].MonsterId, "hook binds first new generation");
+    Equal("m3", reassigned[1].MonsterId, "hook binds second new generation");
+    queuedRecorder.AddHits(3.1f, reassigned, 0);
+    Equal("m2", queuedRecorder.Hits()[1].Monster,
+        "buffered m2 hit cannot be relabeled as m3 on drain");
+    Equal("m3", queuedRecorder.Hits()[2].Monster,
+        "subsequent m3 hit uses new generation");
+    
+    queuedRecorder.ObserveMonsters(4, [], Array.Empty<nint>());
+    // During pointer handoff the hook still has an accepted target until
+    // UpdateMonsters runs; unknown identity must remain unknown after re-spawn.
+    Emit(hitData + 0xE0);
+    var unidentified = damage.DrainHits();
+    Equal(true, unidentified.Single().HasMonsterIdentity,
+        "unmapped hook-time identity is still explicitly captured");
+    Equal<string?>(null, unidentified.Single().MonsterId,
+        "hook snapshot marks unknown rather than guessing future identity");
+    queuedRecorder.ObserveMonsters(5, [queuedM1]);
+    queuedRecorder.AddHits(5.1f, unidentified, 0);
+    Equal<string?>(null, queuedRecorder.Hits().Last().Monster,
+        "unknown hit before new mapping is never retrospectively assigned");
+    damage.UpdateMonsters([]);
+    damage.SetMonsterIdentityResolver(_ => (null, null));
+
 
     var nativeOriginal = SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress];
     SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress] = _ => throw new InvalidOperationException("native failure");

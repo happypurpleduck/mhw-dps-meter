@@ -83,6 +83,7 @@ public sealed class Plugin : IPlugin
     {
         _actionNames = new HunterActionNames(IsHunterEntity);
         _recorder = new HuntRecorder(ResolveActionName);
+        _hits.SetMonsterIdentityResolver(_recorder.CaptureMonsterIdentity);
         _party = new PartyActionTracker(ResolveEntityActionName, EntityLooksAlive, IsHunterEntity);
         _trial = new TimeTrial(ResolveActionName);
     }
