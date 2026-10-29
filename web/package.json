@@ -14,7 +14,7 @@
   "dependencies": {
     "@solidjs/web": "2.0.0-rc.6",
     "@tanstack/charts": "1.1.0",
-    "@tanstack/table-core": "9.2.4",
+    "@tanstack/table-core": "9.3.1",
     "solid-js": "2.0.0-rc.6"
   },
   "devDependencies": {
