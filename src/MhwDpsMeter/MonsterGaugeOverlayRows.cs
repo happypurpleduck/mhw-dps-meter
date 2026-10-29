@@ -19,9 +19,9 @@ internal static class MonsterGaugeOverlayRows
             // An absent reading stays unavailable; it is not a zero meter.
             var stamina = gauge.Stamina is float current && gauge.MaxStamina is float max
                 && float.IsFinite(current) && float.IsFinite(max) && max > 0f
-                ? "{current:0}/{max:0}" : "unavailable";
+                ? $"{current:0}/{max:0}" : "unavailable";
             rows.Add(new MonsterGaugeOverlayRow(
-                "{gauge.Name} | stamina {stamina} | {gauge.Ailments.Length} sampled status, {gauge.Parts.Length} sampled part meters",
+                $"{gauge.Name} | stamina {stamina} | {gauge.Ailments.Length} sampled status, {gauge.Parts.Length} sampled part meters",
                 Heading: true));
 
             if (!showDetails)
@@ -35,7 +35,7 @@ internal static class MonsterGaugeOverlayRows
                 .Take(MaxDetailAilments))
             {
                 rows.Add(new MonsterGaugeOverlayRow(
-                    "  {ailment.Name}: buildup {ailment.Buildup:0}/{ailment.MaxBuildup:0}, sampled procs {ailment.Procs}"));
+                    $"  {ailment.Name}: buildup {ailment.Buildup:0}/{ailment.MaxBuildup:0}, sampled procs {ailment.Procs}"));
             }
 
             foreach (var part in gauge.Parts
@@ -46,13 +46,13 @@ internal static class MonsterGaugeOverlayRows
                 .Take(MaxDetailParts))
             {
                 rows.Add(new MonsterGaugeOverlayRow(
-                    "  {part.Name}: flinch {part.Remaining:0}/{part.Max:0} remaining, sampled cycle {part.CompletedFlinches}/{part.NextBreakThreshold}"));
+                    $"  {part.Name}: flinch {part.Remaining:0}/{part.Max:0} remaining, sampled cycle {part.CompletedFlinches}/{part.NextBreakThreshold}"));
             }
         }
 
         if (gauges.Count > MaxVisibleMonsters)
             rows.Add(new MonsterGaugeOverlayRow(
-                "  +{gauges.Count - MaxVisibleMonsters} more sampled monster(s) not shown"));
+                $"  +{gauges.Count - MaxVisibleMonsters} more sampled monster(s) not shown"));
 
         return rows.ToArray();
     }
