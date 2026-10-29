@@ -116,8 +116,14 @@ internal sealed class FightLogGaugeSample
     [JsonPropertyName("rawHuntT")]
     public float? RawHuntT { get; set; }
 
+    /// <summary>Persistent normalization offset after a clock jump.</summary>
     [JsonPropertyName("clockAdjusted")]
     public bool ClockAdjusted { get; set; }
+
+    /// <summary>True on this monster's first stored sample after a discontinuity.
+    /// Nullable to distinguish explicitly false new records from older logs.</summary>
+    [JsonPropertyName("clockBoundary")]
+    public bool? ClockBoundary { get; set; }
 
     [JsonPropertyName("monster")]
     public string Monster { get; set; } = "";

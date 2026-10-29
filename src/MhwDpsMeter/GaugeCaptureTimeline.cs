@@ -23,7 +23,7 @@ internal sealed class GaugeCaptureTimeline
         Discontinuities = 0;
     }
 
-    public (float T, bool Adjusted) Advance(
+    public (float T, bool Adjusted, bool Boundary) Advance(
         float rawHuntT, double monotonicSeconds, string clockSource)
     {
         if (!float.IsFinite(rawHuntT) || rawHuntT < 0)
@@ -32,6 +32,7 @@ internal sealed class GaugeCaptureTimeline
             monotonicSeconds = _lastMonotonic ?? 0;
 
         var normalized = rawHuntT + _offset;
+        var boundary = false;
         if (_lastMonotonic is double lastMono)
         {
             var delta = (float)Math.Clamp(monotonicSeconds - lastMono, 0, 60_000);
@@ -44,6 +45,7 @@ internal sealed class GaugeCaptureTimeline
                 normalized = _lastT + delta;
                 _offset = normalized - rawHuntT;
                 Discontinuities++;
+                boundary = true;
             }
             normalized = Math.Max(_lastT, normalized);
         }
@@ -51,6 +53,7 @@ internal sealed class GaugeCaptureTimeline
         _lastMonotonic = monotonicSeconds;
         _lastSource = clockSource;
         _lastT = normalized;
-        return (normalized, Math.Abs(_offset) > 0.001f);
+        // Adjusted is a persistent offset; Boundary is one discontinuity event.
+        return (normalized, Math.Abs(_offset) > 0.001f, boundary);
     }
 }

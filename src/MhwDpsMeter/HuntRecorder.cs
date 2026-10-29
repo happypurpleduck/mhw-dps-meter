@@ -19,6 +19,8 @@ internal sealed class HuntRecorder
     private readonly List<FightLogEvent> _events = [];
     private readonly List<FightLogGaugeSample> _gaugeSamples = [];
     private readonly Dictionary<string, double> _lastGaugeSampleTime = [];
+    // A reset may land on a throttled poll: latch per monster until written.
+    private readonly HashSet<string> _pendingGaugeClockBoundaries = [];
     private readonly GaugeCaptureTimeline _gaugeTimeline = new();
     public const int MaxGaugeSamples = 3600;
     private int _gaugeSamplesDropped;
@@ -69,6 +71,7 @@ internal sealed class HuntRecorder
             _events.Clear();
             _gaugeSamples.Clear();
             _lastGaugeSampleTime.Clear();
+            _pendingGaugeClockBoundaries.Clear();
             _gaugeTimeline.Reset();
             _gaugeSamplesDropped = 0;
             _monsters.Clear();
@@ -146,6 +149,11 @@ internal sealed class HuntRecorder
         lock (_gate)
         {
             var capture = _gaugeTimeline.Advance(elapsed, monotonicSeconds, huntClockSource);
+            if (capture.Boundary)
+            {
+                foreach (var tracked in _monsters.Values)
+                    _pendingGaugeClockBoundaries.Add(tracked.Id);
+            }
             foreach (var gauge in gauges)
             {
                 if (!_monsters.TryGetValue(gauge.Instance, out var monster))
@@ -169,6 +177,7 @@ internal sealed class HuntRecorder
                     T = capture.T,
                     RawHuntT = Math.Max(0, elapsed),
                     ClockAdjusted = capture.Adjusted,
+                    ClockBoundary = _pendingGaugeClockBoundaries.Remove(monster.Id),
                     Monster = monster.Id,
                     Source = "local-unverified",
                     Stamina = gauge.Stamina,

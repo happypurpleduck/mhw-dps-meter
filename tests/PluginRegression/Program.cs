@@ -428,7 +428,26 @@ Equal(true, clockJumpSamples[1].T > clockJumpSamples[0].T,
 Equal<float?>(10.2f, clockJumpSamples[1].RawHuntT,
     "raw quest time is retained as separately identified source data");
 Equal(true, clockJumpSamples[1].ClockAdjusted, "adjusted timestamp marked as such");
+Equal<bool?>(true, clockJumpSamples[1].ClockBoundary,
+    "clock boundary persists across a throttled poll to next recorded reading");
 Equal(1, integrationRecorder.GaugeClockDiscontinuities, "clock source switch recorded once");
+
+// Normalization persists but the boundary is a one-time occurrence. Three
+// post-reset samples at the 2s cadence must share a continuous curve.
+foreach (var (rawT, monoT) in new[] { (12.5f, 404.5), (14.7f, 406.7), (16.9f, 408.9) })
+    integrationRecorder.ObserveGauges(rawT, monoT, "local", [observed]);
+var postResetSamples = integrationRecorder.GaugeSamples();
+Equal(5, postResetSamples.Length, "three valid samples recorded after reset");
+Equal(1, postResetSamples.Count(s => s.ClockBoundary == true),
+    "only one actual discontinuity is marked");
+Equal(true, postResetSamples.Skip(1).All(s => s.ClockAdjusted),
+    "persistent normalization offset remains visible");
+Equal(true, postResetSamples.Skip(2).All(s => s.ClockBoundary == false),
+    "subsequent records explicitly have no new boundary");
+Equal(1, integrationRecorder.GaugeClockDiscontinuities,
+    "post-reset samples do not invent clock discontinuities");
+Equal(true, System.Text.Json.JsonSerializer.Serialize(postResetSamples[2]).Contains("\"clockBoundary\":false"),
+    "new recordings serialize explicit false for older-log compatibility");
 
 // Production's exact integration seam also catches a throwing party read
 // instead of skipping healthy monster observation (unlike the old argument call).
