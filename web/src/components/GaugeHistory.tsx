@@ -9,6 +9,7 @@ export function GaugeHistory(props: { log: FightLog }) {
   const monsters = createMemo(() => props.log.monsters.filter(m => props.log.gaugeSamples.some(s => s.monster === m.id)))
   const [requestedMonster, setMonster] = createSignal<string>()
   const monster = () => monsters().find(m => m.id === requestedMonster())?.id ?? monsters()[0]?.id
+  const selectedMonsterName = () => monsters().find(m => m.id === monster())?.name ?? monster() ?? 'Unknown monster'
   const options = createMemo(() => availableGaugeMetrics(props.log.gaugeSamples, monster() ?? ''))
   const [requestedMetric, setMetric] = createSignal<string>()
   const activeMetric = () => options().find(o => o.key === requestedMetric()) ?? options()[0]
@@ -30,9 +31,10 @@ export function GaugeHistory(props: { log: FightLog }) {
             </select>
           </div>
           <Show when={options().length} fallback={<p class="text-sm text-base-content/60">Samples for this monster contain no usable numeric gauge readings.</p>}>
-            <div class="flex flex-wrap gap-1">
+            <div role="group" aria-label="Gauge metric" class="flex flex-wrap gap-1">
               <For each={options()}>{metric => (
                 <button type="button" class={['btn btn-xs', activeMetric()?.key === metric.key ? 'btn-primary' : 'btn-ghost']}
+                  aria-pressed={activeMetric()?.key === metric.key}
                   onClick={() => setMetric(metric.key)}>{metric.label}</button>
               )}</For>
             </div>
@@ -41,7 +43,8 @@ export function GaugeHistory(props: { log: FightLog }) {
               {last() ? ` Last observed: ${last()!.value.toFixed(1)}% at ${last()!.t.toFixed(1)}s.` : ''}
             </div>
             <Show when={hasTrend()} fallback={<p class="text-sm text-base-content/60">Only isolated observations. A trend requires two consecutive valid samples.</p>}>
-              <Chart definition={gaugeHistoryChart(points(), activeMetric()?.label ?? 'Gauge')} height={250} ariaLabel="Observed local monster gauge history" />
+              <Chart definition={gaugeHistoryChart(points(), activeMetric()?.label ?? 'Gauge')} height={250}
+                ariaLabel={`Observed local gauge history for ${selectedMonsterName()} (${monster()}): ${activeMetric()?.label ?? 'Gauge'} (local-unverified)`} />
             </Show>
             <Show when={isolated().length > 0}>
               <div class="text-xs text-base-content/70">
