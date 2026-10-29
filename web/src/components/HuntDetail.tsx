@@ -326,12 +326,12 @@ function Monsters(props: { log: FightLog }) {
   const rows = () => monsterBreakdown(props.log)
   const table = createSolidTable<MonsterRow>({ data: rows, columns: monsterColumns, getRowId: (m) => m.id })
   return (
-    <Show when={props.log.monsters.length} fallback={<div class="text-sm text-base-content/60">No large monsters were recorded for this log.</div>}>
-      <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4">
+      <Show when={props.log.monsters.length} fallback={<div class="text-sm text-base-content/60">No large monsters were recorded for this log.</div>}>
         <TableView table={table} />
-        <GaugeHistory log={props.log} />
-      </div>
-    </Show>
+      </Show>
+      <GaugeHistory log={props.log} />
+    </div>
   )
 }
 
