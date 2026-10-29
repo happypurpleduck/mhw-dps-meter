@@ -106,8 +106,8 @@ describe('observed local gauge counter changes (not exact proc or break events)'
       reading(6, 'm1', 3),
       reading(8, 'm1', 4),
       reading(10, 'm1', 5),
-      reading(12, 'm1', 6, { source: 'unknown' }),
-      reading(14, 'm1', 7, { source: 'unknown' }),
+      reading(12, 'm1', 6, { source: 'unknown', parts: [] }),
+      reading(14, 'm1', 7, { source: 'unknown', parts: [] }),
       reading(2, 'm2', 11),
     ] })
     const recent = observedCounterTimeline(log.gaugeSamples, 'm1')
