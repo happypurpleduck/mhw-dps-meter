@@ -57,6 +57,7 @@ export function gaugeHistoryPoints(samples: FightLogGaugeSample[], monster: stri
   const points: GaugePoint[] = []
   let segment = 0
   let lastT: number | undefined
+  let lastSource: string | undefined
   let missing = true
   let wasAdjusted = false
   for (const sample of samples) {
@@ -71,8 +72,12 @@ export function gaugeHistoryPoints(samples: FightLogGaugeSample[], monster: stri
       missing = true
       continue
     }
-    if (missing || clockBoundary || (lastT !== undefined && t - lastT > 6)) segment++
+    // A different observation source cannot be interpolated into the last curve,
+    // even if both samples are numerically valid and close in time.
+    if (missing || clockBoundary || (lastSource !== undefined && lastSource !== sample.source)
+      || (lastT !== undefined && t - lastT > 6)) segment++
     points.push({ t, value, segment: `segment-${segment}`, source: sample.source })
+    lastSource = sample.source
     lastT = t
     missing = false
   }

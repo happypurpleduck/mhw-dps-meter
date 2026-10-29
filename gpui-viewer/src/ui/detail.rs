@@ -500,7 +500,7 @@ impl ViewerApp {
         } else {
             panel = panel.child(metric_buttons);
             panel = panel.child(muted(
-                format!("Percent of sampled maximum; {}. Unknown readings, clock corrections and gaps over 6s are not interpolated.",
+                format!("Percent of sampled maximum; {}. Unknown readings, clock corrections, source changes and gaps over 6s are not interpolated.",
                     chosen.map(|m| m.label()).unwrap_or_default()),
                 cx,
             ));

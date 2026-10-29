@@ -75,6 +75,7 @@ pub fn available_metrics(samples: &[GaugeSample], monster: &str) -> Vec<GaugeMet
 pub fn gauge_segments(samples: &[GaugeSample], monster: &str, metric: &GaugeMetric) -> Vec<Vec<(f32, f32)>> {
     let mut result: Vec<Vec<(f32, f32)>> = Vec::new();
     let mut last_t: Option<f32> = None;
+    let mut last_source: Option<&str> = None;
     let mut missing = true;
     let mut was_adjusted = false;
     for sample in samples.iter().filter(|s| s.monster == monster) {
@@ -88,10 +89,15 @@ pub fn gauge_segments(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
             missing = true;
             continue;
         }
-        if missing || boundary || last_t.is_some_and(|t| sample.t - t > 6.0) {
+        // A provenance change breaks continuity even between valid, nearby
+        // readings. Never imply interpolation between different sources.
+        if missing || boundary || last_source.is_some_and(|source| source != sample.source.as_str())
+            || last_t.is_some_and(|t| sample.t - t > 6.0)
+        {
             result.push(Vec::new());
         }
         result.last_mut().expect("a segment was created").push((sample.t, v));
+        last_source = Some(sample.source.as_str());
         last_t = Some(sample.t);
         missing = false;
     }
@@ -153,6 +159,26 @@ mod tests {
     use super::*;
 
 
+
+
+    #[test]
+    fn history_does_not_join_readings_across_provenance_changes() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","stamina":10,"maxStamina":100},
+          {"t":0,"monster":"m2","source":"local-unverified","stamina":30,"maxStamina":100},
+          {"t":2,"monster":"m1","source":"local-unverified","stamina":20,"maxStamina":100},
+          {"t":2,"monster":"m2","source":"local-unverified","stamina":40,"maxStamina":100},
+          {"t":4,"monster":"m1","source":"unknown","stamina":30,"maxStamina":100},
+          {"t":6,"monster":"m1","source":"unknown","stamina":40,"maxStamina":100},
+          {"t":8,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":10,"monster":"m1","source":"local-unverified","stamina":60,"maxStamina":100}
+        ]"#).unwrap();
+        let curves = gauge_segments(&samples, "m1", &GaugeMetric::Stamina);
+        assert_eq!(curves.len(), 3, "two source switches must split three curves");
+        assert_eq!(curves.iter().map(Vec::len).collect::<Vec<_>>(), vec![2, 2, 2]);
+        assert_eq!(curves.iter().map(|segment| segment[0].0).collect::<Vec<_>>(), vec![0.0, 4.0, 8.0]);
+        assert_eq!(gauge_segments(&samples, "m2", &GaugeMetric::Stamina).len(), 1);
+    }
 
     #[test]
     fn counter_changes_are_sample_intervals_not_precise_proc_events() {

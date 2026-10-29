@@ -113,4 +113,28 @@ describe('experimental gauge history', () => {
     expect(m2.map(p => [p.t, p.segment])).toEqual([[0, 'segment-1'], [4, 'segment-1']])
   })
 
+  it('does not interpolate sampled percentages across observation-source changes', () => {
+    const observation = (t: number, monster: string, source: string, stamina: number) =>
+      ({ t, monster, source, stamina, maxStamina: 100 })
+    const log = normalizeLog({ questName: 'Mixed-source import', players: [], gaugeSamples: [
+      observation(0, 'm1', 'local-unverified', 10),
+      observation(0, 'm2', 'local-unverified', 30),
+      observation(2, 'm1', 'local-unverified', 20),
+      observation(2, 'm2', 'local-unverified', 40),
+      observation(4, 'm1', 'unknown', 30),
+      observation(6, 'm1', 'unknown', 40),
+      observation(8, 'm1', 'local-unverified', 50),
+      observation(10, 'm1', 'local-unverified', 60),
+    ] })
+    const points = gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina')
+    expect(points.map(p => [p.t, p.segment, p.source])).toEqual([
+      [0, 'segment-1', 'local-unverified'], [2, 'segment-1', 'local-unverified'],
+      [4, 'segment-2', 'unknown'], [6, 'segment-2', 'unknown'],
+      [8, 'segment-3', 'local-unverified'], [10, 'segment-3', 'local-unverified'],
+    ])
+    expect(isolatedGaugePoints(points)).toEqual([])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm2', 'stamina').map(p => p.segment))
+      .toEqual(['segment-1', 'segment-1'])
+  })
+
 })

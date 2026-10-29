@@ -43,7 +43,7 @@ export function GaugeHistory(props: { log: FightLog }) {
               )}</For>
             </div>
             <div class="text-xs text-base-content/60">
-              Percent of sampled maximum; {activeMetric()?.label}. Each missing reading or capture-clock discontinuity breaks the line.
+              Percent of sampled maximum; {activeMetric()?.label}. Missing readings, capture-clock discontinuities, changes of observation source and gaps over 6s break the line.
               {last() ? ` Last observed: ${last()!.value.toFixed(1)}% at ${last()!.t.toFixed(1)}s.` : ''}
             </div>
             <Show when={hasTrend()} fallback={<p class="text-sm text-base-content/60">Only isolated observations. A trend requires two consecutive valid samples.</p>}>
