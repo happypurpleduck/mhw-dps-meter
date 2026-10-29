@@ -62,7 +62,8 @@ export interface GaugeCoverage {
   nonDefaultSource: number
 }
 
-export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, metric: string): GaugeCoverage {
+/** Pass no metric to count only capture quality; metric-specific fields stay zero. */
+export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, metric?: string): GaugeCoverage {
   const coverage: GaugeCoverage = {
     observations: 0, usable: 0, missingMetric: 0, invalidTime: 0,
     outOfOrder: 0, gapsOver6s: 0, sourceChanges: 0, clockBoundaries: 0,
@@ -96,6 +97,7 @@ export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, m
       coverage.gapsOver6s++
     }
     previousCaptureT = regressed ? undefined : t
+    if (metric === undefined) continue
     if (metricValue(sample, metric) === null) {
       coverage.missingMetric++
     } else if (lastUsableT !== undefined && t < lastUsableT) {

@@ -119,9 +119,18 @@ pub struct GaugeCoverage {
     pub non_default_source: usize,
 }
 
+/// Counts *stored* quality independent of numeric metric availability.
+pub fn gauge_sample_quality(samples: &[GaugeSample], monster: &str) -> GaugeCoverage {
+    gauge_coverage_inner(samples, monster, None)
+}
+
 /// Counts *stored* observations for one monster/metric, not gameplay coverage.
 /// The reader does not establish host authority or how much of the hunt was observed.
 pub fn gauge_coverage(samples: &[GaugeSample], monster: &str, metric: &GaugeMetric) -> GaugeCoverage {
+    gauge_coverage_inner(samples, monster, Some(metric))
+}
+
+fn gauge_coverage_inner(samples: &[GaugeSample], monster: &str, metric: Option<&GaugeMetric>) -> GaugeCoverage {
     let mut coverage = GaugeCoverage::default();
     let mut previous_capture_t: Option<f32> = None;
     // Source transitions are counted in stored capture order regardless of
@@ -153,6 +162,7 @@ pub fn gauge_coverage(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
             coverage.gaps_over_6s += 1;
         }
         previous_capture_t = if regressed { None } else { Some(sample.t) };
+        let Some(metric) = metric else { continue };
         if value(sample, metric).is_none() {
             coverage.missing_metric += 1;
         } else if last_usable_t.is_some_and(|t| sample.t < t) {
@@ -163,6 +173,15 @@ pub fn gauge_coverage(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
         }
     }
     coverage
+}
+
+/// Metric-independent monster quality label, including when nothing can be charted.
+pub fn gauge_sample_quality_label(quality: &GaugeCoverage) -> String {
+    format!(
+        "Stored samples for this monster: {}; invalid timestamps: {}. Observed boundaries: {} gaps over 6s, {} source changes, {} clock boundaries; {} non-default source label(s) (authority unverified). These are counts of stored observations, not a percentage of hunt coverage.",
+        quality.observations, quality.invalid_time, quality.gaps_over_6s,
+        quality.source_changes, quality.clock_boundaries, quality.non_default_source,
+    )
 }
 
 /// Hunt-wide recording evidence. This cannot be assigned to a monster or
@@ -236,6 +255,31 @@ mod tests {
 
 
 
+
+
+    #[test]
+    fn monster_quality_survives_all_unplottable_samples() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":-1,"monster":"m1","source":"unknown","clockBoundary":true},
+          {"t":2,"monster":"m2","source":"local-unverified","stamina":40,"maxStamina":100},
+          {"t":-1,"monster":"m1","source":"local-unverified"}
+        ]"#).unwrap();
+        assert!(available_metrics(&samples, "m1").is_empty());
+        let quality = gauge_sample_quality(&samples, "m1");
+        assert_eq!(quality, GaugeCoverage {
+            observations: 2, invalid_time: 2, source_changes: 1,
+            clock_boundaries: 1, non_default_source: 1,
+            ..GaugeCoverage::default()
+        });
+        let label = gauge_sample_quality_label(&quality);
+        assert!(label.contains("2; invalid timestamps: 2"));
+        assert!(label.contains("1 source changes"));
+        assert!(label.contains("1 clock boundaries"));
+        assert!(label.contains("1 non-default source"));
+        assert_eq!(gauge_sample_quality(&samples, "m2").observations, 1);
+        assert_eq!(gauge_sample_quality(&samples, "m2").invalid_time, 0);
+        assert_eq!(gauge_coverage(&samples, "m1", &GaugeMetric::Stamina).usable, 0);
+    }
 
     #[test]
     fn quality_gaps_exclude_backwards_times_and_clock_boundaries() {

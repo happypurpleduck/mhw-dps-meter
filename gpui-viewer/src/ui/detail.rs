@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, hunt_wide_quality_notice};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, hunt_wide_quality_notice};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -501,21 +501,17 @@ impl ViewerApp {
             .child(section_title("Experimental monster state history", cx))
             .child(muted("Local-unverified, non-authoritative sampled readings. Gauge progress is NOT HP part damage, per-hunter KO/status contribution or an exact proc/break event.", cx))
             .child(monster_buttons);
+        let observation_quality = gauge_sample_quality(&log.gauge_samples, selected_id);
+        panel = panel.child(muted(gauge_sample_quality_label(&observation_quality), cx));
         if choices.is_empty() {
-            let stored = log.gauge_samples.iter().filter(|sample| sample.monster == selected_id).count();
-            panel = panel.child(muted(format!("This monster has {stored} stored observation(s) but no usable numeric gauge readings."), cx));
+            panel = panel.child(muted("No usable numeric gauge readings for this monster; metric-specific quality is unavailable.", cx));
         } else {
             panel = panel.child(metric_buttons);
             if let Some(metric) = chosen {
                 let coverage = gauge_coverage(&log.gauge_samples, selected_id, metric);
                 panel = panel.child(muted(format!(
-                    "Stored samples for this monster: {}; selected metric usable: {}; metric missing/invalid: {}; invalid timestamps: {}; out-of-order readings: {}.",
-                    coverage.observations, coverage.usable, coverage.missing_metric,
-                    coverage.invalid_time, coverage.out_of_order,
-                ), cx));
-                panel = panel.child(muted(format!(
-                    "Observed boundaries: {} gaps over 6s, {} source changes, {} clock boundaries; {} non-default source label(s) (authority unverified). These are stored-observation counts, not a percentage of hunt coverage.",
-                    coverage.gaps_over_6s, coverage.source_changes, coverage.clock_boundaries, coverage.non_default_source,
+                    "Selected metric usable: {}; metric missing/invalid: {}; out-of-order readings: {}.",
+                    coverage.usable, coverage.missing_metric, coverage.out_of_order,
                 ), cx));
             }
             panel = panel.child(muted(

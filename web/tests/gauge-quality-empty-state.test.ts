@@ -40,4 +40,45 @@ describe('GaugeHistory with no recognized samples', () => {
       expect(parent).not.toBe(monsterGuard)
     }
   })
+  it('does not hide per-monster quality in the metric-empty fallback', () => {
+    const raw = readFileSync(new URL('../src/components/GaugeHistory.tsx', import.meta.url), 'utf8')
+    const source = ts.createSourceFile('GaugeHistory.tsx', raw,
+      ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const elements: ts.JsxElement[] = []
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxElement(node)) elements.push(node)
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    const metricGuard = elements.find(node =>
+      node.openingElement.getText(source).includes('when={options().length}'))
+    const monsterGuard = elements.find(node =>
+      node.openingElement.getText(source).includes('when={monsters().length}'))
+    const quality = elements.find(node =>
+      node.openingElement.getText(source).includes('aria-label="Monster gauge sample quality"'))
+    const metricQuality = elements.find(node =>
+      node.openingElement.getText(source).includes('aria-label="Selected gauge metric quality"'))
+    expect(metricGuard).toBeDefined()
+    expect(monsterGuard).toBeDefined()
+    expect(quality).toBeDefined()
+    expect(metricQuality).toBeDefined()
+    expect(quality!.getText(source)).toContain('coverage().invalidTime')
+    expect(quality!.getText(source)).toContain('coverage().sourceChanges')
+    expect(quality!.getText(source)).toContain('coverage().clockBoundaries')
+    expect(quality!.getText(source)).toContain('coverage().nonDefaultSource')
+    expect(metricGuard!.getText(source)).toContain('No usable numeric gauge readings')
+    expect(metricQuality!.getText(source)).toContain('coverage().missingMetric')
+    let qualityInsideMonster = false
+    for (let parent = quality!.parent; parent; parent = parent.parent) {
+      if (parent === metricGuard) throw new Error('Monster quality hidden behind metric selector')
+      if (parent === monsterGuard) qualityInsideMonster = true
+    }
+    expect(qualityInsideMonster).toBe(true)
+    let metricInsideSelector = false
+    for (let parent = metricQuality!.parent; parent; parent = parent.parent) {
+      if (parent === metricGuard) metricInsideSelector = true
+    }
+    expect(metricInsideSelector).toBe(true)
+  })
+
 })

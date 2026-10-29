@@ -242,4 +242,28 @@ describe('experimental gauge history', () => {
     })
   })
 
+  it('preserves monster quality when every imported gauge is unplottable', () => {
+    const log = normalizeLog({ questName: 'Only gauge gap markers', players: [],
+      monsters: [{ id: 'm1', name: 'Anjanath', type: 1, variant: 0, maxHealth: 1000,
+        lastHealth: 500, firstSeenT: 0 }],
+      gaugeSamples: [
+        { t: 'bad', monster: 'm1', source: 'unknown', clockBoundary: true },
+        { t: 2, monster: 'm2', source: 'local-unverified', stamina: 40, maxStamina: 100 },
+        { t: 'also bad', monster: 'm1', source: 'local-unverified' },
+      ],
+    })
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([])
+    expect(gaugeCoverage(log.gaugeSamples, 'm1')).toEqual({
+      observations: 2, usable: 0, missingMetric: 0, invalidTime: 2,
+      outOfOrder: 0, gapsOver6s: 0, sourceChanges: 1,
+      clockBoundaries: 1, nonDefaultSource: 1,
+    })
+    expect(gaugeCoverage(log.gaugeSamples, 'm2')).toMatchObject({
+      observations: 1, invalidTime: 0, sourceChanges: 0, clockBoundaries: 0,
+    })
+    expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')).toMatchObject({
+      observations: 2, usable: 0, missingMetric: 0, invalidTime: 2,
+    })
+  })
+
 })
