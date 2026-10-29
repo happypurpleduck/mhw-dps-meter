@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeLog } from '../src/data/parse'
-import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage } from '../src/data/gaugeHistory'
+import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage, gaugeQualityMarkers, gaugeQualityMarkerLabel, recentGaugeQualityMarkers } from '../src/data/gaugeHistory'
 import { gaugeHistoryChart } from '../src/charts/definitions'
 import { observedCounterIntervals } from '../src/data/gaugeCounterIntervals'
 
@@ -365,6 +365,91 @@ describe('experimental gauge history', () => {
     expect(gaugeCoverage(log.gaugeSamples, 'm1', 'ailment-duration:7')).toMatchObject({
       usable: 2, missingMetric: 1, observations: 3,
     })
+  })
+
+  it('lists only stored capture-quality interruptions without manufacturing combat events', () => {
+    const sample = (t: unknown, monster: string, source = 'local-unverified',
+      extra: Record<string, unknown> = {}) => ({ t, monster, source, ...extra })
+    const log = normalizeLog({ questName: 'Capture boundaries', players: [], gaugeSamples: [
+      sample(0, 'm1'),
+      sample(0, 'm2'),
+      sample(10, 'm1'),
+      sample('broken', 'm1', 'unknown', { clockBoundary: true }),
+      sample(7, 'm1', 'unknown'),
+      sample(2, 'm1', 'local-unverified'),
+      sample(20, 'm1'),
+      sample(5, 'm2'),
+    ] })
+    const markers = gaugeQualityMarkers(log.gaugeSamples, 'm1')
+    expect(markers).toEqual([
+      { kind: 'capture-gap', at: 10, from: 0 },
+      { kind: 'clock-boundary', at: null },
+      { kind: 'source-change', at: null },
+      { kind: 'invalid-time', at: null },
+      { kind: 'source-change', at: 2 },
+      { kind: 'backward-time', at: 2 },
+    ])
+    expect(gaugeQualityMarkers(log.gaugeSamples, 'm2')).toEqual([])
+    expect(markers.map(gaugeQualityMarkerLabel).every(label =>
+      !label.includes('exact proc') && !label.includes('hunter damage'))).toBe(true)
+    expect(gaugeQualityMarkerLabel(markers[1]!)).toContain('capture time unavailable')
+    expect(gaugeQualityMarkerLabel(markers[0]!)).toContain('no intervening event inferred')
+    expect(gaugeCoverage(log.gaugeSamples, 'm1')).toMatchObject({
+      gapsOver6s: 1, clockBoundaries: 1, sourceChanges: 2, invalidTime: 1,
+    })
+  })
+
+  it('shows one inferred legacy clock boundary in the stored capture list', () => {
+    const log = normalizeLog({ questName: 'Legacy correction', players: [], gaugeSamples: [
+      { t: 0, monster: 'm1', source: 'local-unverified', clockAdjusted: false },
+      { t: 20, monster: 'm1', source: 'local-unverified', clockAdjusted: true },
+      { t: 22, monster: 'm1', source: 'local-unverified', clockAdjusted: true },
+    ] })
+    expect(gaugeQualityMarkers(log.gaugeSamples, 'm1')).toEqual([
+      { kind: 'clock-boundary', at: 20 },
+    ])
+  })
+
+  it('keeps a real clock boundary and backwards-time marker on the same sample without inventing a gap', () => {
+    const sample = (t: unknown, monster: string, source: string, extras: Record<string, unknown> = {}) =>
+      ({ t, monster, source, ...extras })
+    const log = normalizeLog({ questName: 'Overlapping clock correction', players: [], gaugeSamples: [
+      sample(0, 'm1', 'local-unverified'),
+      sample(9, 'm1', 'local-unverified'),
+      sample(7, 'm1', 'unknown', { clockBoundary: true }),
+      sample(10, 'm1', 'unknown'),
+      sample(19, 'm1', 'unknown'),
+      sample(5, 'm2', 'local-unverified'),
+      sample('bad', 'm1', 'local-unverified'),
+    ] })
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([])
+    const markers = gaugeQualityMarkers(log.gaugeSamples, 'm1')
+    expect(markers).toEqual([
+      { kind: 'capture-gap', from: 0, at: 9 },
+      { kind: 'clock-boundary', at: 7 },
+      { kind: 'source-change', at: 7 },
+      { kind: 'backward-time', at: 7 },
+      { kind: 'capture-gap', from: 10, at: 19 },
+      { kind: 'source-change', at: null },
+      { kind: 'invalid-time', at: null },
+    ])
+    expect(recentGaugeQualityMarkers(markers)).toEqual([
+      { kind: 'invalid-time', at: null },
+      { kind: 'source-change', at: null },
+      { kind: 'capture-gap', from: 10, at: 19 },
+      { kind: 'backward-time', at: 7 },
+      { kind: 'source-change', at: 7 },
+    ])
+    expect(markers.filter(m => m.kind === 'capture-gap').map(m => [m.from, m.at]))
+      .toEqual([[0, 9], [10, 19]]) // never [7, 10] or across the correction
+    expect(gaugeCoverage(log.gaugeSamples, 'm1')).toMatchObject({
+      observations: 6, clockBoundaries: 1, invalidTime: 1,
+      gapsOver6s: 2, sourceChanges: 2,
+    })
+    expect(gaugeQualityMarkers(log.gaugeSamples, 'm2')).toEqual([])
+    expect(recentGaugeQualityMarkers([])).toEqual([])
+    expect(recentGaugeQualityMarkers(markers.slice(0, 2))).toEqual(markers.slice(0, 2).reverse())
+    expect(markers.map(gaugeQualityMarkerLabel).join(' ')).not.toContain('exact proc event')
   })
 
 })

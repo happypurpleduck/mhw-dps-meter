@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, hunt_wide_quality_notice, GaugeMetric};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, gauge_quality_markers, recent_gauge_quality_markers, hunt_wide_quality_notice, GaugeMetric};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -503,6 +503,13 @@ impl ViewerApp {
             .child(monster_buttons);
         let observation_quality = gauge_sample_quality(&log.gauge_samples, selected_id);
         panel = panel.child(muted(gauge_sample_quality_label(&observation_quality), cx));
+        let interruption_markers = gauge_quality_markers(&log.gauge_samples, selected_id);
+        if !interruption_markers.is_empty() {
+            panel = panel.child(muted("Stored capture-quality markers (latest five in capture order; not combat events or precise hit times):", cx));
+            for marker in recent_gauge_quality_markers(&interruption_markers) {
+                panel = panel.child(muted(marker.label(), cx));
+            }
+        }
         if choices.is_empty() {
             panel = panel.child(muted("No usable numeric gauge readings for this monster; metric-specific quality is unavailable.", cx));
         } else {

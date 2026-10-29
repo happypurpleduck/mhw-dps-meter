@@ -194,6 +194,76 @@ fn gauge_coverage_inner(samples: &[GaugeSample], monster: &str, metric: Option<&
     coverage
 }
 
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GaugeQualityMarker {
+    ClockBoundary(Option<f32>),
+    InvalidTime,
+    SourceChange(Option<f32>),
+    CaptureGap { start: f32, end: f32 },
+    BackwardTime(f32),
+}
+
+/// Shared presentation contract: newest five emitted markers in reverse
+/// stored-capture order, including multiple markers on one observation.
+pub fn recent_gauge_quality_markers(markers: &[GaugeQualityMarker]) -> Vec<&GaugeQualityMarker> {
+    markers.iter().rev().take(5).collect()
+}
+
+impl GaugeQualityMarker {
+    pub fn label(&self) -> String {
+        match self {
+            Self::ClockBoundary(Some(t)) => format!(
+                "Clock normalization boundary; stored sample at {t:.1}s (not a game event)."),
+            Self::ClockBoundary(None) => "Clock normalization boundary; capture time unavailable (not a game event).".into(),
+            Self::InvalidTime => "Invalid stored capture timestamp; no game-event time can be inferred.".into(),
+            Self::SourceChange(Some(t)) => format!(
+                "Observation source label changed; stored sample at {t:.1}s (authority unverified)."),
+            Self::SourceChange(None) => "Observation source label changed; capture time unavailable (authority unverified).".into(),
+            Self::CaptureGap { start, end } => format!(
+                "Comparable stored-sample gap from {start:.1}s to {end:.1}s (>6s); no intervening event inferred."),
+            Self::BackwardTime(t) => format!(
+                "Stored timestamp moved backward; stored sample at {t:.1}s (elapsed time incomparable)."),
+        }
+    }
+}
+
+/// Observed stored-capture interruptions for a single fight-local monster.
+/// Does not create a timed combat event, host claim, or expected coverage.
+pub fn gauge_quality_markers(samples: &[GaugeSample], monster: &str) -> Vec<GaugeQualityMarker> {
+    let mut markers = Vec::new();
+    let mut previous_t: Option<f32> = None;
+    let mut previous_source: Option<&str> = None;
+    let mut was_adjusted = false;
+    for sample in samples.iter().filter(|sample| sample.monster == monster) {
+        let boundary = sample.clock_boundary.unwrap_or(sample.clock_adjusted && !was_adjusted);
+        was_adjusted = sample.clock_adjusted;
+        let valid_t = sample.t.is_finite() && sample.t >= 0.0;
+        let at = valid_t.then_some(sample.t);
+        if boundary { markers.push(GaugeQualityMarker::ClockBoundary(at)); }
+        if previous_source.is_some_and(|source| source != sample.source.as_str()) {
+            markers.push(GaugeQualityMarker::SourceChange(at));
+        }
+        previous_source = Some(sample.source.as_str());
+        if !valid_t {
+            markers.push(GaugeQualityMarker::InvalidTime);
+            previous_t = None;
+            continue;
+        }
+        let regressed = previous_t.is_some_and(|t| sample.t < t);
+        if regressed {
+            markers.push(GaugeQualityMarker::BackwardTime(sample.t));
+        }
+        if !boundary && !regressed {
+            if let Some(start) = previous_t.filter(|t| sample.t - t > 6.0) {
+                markers.push(GaugeQualityMarker::CaptureGap { start, end: sample.t });
+            }
+        }
+        previous_t = if regressed { None } else { Some(sample.t) };
+    }
+    markers
+}
+
 /// Metric-independent monster quality label, including when nothing can be charted.
 pub fn gauge_sample_quality_label(quality: &GaugeCoverage) -> String {
     format!(
@@ -280,6 +350,94 @@ mod tests {
 
 
 
+
+
+
+    #[test]
+    fn backward_clock_boundary_preserves_both_markers_and_last_five_display_order() {
+        use GaugeQualityMarker as M;
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified"},
+          {"t":9,"monster":"m1","source":"local-unverified"},
+          {"t":7,"monster":"m1","source":"unknown","clockBoundary":true},
+          {"t":10,"monster":"m1","source":"unknown"},
+          {"t":19,"monster":"m1","source":"unknown"},
+          {"t":5,"monster":"m2","source":"local-unverified"},
+          {"t":-1,"monster":"m1","source":"local-unverified"}
+        ]"#).unwrap();
+        assert!(available_metrics(&samples, "m1").is_empty());
+        let markers = gauge_quality_markers(&samples, "m1");
+        assert_eq!(markers, vec![
+            M::CaptureGap { start: 0.0, end: 9.0 },
+            M::ClockBoundary(Some(7.0)),
+            M::SourceChange(Some(7.0)),
+            M::BackwardTime(7.0),
+            M::CaptureGap { start: 10.0, end: 19.0 },
+            M::SourceChange(None),
+            M::InvalidTime,
+        ]);
+        let recent = recent_gauge_quality_markers(&markers);
+        assert_eq!(recent, vec![
+            &M::InvalidTime,
+            &M::SourceChange(None),
+            &M::CaptureGap { start: 10.0, end: 19.0 },
+            &M::BackwardTime(7.0),
+            &M::SourceChange(Some(7.0)),
+        ]);
+        assert_eq!(recent.len(), 5);
+        assert!(recent[0].label().contains("no game-event time"));
+        assert!(recent[3].label().contains("elapsed time incomparable"));
+        assert!(gauge_quality_markers(&samples, "m2").is_empty());
+        assert!(recent_gauge_quality_markers(&[]).is_empty());
+        assert_eq!(recent_gauge_quality_markers(&markers[..2]), vec![&markers[1], &markers[0]]);
+        let q = gauge_sample_quality(&samples, "m1");
+        assert_eq!((q.observations, q.clock_boundaries, q.invalid_time,
+            q.gaps_over_6s, q.source_changes), (6, 1, 1, 2, 2));
+
+        // Source-level UI placement contract; actual GUI testing still requires #17.
+        let ui = include_str!("ui/detail.rs");
+        let rendered = ui.find("for marker in recent_gauge_quality_markers(&interruption_markers)")
+            .expect("GPUI uses the tested latest-five helper");
+        let empty_metric = ui.find("if choices.is_empty()")
+            .expect("GPUI retains a no-chartable-metric fallback");
+        assert!(rendered < empty_metric, "capture quality must render outside metric guard");
+    }
+
+    #[test]
+    fn interruption_markers_are_capture_evidence_not_precise_combat_events() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified"},
+          {"t":0,"monster":"m2","source":"local-unverified"},
+          {"t":10,"monster":"m1","source":"local-unverified"},
+          {"t":-1,"monster":"m1","source":"unknown","clockBoundary":true},
+          {"t":7,"monster":"m1","source":"unknown"},
+          {"t":2,"monster":"m1","source":"local-unverified"},
+          {"t":20,"monster":"m1","source":"local-unverified"},
+          {"t":5,"monster":"m2","source":"local-unverified"}
+        ]"#).unwrap();
+        use GaugeQualityMarker as M;
+        let markers = gauge_quality_markers(&samples, "m1");
+        assert_eq!(markers, vec![
+            M::CaptureGap { start: 0.0, end: 10.0 },
+            M::ClockBoundary(None),
+            M::SourceChange(None),
+            M::InvalidTime,
+            M::SourceChange(Some(2.0)),
+            M::BackwardTime(2.0),
+        ]);
+        assert!(gauge_quality_markers(&samples, "m2").is_empty());
+        assert!(markers[1].label().contains("capture time unavailable"));
+        assert!(markers[0].label().contains("no intervening event inferred"));
+        let q = gauge_sample_quality(&samples, "m1");
+        assert_eq!((q.gaps_over_6s, q.clock_boundaries, q.source_changes, q.invalid_time), (1, 1, 2, 1));
+
+        let legacy: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","clockAdjusted":false},
+          {"t":20,"monster":"m1","source":"local-unverified","clockAdjusted":true},
+          {"t":22,"monster":"m1","source":"local-unverified","clockAdjusted":true}
+        ]"#).unwrap();
+        assert_eq!(gauge_quality_markers(&legacy, "m1"), vec![M::ClockBoundary(Some(20.0))]);
+    }
 
     #[test]
     fn partial_duplicate_ailment_ids_use_first_valid_pair_per_metric() {
@@ -547,7 +705,6 @@ mod tests {
         assert_eq!(curves.iter().map(|segment| segment[0].0).collect::<Vec<_>>(), vec![0.0, 4.0, 8.0]);
         assert_eq!(gauge_segments(&samples, "m2", &GaugeMetric::Stamina).len(), 1);
     }
-
 
     #[test]
     fn duplicate_partial_ailments_keep_valid_observed_proc_intervals() {

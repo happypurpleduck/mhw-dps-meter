@@ -129,6 +129,62 @@ export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, m
   return coverage
 }
 
+
+/** Stored-capture interruption evidence only; these are NOT in-game events. */
+export interface GaugeQualityMarker {
+  kind: 'clock-boundary' | 'invalid-time' | 'source-change' | 'capture-gap' | 'backward-time'
+  at: number | null
+  from?: number
+}
+
+export function gaugeQualityMarkers(samples: FightLogGaugeSample[], monster: string): GaugeQualityMarker[] {
+  const markers: GaugeQualityMarker[] = []
+  let prevT: number | undefined
+  let prevSource: string | undefined
+  let wasAdjusted = false
+  for (const sample of samples) {
+    if (sample.monster !== monster) continue
+    const boundary = sample.clockBoundary ?? (Boolean(sample.clockAdjusted) && !wasAdjusted)
+    wasAdjusted = Boolean(sample.clockAdjusted)
+    const t = sample.t
+    const validTime = Number.isFinite(t) && t >= 0
+    if (boundary) markers.push({ kind: 'clock-boundary', at: validTime ? t : null })
+    if (prevSource !== undefined && sample.source !== prevSource) {
+      markers.push({ kind: 'source-change', at: validTime ? t : null })
+    }
+    prevSource = sample.source
+    if (!validTime) {
+      markers.push({ kind: 'invalid-time', at: null })
+      prevT = undefined
+      continue
+    }
+    const regressed = prevT !== undefined && t < prevT
+    if (regressed) markers.push({ kind: 'backward-time', at: t })
+    if (!boundary && !regressed && prevT !== undefined && t - prevT > 6) {
+      markers.push({ kind: 'capture-gap', at: t, from: prevT })
+    }
+    prevT = regressed ? undefined : t
+  }
+  return markers
+}
+
+/** What both viewer surfaces present: latest five markers, newest first, preserving
+ * emission order within each stored observation (reversed for display). */
+export function recentGaugeQualityMarkers(markers: readonly GaugeQualityMarker[]): GaugeQualityMarker[] {
+  return markers.slice(-5).reverse()
+}
+
+export function gaugeQualityMarkerLabel(marker: GaugeQualityMarker): string {
+  const at = marker.at === null ? 'capture time unavailable' : `stored sample at ${marker.at.toFixed(1)}s`
+  switch (marker.kind) {
+    case 'clock-boundary': return `Clock normalization boundary; ${at} (not a game event).`
+    case 'invalid-time': return 'Invalid stored capture timestamp; no game-event time can be inferred.'
+    case 'source-change': return `Observation source label changed; ${at} (authority unverified).`
+    case 'backward-time': return `Stored timestamp moved backward; ${at} (elapsed time incomparable).`
+    case 'capture-gap': return `Comparable stored-sample gap from ${marker.from!.toFixed(1)}s to ${marker.at!.toFixed(1)}s (>6s); no intervening event inferred.`
+  }
+}
+
 /** Do not connect lines across missing state, a clock correction, or a >6s capture gap. */
 /** Observations without a consecutive valid neighbor are not line segments. */
 export function isolatedGaugePoints(points: GaugePoint[]): GaugePoint[] {

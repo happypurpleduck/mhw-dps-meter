@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import type { FightLog } from '../schema/fightlog'
-import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage } from '../data/gaugeHistory'
+import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage, gaugeQualityMarkers, gaugeQualityMarkerLabel, recentGaugeQualityMarkers } from '../data/gaugeHistory'
 import { observedCounterIntervals } from '../data/gaugeCounterIntervals'
 import { gaugeHistoryChart } from '../charts/definitions'
 import { Chart } from '../lib/Chart'
@@ -22,6 +22,7 @@ export function GaugeHistory(props: { log: FightLog }) {
   const counterIntervals = createMemo(() => observedCounterIntervals(
     props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? '',
   ))
+  const qualityMarkers = createMemo(() => gaugeQualityMarkers(props.log.gaugeSamples, monster() ?? ''))
 
   return (
     <section class="card bg-base-200">
@@ -41,6 +42,16 @@ export function GaugeHistory(props: { log: FightLog }) {
             {coverage().clockBoundaries} clock boundaries; {coverage().nonDefaultSource} non-default source label(s) (authority unverified).
             These are counts of stored observations, not a percentage of hunt coverage.
           </div>
+          <Show when={qualityMarkers().length > 0}>
+            <div class="text-xs text-base-content/70">
+              <p>Stored capture-quality markers (latest five in capture order; not combat events or precise hit times):</p>
+              <ul class="list-disc pl-5" aria-label="Stored capture-quality markers">
+                <For each={recentGaugeQualityMarkers(qualityMarkers())}>{marker =>
+                  <li>{gaugeQualityMarkerLabel(marker)}</li>
+                }</For>
+              </ul>
+            </div>
+          </Show>
           <Show when={options().length} fallback={<p class="text-sm text-base-content/60">No usable numeric gauge readings for this monster; metric-specific quality is unavailable.</p>}>
             <div role="group" aria-label="Gauge metric" class="flex flex-wrap gap-1">
               <For each={options()}>{metric => (
