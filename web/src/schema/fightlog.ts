@@ -1,5 +1,5 @@
 /**
- * TypeScript mirror of the plugin's FightLog.cs (schema 2).
+ * TypeScript mirror of the plugin's FightLog.cs (schema 3).
  *
  * Every schema-1 field keeps its name, so files written by plugin 0.3.0 parse
  * with the same types; `normalizeLog` fills the newer arrays with defaults.
@@ -29,7 +29,34 @@ export interface FightLog {
   monsters: FightLogMonster[]
   samples: FightLogSample[]
   hits: FightLogHit[]
+  /** Experimental local-only sampled observations (not host-authoritative). */
+  gaugeSamples: FightLogGaugeSample[]
   events: FightLogEvent[]
+}
+
+export interface FightLogGaugeSample {
+  t: number
+  monster: string
+  source: string
+  stamina: number | null
+  maxStamina: number | null
+  parts: Array<{
+    part: number
+    name: string
+    remaining: number
+    max: number
+    completedFlinches: number
+    nextBreakThreshold: number | null
+  }>
+  ailments: Array<{
+    id: number
+    name: string
+    buildup: number
+    maxBuildup: number
+    procs: number
+    duration: number
+    maxDuration: number
+  }>
 }
 
 export interface FightLogPlayer {

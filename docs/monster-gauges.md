@@ -9,7 +9,8 @@ The plugin adds a protected, read-only, bounded `MonsterGaugeReader` for **confi
 - Monster stamina: current and maximum at entity `+0x1C0F0`.
 - Normal part flinch/break meters: monster part-controller pointer at `+0x1D058`, normal array `+0x40 + slot*0x1F8`; max, remaining, counter. Collision ordinal resolves to the canonical part id in `monster-parts.json`, skipping severable definitions. Next break threshold uses HunterPie metadata.
 - Ailments: bounded pointer list at monster `+0x1BC40`, struct at ailment pointer `+0x148`, validating owner, id, buildup, max buildup, current/maximum duration, proc count. Includes KO/stun and exhaust buildup.
-- The in-game overlay shows only a small preview of active ailments and the next-break part gauges. All readings are visibly labelled experimental/non-authoritative. It does **not** log state samples yet.
+- The in-game overlay shows only a small preview of active ailments and the next-break part gauges. All readings are visibly labelled experimental/non-authoritative.
+- When opt-in is on, the recorder writes at most one sample every two seconds per monster into optional schema-3 `gaugeSamples` (max 3600 hunt-wide), with source `local-unverified`. Both viewer parsers accept this field, defaulting to an empty array for old logs. Dedicated charts and proc events remain separate work.
 
 ## Explicitly deferred
 

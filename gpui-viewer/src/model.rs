@@ -1,4 +1,4 @@
-//! Serde mirror of the plugin's `FightLog.cs` (schema 2). Schema-1 files lack
+//! Serde mirror of the plugin's `FightLog.cs` (schema 3). Schema-1 files lack
 //! the newer fields, so everything added after 0.3.0 has a default.
 
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,50 @@ pub struct FightLog {
     #[serde(default)]
     pub hits: Vec<Hit>,
     #[serde(default)]
+    pub gauge_samples: Vec<GaugeSample>,
+    #[serde(default)]
     pub events: Vec<Event>,
+}
+
+/// Optional locally sampled MHW monster gauges; never assume the client is host.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GaugeSample {
+    pub t: f32,
+    pub monster: String,
+    pub source: String,
+    #[serde(default)]
+    pub stamina: Option<f32>,
+    #[serde(default)]
+    pub max_stamina: Option<f32>,
+    #[serde(default)]
+    pub parts: Vec<PartGauge>,
+    #[serde(default)]
+    pub ailments: Vec<AilmentGauge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartGauge {
+    pub part: i32,
+    pub name: String,
+    pub remaining: f32,
+    pub max: f32,
+    pub completed_flinches: i32,
+    #[serde(default)]
+    pub next_break_threshold: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AilmentGauge {
+    pub id: i32,
+    pub name: String,
+    pub buildup: f32,
+    pub max_buildup: f32,
+    pub procs: i32,
+    pub duration: f32,
+    pub max_duration: f32,
 }
 
 fn one() -> u32 {
