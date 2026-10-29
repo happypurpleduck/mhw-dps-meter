@@ -405,7 +405,8 @@ void ObserveLifecycle(float time, double monotonic)
     HuntGaugeObservation.CaptureBeforePartyGuard(
         () => null, time, monotonic, "local", true,
         lifecycleHp.LastPollComplete, lifecycleHp.LastTracked,
-        lifecyclePoller, lifecycleRecorder, LifecycleRead);
+        lifecyclePoller, lifecycleRecorder, LifecycleRead,
+        knownPresentInstances: lifecycleHp.LiveInstances);
 }
 Monster.ReadAll = () => [oldSame];
 Equal(100, lifecycleHp.Poll(), "first monster starts with 100 real damage");
@@ -427,6 +428,25 @@ ObserveLifecycle(1.1f, 901.1);
 Equal(1, lifecycleRecorder.Monsters().Length,
     "reappearance after an unverified list must NOT create m2");
 
+// A complete enumeration may still fail to read one known monster's HP.
+// That monster remains in LiveInstances and must not be evicted from the
+// recorder solely because this poll couldn't make a MonsterState for it.
+oldSame.FailHealthRead = true;
+Monster.ReadAll = () => [oldSame];
+Equal(100, lifecycleHp.Poll(), "temporary HP-read failure retains fallback damage");
+Equal(true, lifecycleHp.LastPollComplete, "native list itself was fully enumerated");
+Equal(0, lifecycleHp.LastTracked.Count, "unreadable HP has no fresh MonsterState");
+Equal(true, lifecycleHp.LiveInstances.Contains(samePointer),
+    "successful enumeration still knows the monster pointer is present");
+ObserveLifecycle(1.2f, 901.2);
+Equal(1, lifecycleRecorder.Monsters().Length,
+    "unreadable individual state must not mark known pointer as despawned");
+oldSame.FailHealthRead = false;
+Equal(100, lifecycleHp.Poll(), "HP-read recovery resumes same generation");
+ObserveLifecycle(1.3f, 901.3);
+Equal(1, lifecycleRecorder.Monsters().Length,
+    "HP-read recovery retains original m1");
+
 // A real, successfully enumerated empty list is an observed despawn.
 Monster.ReadAll = () => [];
 Equal(100, lifecycleHp.Poll(), "complete empty list banks old 100 damage");
@@ -447,8 +467,8 @@ Equal("m1", lifecycleRecorder.Monsters()[0].Id, "original m1 remains in historic
 Equal("m2", lifecycleRecorder.Monsters()[1].Id, "replacement gets a distinct fight-local ID");
 Equal("m2", lifecycleRecorder.GaugeSamples().Last().Monster,
     "new gauge sample belongs to the replacement generation");
-Equal(3, lifecycleGaugeReads,
-    "failed enumeration recovery and true replacement each perform a fresh native read");
+Equal(4, lifecycleGaugeReads,
+    "failed enumeration and unreadable-HP recovery each refresh before true pointer replacement");
 
 newSame.Hp = 970;
 Monster.ReadAll = () => [newSame];

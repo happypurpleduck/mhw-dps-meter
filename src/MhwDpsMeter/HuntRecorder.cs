@@ -73,7 +73,8 @@ internal sealed class HuntRecorder
         }
     }
 
-    public void ObserveMonsters(float elapsed, IReadOnlyList<MonsterState> monsters)
+    public void ObserveMonsters(float elapsed, IReadOnlyList<MonsterState> monsters,
+        IReadOnlyCollection<nint>? knownPresentInstances = null)
     {
         lock (_gate)
         {
@@ -110,12 +111,13 @@ internal sealed class HuntRecorder
                     entry.Name = state.Name;
             }
 
-            // This method is called only after a complete native enumeration.
-            // Forget absent pointers from the *live* map, not the fight history.
-            // If the game later reuses one of those addresses, the replacement
-            // must receive a new mN even if its type/name/HP look identical.
-            // A failed or torn enumeration never reaches this method.
-            var present = monsters.Select(m => m.Instance).ToHashSet();
+            // Called only after a complete native enumeration. Some known
+            // monsters can have an unreadable HP/type this frame and therefore
+            // be missing from the readable states; those are NOT despawned.
+            // Use the tracker-provided live instances when available.
+            // Forget truly absent pointers from the live map, not history.
+            var present = knownPresentInstances?.ToHashSet()
+                ?? monsters.Select(m => m.Instance).ToHashSet();
             foreach (var instance in _monsters.Keys.Where(key => !present.Contains(key)).ToArray())
             {
                 _monsters.Remove(instance);

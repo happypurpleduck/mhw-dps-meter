@@ -13,7 +13,8 @@ internal static class HuntGaugeObservation
         IReadOnlyList<MonsterState> monsters, MonsterGaugePoller poller,
         HuntRecorder recorder,
         Func<IReadOnlyList<MonsterState>, MonsterGaugeState[]> reader,
-        Action<Exception>? partyReadFailure = null)
+        Action<Exception>? partyReadFailure = null,
+        IReadOnlyCollection<nint>? knownPresentInstances = null)
     {
         PartySnapshot? snapshot;
         try
@@ -29,7 +30,7 @@ internal static class HuntGaugeObservation
         // Even a throwing party-table read cannot skip the independent
         // monster observation. The monster enumeration must have succeeded.
         if (monsterEnumerationComplete)
-            recorder.ObserveMonsters(huntElapsed, monsters);
+            recorder.ObserveMonsters(huntElapsed, monsters, knownPresentInstances);
 
         var sampled = poller.Tick(monotonicSeconds, enabled, monsterEnumerationComplete,
             monsters, reader);

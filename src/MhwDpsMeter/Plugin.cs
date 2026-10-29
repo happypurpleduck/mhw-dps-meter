@@ -305,7 +305,8 @@ public sealed class Plugin : IPlugin
                 Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency,
                 _timerSource, enabled, _monsterHp.LastPollComplete, _monsterHp.LastTracked,
                 _gaugePoller, _recorder, MonsterGaugeReader.Read,
-                ex => Log.Warn($"MhwDpsMeter: party read failed; gauges kept ({ex.GetType().Name}: {ex.Message})"));
+                ex => Log.Warn($"MhwDpsMeter: party read failed; gauges kept ({ex.GetType().Name}: {ex.Message})"),
+                _monsterHp.LiveInstances);
             _gaugeStates = _gaugePoller.Current;
 
             if (snapshot is null)
@@ -1088,7 +1089,8 @@ public sealed class Plugin : IPlugin
                 }
                 // Never interpret a torn final enumeration as disappearance.
                 if (_monsterHp.LastPollComplete)
-                    _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+                    _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked,
+                        _monsterHp.LiveInstances);
                 _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), _snapshot?.LocalSlot ?? 0);
                 if (snapshot is not null)
                 {
