@@ -26,11 +26,12 @@ export function observedCounterIntervals(
     if (sample.monster !== monster) continue
     const boundary = sample.clockBoundary ?? (Boolean(sample.clockAdjusted) && !wasAdjusted)
     wasAdjusted = Boolean(sample.clockAdjusted)
-    // Imported/partial records can repeat an ailment ID. Select a real
-    // nonnegative proc counter, not an earlier duration-only same-ID entry.
-    // Never combine values from distinct records or invent absent counters.
+    // Imported records can repeat part or ailment IDs. Prefer the first
+    // valid recorded nonnegative counter in a single entry with the ID;
+    // an earlier unreadable duplicate must not hide a later real counter.
+    // Never merge entries or treat an unknown counter as zero.
     const count = kind === 'part'
-      ? sample.parts?.find(p => p.part === id)?.completedFlinches
+      ? sample.parts?.find(p => p.part === id && isObservedGaugeCounter(p.completedFlinches))?.completedFlinches
       : sample.ailments?.find(a => a.id === id && isObservedGaugeCounter(a.procs))?.procs
     // Never substitute an absent or invalid counter with 0. The importer may
     // preserve a partial observation whose numeric progress was unreadable.

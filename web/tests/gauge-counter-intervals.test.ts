@@ -163,7 +163,7 @@ describe('observed local gauge counter changes (not exact proc or break events)'
     const input = JSON.parse(readFileSync(
       new URL('../../tests/fixtures/gauge-counter-i32-parity.json', import.meta.url), 'utf8'))
     const log = normalizeLog(input)
-    expect(log.gaugeSamples).toHaveLength(13)
+    expect(log.gaugeSamples).toHaveLength(20)
     const samples = log.gaugeSamples
     const a0 = samples[0]!
     expect(a0.parts.map(p => p.part)).toEqual([2, 3])
@@ -223,6 +223,33 @@ describe('observed local gauge counter changes (not exact proc or break events)'
       ['part:2', 2, 4, 1],
       ['ailment:7', 0, 2, 1],
     ])
+
+    // The same imported part ID can appear twice; the first copy can have
+    // a null, absent, negative, fractional, or overflowed counter. The second
+    // real counter must win without joining past an entirely missing sample.
+    const duplicateParts = samples.filter(s => s.monster === 'm4')
+    expect(duplicateParts).toHaveLength(7)
+    expect(duplicateParts.every(s => s.parts.length === 2)).toBe(true)
+    expect(duplicateParts.map(s => s.parts[0]?.completedFlinches)).toEqual([
+      null, null, -1, null, null, null, null,
+    ])
+    expect(duplicateParts.map(s => s.parts[1]?.completedFlinches)).toEqual([
+      0, 1, 2, 3, null, 4, 5,
+    ])
+    expect(observedCounterIntervals(samples, 'm4', 'part:2')).toEqual([
+      { startT: 0, endT: 2, before: 0, after: 1, increase: 1 },
+      { startT: 2, endT: 4, before: 1, after: 2, increase: 1 },
+      { startT: 4, endT: 6, before: 2, after: 3, increase: 1 },
+      { startT: 10, endT: 12, before: 4, after: 5, increase: 1 },
+    ])
+    expect(observedCounterTimeline(samples, 'm4')
+      .map(e => [e.key, e.startT, e.endT, e.before, e.after])).toEqual([
+      ['part:2', 10, 12, 4, 5],
+      ['part:2', 4, 6, 2, 3],
+      ['part:2', 2, 4, 1, 2],
+      ['part:2', 0, 2, 0, 1],
+    ])
+    expect(observedCounterIntervals(samples, 'm4', 'part:3')).toEqual([])
   })
 
 })
