@@ -26,6 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
+use crate::gauge_history::{available_metrics, gauge_segments};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -34,7 +35,10 @@ impl ViewerApp {
             Tab::Overview => self.render_overview(&log, cx).into_any_element(),
             Tab::Moves => self.render_moves(&log, cx).into_any_element(),
             Tab::Parts => self.render_parts(&log, cx).into_any_element(),
-            Tab::Monsters => render_monsters(&log, cx).into_any_element(),
+            Tab::Monsters => v_flex().gap_4()
+                .child(render_monsters(&log, cx))
+                .child(self.render_gauge_history(&log, cx))
+                .into_any_element(),
             Tab::Timeline => self.render_timeline(&log, cx).into_any_element(),
         };
         v_flex()
@@ -413,6 +417,97 @@ impl ViewerApp {
                         .child(div().h(px(220.)).w_full().child(LinesPlot::new(rolling.clone(), Vec::new())))
                         .child(legend(&rolling, cx)))
             })
+    }
+
+    fn render_gauge_history(&mut self, log: &FightLog, cx: &mut Context<Self>) -> AnyElement {
+        let monsters: Vec<_> = log.monsters.iter().filter(|m|
+            log.gauge_samples.iter().any(|s| s.monster == m.id)
+        ).collect();
+        if monsters.is_empty() {
+            return card(cx)
+                .child(section_title("Experimental monster state history", cx))
+                .child(muted("No locally recorded gauge samples for this hunt. Older logs and disabled capture legitimately have none.", cx))
+                .into_any_element();
+        }
+
+        let selected_id = self.gauge_monster.as_deref()
+            .filter(|id| monsters.iter().any(|m| m.id == *id))
+            .unwrap_or(&monsters[0].id);
+        let choices = available_metrics(&log.gauge_samples, selected_id);
+        let chosen = self.gauge_metric.as_deref()
+            .and_then(|key| choices.iter().find(|m| m.key() == key))
+            .or_else(|| choices.first());
+        let active_metric = chosen.map(|m| m.key());
+        let mut series = Vec::new();
+        let mut last_value: Option<(f32, f32)> = None;
+        let mut has_trend = false;
+        if let Some(metric) = chosen {
+            for points in gauge_segments(&log.gauge_samples, selected_id, metric) {
+                if let Some(last) = points.last() {
+                    last_value = Some(*last);
+                }
+                if points.len() > 1 {
+                    has_trend = true;
+                    series.push(Series {
+                        label: metric.label().into(),
+                        color: cx.theme().primary,
+                        points,
+                    });
+                }
+            }
+        }
+        let monster_buttons = h_flex().flex_wrap().gap_1().children(monsters.into_iter().map(|monster| {
+            let id = monster.id.clone();
+            let is_active = id == selected_id;
+            let button = Button::new(SharedString::from(format!("gauge-monster-{id}")))
+                .xsmall()
+                .label(format!("{} ({id})", monster.name))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.gauge_monster = Some(id.clone());
+                    this.gauge_metric = None;
+                    cx.notify();
+                }));
+            if is_active { button.primary() } else { button.ghost() }
+        }));
+        let metric_buttons = h_flex().flex_wrap().gap_1().children(choices.iter().map(|metric| {
+            let key = metric.key();
+            let is_active = active_metric.as_deref() == Some(key.as_str());
+            let button = Button::new(SharedString::from(format!("gauge-metric-{key}")))
+                .xsmall()
+                .label(metric.label())
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.gauge_metric = Some(key.clone());
+                    cx.notify();
+                }));
+            if is_active { button.primary() } else { button.ghost() }
+        }));
+        let mut panel = card(cx)
+            .child(section_title("Experimental monster state history", cx))
+            .child(muted("Local-unverified, non-authoritative sampled readings. Gauge progress is NOT HP part damage, per-hunter KO/status contribution or an exact proc/break event.", cx))
+            .child(monster_buttons);
+        if choices.is_empty() {
+            panel = panel.child(muted("This monster has no usable numeric gauge readings.", cx));
+        } else {
+            panel = panel.child(metric_buttons);
+            panel = panel.child(muted(
+                format!("Percent of sampled maximum; {}. Unknown readings, clock corrections and gaps over 6s are not interpolated.",
+                    chosen.map(|m| m.label()).unwrap_or_default()),
+                cx,
+            ));
+            if let Some((time, percent)) = last_value {
+                panel = panel.child(muted(format!("Last observed: {:.1}% at {:.1}s.", percent, time), cx));
+            }
+            if has_trend {
+                panel = panel.child(div().h(px(235.)).w_full()
+                    .child(LinesPlot::new(series, Vec::new())));
+            } else {
+                panel = panel.child(muted("Only isolated observations; a trend needs at least two consecutive valid samples.", cx));
+            }
+        }
+        if log.gauge_clock_discontinuities > 0 || log.gauge_samples_dropped > 0 {
+            panel = panel.child(muted("Gauge capture clock or recording gaps present: do not align these curves with hit/DPS times as exact events.", cx));
+        }
+        panel.into_any_element()
     }
 
     fn render_timeline(&mut self, log: &FightLog, cx: &mut Context<Self>) -> impl IntoElement {

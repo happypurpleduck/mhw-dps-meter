@@ -1,5 +1,6 @@
 import { weaponDisplayName, stageDisplayName } from '../data/names'
 import { Parts } from './Parts'
+import { GaugeHistory } from './GaugeHistory'
 import { WeaponIcon } from './WeaponIcon'
 import { For, Match, Show, Switch, createMemo, createSignal } from 'solid-js'
 import { createColumnHelper } from '@tanstack/table-core'
@@ -326,7 +327,10 @@ function Monsters(props: { log: FightLog }) {
   const table = createSolidTable<MonsterRow>({ data: rows, columns: monsterColumns, getRowId: (m) => m.id })
   return (
     <Show when={props.log.monsters.length} fallback={<div class="text-sm text-base-content/60">No large monsters were recorded for this log.</div>}>
-      <TableView table={table} />
+      <div class="flex flex-col gap-4">
+        <TableView table={table} />
+        <GaugeHistory log={props.log} />
+      </div>
     </Show>
   )
 }

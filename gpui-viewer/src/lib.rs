@@ -2,6 +2,7 @@
 //! app (`src/main.rs`) and the browser build (`run` below, via wasm-bindgen).
 
 pub mod analysis;
+pub mod gauge_history;
 pub mod loader;
 pub mod model;
 pub mod names;

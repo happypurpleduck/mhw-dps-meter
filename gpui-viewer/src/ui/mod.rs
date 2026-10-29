@@ -87,6 +87,9 @@ pub struct ViewerApp {
     pub(crate) parts_monster: Option<Option<String>>,
     /// None chooses the first tagged part; Some(None) selects Unknown part.
     pub(crate) parts_selected: Option<Option<i32>>,
+    /// State history selector is independent of the Parts hit-damage selector.
+    pub(crate) gauge_monster: Option<String>,
+    pub(crate) gauge_metric: Option<String>,
     /// Trial files ticked for comparison (at most two).
     pub(crate) compare: Vec<String>,
     _tasks: Vec<Task<()>>,
@@ -148,6 +151,8 @@ impl ViewerApp {
             moves_slot: None,
             parts_monster: None,
             parts_selected: None,
+            gauge_monster: None,
+            gauge_metric: None,
             compare: Vec::new(),
             _tasks: Vec::new(),
             source_task: None,
@@ -171,6 +176,8 @@ impl ViewerApp {
             self.moves_slot = None;
             self.parts_monster = None;
             self.parts_selected = None;
+            self.gauge_monster = None;
+            self.gauge_metric = None;
             cx.notify();
         }
     }

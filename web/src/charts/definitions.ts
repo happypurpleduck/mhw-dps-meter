@@ -162,3 +162,22 @@ export function partTimelineChart(rows: CurvePoint[] | RatePoint[], metric: 'dam
     } },
   } as never) as unknown as Def
 }
+
+/** Sampled monster-gauge percentage, never HP damage or inferred proc timing. */
+export function gaugeHistoryChart(points: { t: number; value: number; segment: string }[], label: string): Def {
+  return defineChart({
+    marks: [lineY(points, {
+      id: 'observed-gauge', x: 't', y: 'value', z: 'segment',
+      stroke: '#8b5cf6', strokeWidth: 2,
+    })],
+    scales: {
+      x: { scale: scaleLinear, nice: true, axis: { label: 'Capture timeline (s)' } },
+      y: { scale: scaleLinear, nice: true, grid: true, axis: { label: `${label} (%)` } },
+    },
+    tooltip: {
+      use: tooltip,
+      format: (point: { datum: { t: number; value: number } }) =>
+        `${label}: ${point.datum.value.toFixed(1)}% @ ${point.datum.t.toFixed(1)}s (local-unverified)`,
+    },
+  } as never) as unknown as Def
+}
