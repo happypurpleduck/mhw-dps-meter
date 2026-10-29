@@ -113,12 +113,17 @@ pub struct PartGauge {
 pub struct AilmentGauge {
     pub id: i32,
     pub name: String,
-    pub buildup: f32,
-    pub max_buildup: f32,
+    #[serde(default)]
+    pub buildup: Option<f32>,
+    #[serde(default)]
+    pub max_buildup: Option<f32>,
     #[serde(default)]
     pub procs: Option<i32>,
-    pub duration: f32,
-    pub max_duration: f32,
+    /// Optional sampled duration; absent/invalid must not become a zero reading.
+    #[serde(default)]
+    pub duration: Option<f32>,
+    #[serde(default)]
+    pub max_duration: Option<f32>,
 }
 
 
@@ -170,11 +175,11 @@ fn decode_gauge_sample(value: &serde_json::Value) -> Option<GaugeSample> {
                 Some(AilmentGauge {
                     id: gauge_integer(ailment.get("id"))?,
                     name: ailment.get("name")?.as_str()?.to_string(),
-                    buildup: gauge_number(ailment.get("buildup"))?,
-                    max_buildup: gauge_number(ailment.get("maxBuildup"))?,
+                    buildup: gauge_number(ailment.get("buildup")),
+                    max_buildup: gauge_number(ailment.get("maxBuildup")),
                     procs: gauge_integer(ailment.get("procs")),
-                    duration: gauge_number(ailment.get("duration")).unwrap_or(0.0),
-                    max_duration: gauge_number(ailment.get("maxDuration")).unwrap_or(0.0),
+                    duration: gauge_number(ailment.get("duration")),
+                    max_duration: gauge_number(ailment.get("maxDuration")),
                 })
             }).collect()
     };

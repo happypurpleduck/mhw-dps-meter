@@ -5,14 +5,21 @@ export interface GaugePoint { t: number; value: number; segment: string; source:
 
 /** Read-only, sampled local observations. No proc events or attacker attribution inferred. */
 export function availableGaugeMetrics(samples: FightLogGaugeSample[], monster: string): GaugeOption[] {
-  const ailments = new Map<number, string>()
+  const ailments = new Map<number, { name: string; buildup: boolean; duration: boolean }>()
   const parts = new Map<number, string>()
   let stamina = false
   for (const sample of samples) {
     if (sample.monster !== monster) continue
     if (fraction(sample.stamina, sample.maxStamina) !== null) stamina = true
     for (const a of sample.ailments ?? []) {
-      if (fraction(a.buildup, a.maxBuildup) !== null) ailments.set(a.id, a.name)
+      const buildup = fraction(a.buildup, a.maxBuildup) !== null
+      const duration = fraction(a.duration, a.maxDuration) !== null
+      if (!buildup && !duration) continue
+      const entry = ailments.get(a.id) ?? { name: a.name, buildup: false, duration: false }
+      entry.name = a.name
+      entry.buildup ||= buildup
+      entry.duration ||= duration
+      ailments.set(a.id, entry)
     }
     for (const p of sample.parts ?? []) {
       if (fraction(p.remaining, p.max) !== null) parts.set(p.part, p.name)
@@ -20,7 +27,10 @@ export function availableGaugeMetrics(samples: FightLogGaugeSample[], monster: s
   }
   return [
     ...(stamina ? [{ key: 'stamina', label: 'Stamina remaining' }] : []),
-    ...[...ailments].sort(([a], [b]) => a - b).map(([id, name]) => ({ key: `ailment:${id}`, label: `${name} buildup` })),
+    ...[...ailments].sort(([a], [b]) => a - b).flatMap(([id, a]) => [
+      ...(a.buildup ? [{ key: `ailment:${id}`, label: `${a.name} buildup` }] : []),
+      ...(a.duration ? [{ key: `ailment-duration:${id}`, label: `${a.name} duration remaining` }] : []),
+    ]),
     ...[...parts].sort(([a], [b]) => a - b).map(([id, name]) => ({ key: `part:${id}`, label: `${name} flinch remaining` })),
   ]
 }
@@ -36,9 +46,11 @@ function metricValue(s: FightLogGaugeSample, key: string): number | null {
   const [kind, id] = key.split(':')
   const number = Number(id)
   if (!Number.isInteger(number)) return null
-  if (kind === 'ailment') {
+  if (kind === 'ailment' || kind === 'ailment-duration') {
     const entry = (s.ailments ?? []).find(a => a.id === number)
-    return entry ? fraction(entry.buildup, entry.maxBuildup) : null
+    if (!entry) return null
+    return kind === 'ailment' ? fraction(entry.buildup, entry.maxBuildup)
+      : fraction(entry.duration, entry.maxDuration)
   }
   if (kind === 'part') {
     const entry = (s.parts ?? []).find(p => p.part === number)

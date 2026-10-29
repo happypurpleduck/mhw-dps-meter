@@ -9,6 +9,7 @@ use crate::model::GaugeSample;
 pub enum GaugeMetric {
     Stamina,
     Ailment(i32, String),
+    AilmentDuration(i32, String),
     Part(i32, String),
 }
 
@@ -17,6 +18,7 @@ impl GaugeMetric {
         match self {
             Self::Stamina => "stamina".into(),
             Self::Ailment(id, _) => format!("ailment:{id}"),
+            Self::AilmentDuration(id, _) => format!("ailment-duration:{id}"),
             Self::Part(id, _) => format!("part:{id}"),
         }
     }
@@ -25,6 +27,7 @@ impl GaugeMetric {
         match self {
             Self::Stamina => "Stamina remaining".into(),
             Self::Ailment(_, name) => format!("{name} buildup"),
+            Self::AilmentDuration(_, name) => format!("{name} duration remaining"),
             Self::Part(_, name) => format!("{name} flinch remaining"),
         }
     }
@@ -42,7 +45,11 @@ fn value(sample: &GaugeSample, metric: &GaugeMetric) -> Option<f32> {
         GaugeMetric::Stamina => pct(sample.stamina?, sample.max_stamina?),
         GaugeMetric::Ailment(id, _) => {
             let a = sample.ailments.iter().find(|a| a.id == *id)?;
-            pct(a.buildup, a.max_buildup)
+            pct(a.buildup?, a.max_buildup?)
+        }
+        GaugeMetric::AilmentDuration(id, _) => {
+            let a = sample.ailments.iter().find(|a| a.id == *id)?;
+            pct(a.duration?, a.max_duration?)
         }
         GaugeMetric::Part(id, _) => {
             let p = sample.parts.iter().find(|p| p.part == *id)?;
@@ -53,12 +60,21 @@ fn value(sample: &GaugeSample, metric: &GaugeMetric) -> Option<f32> {
 
 pub fn available_metrics(samples: &[GaugeSample], monster: &str) -> Vec<GaugeMetric> {
     let mut stamina = false;
-    let mut ailments = BTreeMap::new();
+    let mut ailments: BTreeMap<i32, (String, bool, bool)> = BTreeMap::new();
     let mut parts = BTreeMap::new();
     for sample in samples.iter().filter(|s| s.monster == monster) {
         if value(sample, &GaugeMetric::Stamina).is_some() { stamina = true; }
         for a in &sample.ailments {
-            if pct(a.buildup, a.max_buildup).is_some() { ailments.insert(a.id, a.name.clone()); }
+            let buildup = a.buildup.zip(a.max_buildup)
+                .is_some_and(|(current, max)| pct(current, max).is_some());
+            let duration = a.duration.zip(a.max_duration)
+                .is_some_and(|(current, max)| pct(current, max).is_some());
+            if buildup || duration {
+                let entry = ailments.entry(a.id).or_insert_with(|| (a.name.clone(), false, false));
+                entry.0 = a.name.clone();
+                entry.1 |= buildup;
+                entry.2 |= duration;
+            }
         }
         for p in &sample.parts {
             if pct(p.remaining, p.max).is_some() { parts.insert(p.part, p.name.clone()); }
@@ -66,7 +82,10 @@ pub fn available_metrics(samples: &[GaugeSample], monster: &str) -> Vec<GaugeMet
     }
     let mut result = Vec::new();
     if stamina { result.push(GaugeMetric::Stamina); }
-    result.extend(ailments.into_iter().map(|(id, name)| GaugeMetric::Ailment(id, name)));
+    for (id, (name, has_buildup, has_duration)) in ailments {
+        if has_buildup { result.push(GaugeMetric::Ailment(id, name.clone())); }
+        if has_duration { result.push(GaugeMetric::AilmentDuration(id, name)); }
+    }
     result.extend(parts.into_iter().map(|(id, name)| GaugeMetric::Part(id, name)));
     result
 }
@@ -219,7 +238,7 @@ pub fn observed_counter_intervals(
         let boundary = sample.clock_boundary.unwrap_or(sample.clock_adjusted && !was_adjusted);
         was_adjusted = sample.clock_adjusted;
         let count = match metric {
-            GaugeMetric::Stamina => None,
+            GaugeMetric::Stamina | GaugeMetric::AilmentDuration(..) => None,
             GaugeMetric::Ailment(id, _) => sample.ailments.iter().find(|a| a.id == *id).and_then(|a| a.procs),
             GaugeMetric::Part(id, _) => sample.parts.iter().find(|p| p.part == *id).and_then(|p| p.completed_flinches),
         };
@@ -256,6 +275,70 @@ mod tests {
 
 
 
+
+
+    #[test]
+    fn ailment_duration_is_independent_from_buildup_and_missing_is_not_zero() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","buildup":30,"maxBuildup":100,"duration":5,"maxDuration":10,"procs":0}]},
+          {"t":1,"monster":"m2","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","buildup":40,"maxBuildup":100,"duration":4,"maxDuration":10}]},
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":2,"maxDuration":10}]},
+          {"t":4,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","buildup":40,"maxBuildup":100,"maxDuration":10}]},
+          {"t":6,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":4,"maxDuration":10}]},
+          {"t":8,"monster":"m1","source":"local-unverified","clockBoundary":true,"ailments":[
+            {"id":7,"name":"KO","duration":1,"maxDuration":10}]},
+          {"t":10,"monster":"m1","source":"local-unverified","clockBoundary":false,"ailments":[
+            {"id":7,"name":"KO","duration":0,"maxDuration":10}]},
+          {"t":12,"monster":"m1","source":"unknown","ailments":[
+            {"id":7,"name":"KO","duration":0,"maxDuration":10}]},
+          {"t":14,"monster":"m1","source":"unknown","ailments":[
+            {"id":7,"name":"KO","duration":9,"maxDuration":0}]},
+          {"t":16,"monster":"m1","source":"unknown","ailments":[
+            {"id":7,"name":"KO","maxDuration":10}]}
+        ]"#).unwrap();
+        let keys = available_metrics(&samples, "m1").iter().map(GaugeMetric::key).collect::<Vec<_>>();
+        assert_eq!(keys, vec!["ailment:7", "ailment-duration:7"]);
+        let duration = GaugeMetric::AilmentDuration(7, "KO".into());
+        assert_eq!(duration.label(), "KO duration remaining");
+        let segments = gauge_segments(&samples, "m1", &duration);
+        assert_eq!(segments.len(), 4);
+        assert_eq!(segments.iter().map(Vec::len).collect::<Vec<_>>(), vec![2, 1, 2, 1]);
+        let actual: Vec<_> = segments.iter().flatten().copied().collect();
+        let expected = [(0., 50.), (2., 20.), (6., 40.), (8., 10.), (10., 0.), (12., 0.)];
+        for (&(t, p), &(et, ep)) in actual.iter().zip(expected.iter()) {
+            assert_eq!(t, et);
+            assert!((p - ep).abs() < 0.001);
+        }
+        let buildup = GaugeMetric::Ailment(7, "KO".into());
+        assert_eq!(gauge_segments(&samples, "m1", &buildup).iter().flatten().map(|x| x.0).collect::<Vec<_>>(),
+            vec![0.0, 4.0]);
+        assert_eq!(gauge_segments(&samples, "m2", &duration), vec![vec![(1.0, 40.0)]]);
+        let coverage = gauge_coverage(&samples, "m1", &duration);
+        assert_eq!((coverage.observations, coverage.usable, coverage.missing_metric,
+            coverage.clock_boundaries, coverage.source_changes), (9, 6, 3, 1, 1));
+        assert!(observed_counter_intervals(&samples, "m1", &duration).is_empty());
+        assert_eq!(samples[3].ailments[0].duration, None, "missing duration is unknown");
+    }
+
+    #[test]
+    fn duration_only_ailments_can_be_selected_without_fabricated_buildup() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":6,"name":"Exhaust","duration":0,"maxDuration":20},
+            {"id":7,"name":"KO","buildup":20,"maxBuildup":100},
+            {"id":8,"name":"Unknown","maxDuration":30}]}
+        ]"#).unwrap();
+        assert_eq!(available_metrics(&samples, "m1").iter().map(GaugeMetric::key).collect::<Vec<_>>(),
+            vec!["ailment-duration:6", "ailment:7"]);
+        assert_eq!(gauge_segments(&samples, "m1", &GaugeMetric::AilmentDuration(6, "Exhaust".into())),
+            vec![vec![(0.0, 0.0)]]);
+        assert!(gauge_segments(&samples, "m1", &GaugeMetric::AilmentDuration(8, "Unknown".into())).is_empty());
+    }
 
     #[test]
     fn monster_quality_survives_all_unplottable_samples() {

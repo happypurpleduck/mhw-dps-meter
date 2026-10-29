@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { normalizeLog } from '../src/data/parse'
 import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage } from '../src/data/gaugeHistory'
 import { gaugeHistoryChart } from '../src/charts/definitions'
+import { observedCounterIntervals } from '../src/data/gaugeCounterIntervals'
 
 describe('experimental gauge history', () => {
   it('preserves old logs, missing values and multi-monster identity', () => {
@@ -264,6 +265,76 @@ describe('experimental gauge history', () => {
     expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')).toMatchObject({
       observations: 2, usable: 0, missingMetric: 0, invalidTime: 2,
     })
+  })
+
+  it('plots sampled ailment duration independently of buildup and never invents missing time', () => {
+    const status = (extras: Record<string, unknown>) =>
+      ({ id: 7, name: 'KO', ...extras })
+    const log = normalizeLog({ questName: 'Duration vs buildup', players: [], gaugeSamples: [
+      { t: 0, monster: 'm1', source: 'local-unverified', ailments: [
+        status({ buildup: 30, maxBuildup: 100, duration: 5, maxDuration: 10, procs: 0 })] },
+      { t: 1, monster: 'm2', source: 'local-unverified', ailments: [
+        status({ buildup: 40, maxBuildup: 100, duration: 4, maxDuration: 10 })] },
+      { t: 2, monster: 'm1', source: 'local-unverified', ailments: [
+        status({ duration: 2, maxDuration: 10 })] }, // duration-only still valid
+      { t: 4, monster: 'm1', source: 'local-unverified', ailments: [
+        status({ buildup: 40, maxBuildup: 100, maxDuration: 10 })] }, // missing duration != 0
+      { t: 6, monster: 'm1', source: 'local-unverified', ailments: [
+        status({ duration: 4, maxDuration: 10 })] },
+      { t: 8, monster: 'm1', source: 'local-unverified', clockBoundary: true, ailments: [
+        status({ duration: 1, maxDuration: 10 })] },
+      { t: 10, monster: 'm1', source: 'local-unverified', clockBoundary: false, ailments: [
+        status({ duration: 0, maxDuration: 10 })] },
+      { t: 12, monster: 'm1', source: 'unknown', ailments: [
+        status({ duration: 0, maxDuration: 10 })] },
+      { t: 14, monster: 'm1', source: 'unknown', ailments: [
+        status({ duration: 9, maxDuration: 0 })] },
+      { t: 16, monster: 'm1', source: 'unknown', ailments: [
+        status({ duration: 'bad', maxDuration: 10 })] },
+    ] })
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([
+      { key: 'ailment:7', label: 'KO buildup' },
+      { key: 'ailment-duration:7', label: 'KO duration remaining' },
+    ])
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm2')).toEqual([
+      { key: 'ailment:7', label: 'KO buildup' },
+      { key: 'ailment-duration:7', label: 'KO duration remaining' },
+    ])
+    expect(log.gaugeSamples.find(s => s.t === 2)?.ailments[0]).toMatchObject({
+      buildup: null, maxBuildup: null, duration: 2, maxDuration: 10,
+    })
+    expect(log.gaugeSamples.find(s => s.t === 4)?.ailments[0]?.duration).toBeNull()
+    expect(log.gaugeSamples.find(s => s.t === 16)?.ailments[0]?.duration).toBeNull()
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment-duration:7')
+      .map(p => [p.t, p.value, p.segment])).toEqual([
+      [0, 50, 'segment-1'], [2, 20, 'segment-1'],
+      [6, 40, 'segment-2'], [8, 10, 'segment-3'], [10, 0, 'segment-3'],
+      [12, 0, 'segment-4'],
+    ])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment:7').map(p => p.t))
+      .toEqual([0, 4])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm2', 'ailment-duration:7').map(p => p.value))
+      .toEqual([40])
+    expect(gaugeCoverage(log.gaugeSamples, 'm1', 'ailment-duration:7')).toMatchObject({
+      observations: 9, usable: 6, missingMetric: 3, clockBoundaries: 1, sourceChanges: 1,
+    })
+    expect(observedCounterIntervals(log.gaugeSamples, 'm1', 'ailment-duration:7')).toEqual([])
+  })
+
+  it('exposes duration-only ailments but not absent or invalid duration as a metric', () => {
+    const log = normalizeLog({ questName: 'Status duration import', players: [], gaugeSamples: [
+      { t: 0, monster: 'm1', source: 'local-unverified', ailments: [
+        { id: 6, name: 'Exhaust', duration: 0, maxDuration: 20 },
+        { id: 7, name: 'KO', buildup: 20, maxBuildup: 100 },
+        { id: 8, name: 'Unknown', duration: null, maxDuration: 30 },
+      ] },
+    ] })
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([
+      { key: 'ailment-duration:6', label: 'Exhaust duration remaining' },
+      { key: 'ailment:7', label: 'KO buildup' },
+    ])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment-duration:6')[0]?.value).toBe(0)
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment-duration:8')).toEqual([])
   })
 
 })

@@ -61,11 +61,12 @@ export interface FightLogGaugeSample {
   ailments: Array<{
     id: number
     name: string
-    buildup: number
-    maxBuildup: number
-    procs: number
-    duration: number
-    maxDuration: number
+    buildup: number | null
+    maxBuildup: number | null
+    procs: number | null
+    /** Optional sampled duration, not an exact status start/end timestamp. */
+    duration: number | null
+    maxDuration: number | null
   }>
 }
 

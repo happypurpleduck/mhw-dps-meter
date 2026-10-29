@@ -56,6 +56,7 @@ export function GaugeHistory(props: { log: FightLog }) {
             <div class="text-xs text-base-content/60">
               Percent of sampled maximum; {activeMetric()?.label}. Missing readings, capture-clock discontinuities, changes of observation source and gaps over 6s break the line.
               {last() ? ` Last observed: ${last()!.value.toFixed(1)}% at ${last()!.t.toFixed(1)}s.` : ''}
+              {activeMetric()?.key.startsWith('ailment-duration:') ? ' Duration is a sampled remaining-time fraction, not a precise status start/end event.' : ''}
             </div>
             <Show when={hasTrend()} fallback={<p class="text-sm text-base-content/60">Only isolated observations. A trend requires two consecutive valid samples.</p>}>
               <Chart definition={gaugeHistoryChart(points(), activeMetric()?.label ?? 'Gauge')} height={250}

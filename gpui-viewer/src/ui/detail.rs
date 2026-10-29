@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, hunt_wide_quality_notice};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, hunt_wide_quality_notice, GaugeMetric};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -515,8 +515,11 @@ impl ViewerApp {
                 ), cx));
             }
             panel = panel.child(muted(
-                format!("Percent of sampled maximum; {}. Unknown readings, clock corrections, source changes and gaps over 6s are not interpolated.",
-                    chosen.map(|m| m.label()).unwrap_or_default()),
+                format!("Percent of sampled maximum; {}. Unknown readings, clock corrections, source changes and gaps over 6s are not interpolated.{}",
+                    chosen.map(|m| m.label()).unwrap_or_default(),
+                    if matches!(chosen, Some(GaugeMetric::AilmentDuration(..))) {
+                        " Duration is a sampled remaining-time fraction, not a precise status start/end event."
+                    } else { "" }),
                 cx,
             ));
             if let Some((time, percent)) = last_value {

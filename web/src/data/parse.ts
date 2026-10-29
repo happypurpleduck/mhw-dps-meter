@@ -68,9 +68,18 @@ function normalizeGaugeSamples(raw: unknown): FightLogGaugeSample[] {
         record(p) && Number.isInteger(p.part) && typeof p.name === 'string'
         && finite(p.remaining) && finite(p.max))
     const ailments = (validTime && Array.isArray(value.ailments) ? value.ailments : [])
-      .filter((a): a is FightLogGaugeSample['ailments'][number] =>
-        record(a) && Number.isInteger(a.id) && typeof a.name === 'string'
-        && finite(a.buildup) && finite(a.maxBuildup))
+      .filter((a): a is Record<string, unknown> & { id: number; name: string } =>
+        record(a) && Number.isInteger(a.id) && typeof a.name === 'string')
+      // Preserve independent fields: a missing buildup does not erase a valid
+      // duration and a missing duration can never be interpreted as zero.
+      .map(a => ({
+        id: a.id, name: a.name,
+        buildup: finite(a.buildup) ? a.buildup : null,
+        maxBuildup: finite(a.maxBuildup) ? a.maxBuildup : null,
+        procs: Number.isInteger(a.procs) && typeof a.procs === 'number' ? a.procs : null,
+        duration: finite(a.duration) ? a.duration : null,
+        maxDuration: finite(a.maxDuration) ? a.maxDuration : null,
+      }))
 
     samples.push({
       t,
