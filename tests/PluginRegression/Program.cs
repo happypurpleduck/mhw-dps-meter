@@ -831,9 +831,11 @@ using (var damage = new DamageTracker())
     queuedRecorder.AddHits(5.1f, unidentified, 0);
     Equal<string?>(null, queuedRecorder.Hits().Last().Monster,
         "unknown hit before new mapping is never retrospectively assigned");
-    damage.UpdateMonsters([]);
+    // Restore the original native-detour fixture after the pointer-lifetime
+    // scenarios; the following exception-unwind regression still expects a
+    // large-monster hit to be accepted.
+    damage.UpdateMonsters([target]);
     damage.SetMonsterIdentityResolver(_ => (null, null));
-
 
     var nativeOriginal = SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress];
     SharpPluginLoader.Core.Memory.Hook.Originals[contextAddress] = _ => throw new InvalidOperationException("native failure");
