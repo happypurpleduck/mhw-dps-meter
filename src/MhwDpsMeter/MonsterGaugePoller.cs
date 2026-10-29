@@ -37,7 +37,8 @@ internal sealed class MonsterGaugePoller
 
         // Keep snapshots generation-bound, not just pointer-bound: the engine
         // reuses entity addresses, sometimes without a frame where they vanish.
-        // Detect a new type, variant, identity, max HP or a large HP reset.
+        // Detect a new type, variant, identity or large proportional HP
+        // reset. A party-size max-HP rescale alone is not a new generation.
         var replaced = _seen.Count != monsters.Count
             || monsters.Any(m => !_seen.TryGetValue(m.Instance, out var previous)
                 || MonsterGeneration.Changed(previous, m));

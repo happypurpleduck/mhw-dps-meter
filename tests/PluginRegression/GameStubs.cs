@@ -8,7 +8,7 @@ namespace SharpPluginLoader.Core.Entities
         public static Func<IEnumerable<Monster>> ReadAll = () => [];
         public static IEnumerable<Monster> GetAllMonsters() => ReadAll();
         public nint Instance { get; init; }
-        public float MaxHealth { get; init; } = 10000;
+        public float MaxHealth { get; set; } = 10000;
         public float Hp { get; set; } = 8000;
         public bool FailHealthRead { get; set; }
         public float Health => FailHealthRead ? throw new InvalidOperationException("Unreadable HP") : Hp;

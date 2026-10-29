@@ -207,6 +207,77 @@ Equal(1, gaugeReadCalls, "no extra native reads before refresh interval");
 Equal(1, gaugePoller.Tick(1.1f, true, true, [gaugeInput], Sample)!.Length,
     "gauge refresh happens on its independent cadence");
 Equal(2, gaugeReadCalls, "one read per 1s interval");
+
+// Iceborne's dynamic 1 -> 2 -> 1 player difficulty scaling can change max
+// HP without changing the monster at this pointer. No new mN, no phantom
+// fallback damage, no extra gauge read until its normal 1-second interval.
+var scalingMonster = new Monster
+{
+    Instance = 0xA0000, Type = MonsterType.LargeMonster,
+    Name = "Scaling monster", MaxHealth = 1000f, Hp = 800f
+};
+var scalingHp = new MonsterHpTracker();
+var scalingRecorder = new HuntRecorder((_, _) => null);
+var scalingPoller = new MonsterGaugePoller();
+var scalingReadCalls = 0;
+MonsterGaugeState[] ScalingRead(IReadOnlyList<MonsterState> states)
+{
+    scalingReadCalls++;
+    return states.Select(x => observed with { Instance = x.Instance, Name = x.Name }).ToArray();
+}
+Monster.ReadAll = () => [scalingMonster];
+Equal(200, scalingHp.Poll(), "partly damaged solo monster has 200 HP damage");
+var soloState = scalingHp.LastTracked.Single();
+scalingRecorder.ObserveMonsters(0, scalingHp.LastTracked);
+Equal(1, scalingPoller.Tick(700.0, true, true, scalingHp.LastTracked, ScalingRead)!.Length,
+    "first solo monster gauge read succeeds");
+
+scalingMonster.MaxHealth = 1500f;
+scalingMonster.Hp = 1200f; // same 80% health on two-player difficulty
+Equal(200, scalingHp.Poll(), "joining hunter cannot invent 100 damage through max HP rescale");
+var joinedState = scalingHp.LastTracked.Single();
+Equal(false, MonsterGeneration.Changed(soloState, joinedState),
+    "proportional max/current HP rescale is not a new monster generation");
+Equal(true, MonsterGeneration.Rescaled(soloState, joinedState),
+    "max-HP scaling is explicitly recognized as a baseline rebase");
+scalingRecorder.ObserveMonsters(1, scalingHp.LastTracked);
+Equal(1, scalingRecorder.Monsters().Length, "joining hunter retains the same fight-local monster");
+Equal<MonsterGaugeState[]?>(null,
+    scalingPoller.Tick(700.1, true, true, scalingHp.LastTracked, ScalingRead),
+    "party scaling does not force premature gauge refresh");
+Equal(1, scalingPoller.Current.Length, "gauge cache stays visible through party scaling");
+Equal(1, scalingReadCalls, "party scaling respects native gauge refresh throttle");
+
+scalingMonster.Hp = 1100f; // real 100 damage at the new HP scale
+Equal(300, scalingHp.Poll(), "first 100 damage after joining counts once");
+scalingRecorder.ObserveMonsters(2, scalingHp.LastTracked);
+Equal(1, scalingRecorder.Monsters().Length, "continued damage doesn't create a generation");
+
+scalingMonster.MaxHealth = 1000f;
+scalingMonster.Hp = 733.3333f; // 1100 / 1500 health proportion at solo scaling
+Equal(300, scalingHp.Poll(), "hunter leaving cannot invent or discard damage on downscale");
+var leftState = scalingHp.LastTracked.Single();
+Equal(false, MonsterGeneration.Changed(joinedState, leftState),
+    "downscaled HP still belongs to the original monster");
+scalingRecorder.ObserveMonsters(3, scalingHp.LastTracked);
+Equal(1, scalingRecorder.Monsters().Length, "joining then leaving retains exactly one monster ID");
+Equal<MonsterGaugeState[]?>(null,
+    scalingPoller.Tick(700.5, true, true, scalingHp.LastTracked, ScalingRead),
+    "downscale does not invalidate a healthy cached gauge");
+Equal(1, scalingReadCalls, "join/leave never doubles native gauge read work");
+
+scalingMonster.Hp = 633.3333f;
+Equal(400, scalingHp.Poll(), "next 100 damage after leaving counts once");
+scalingRecorder.ObserveMonsters(4, scalingHp.LastTracked);
+Equal(1, scalingRecorder.Monsters().Length, "later damage keeps the first fight-local monster ID");
+Equal(1, scalingPoller.Tick(701.1, true, true, scalingHp.LastTracked, ScalingRead)!.Length,
+    "gauges still refresh at normal monotonic cadence after scaling");
+Equal(2, scalingReadCalls, "only scheduled native reads occurred over scaling transition");
+scalingHp.Reset();
+scalingRecorder.Reset();
+Equal(0, scalingRecorder.Monsters().Length, "recording reset clears identity across new hunts");
+Monster.ReadAll = () => [other];
+
 Equal<MonsterGaugeState[]?>(null, gaugePoller.Tick(1.2f, true, false, [gaugeInput], Sample),
     "torn monster enumeration prevents another protected read");
 Equal(0, gaugePoller.Current.Length, "torn monster list invalidates stale overlay");

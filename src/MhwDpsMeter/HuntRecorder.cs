@@ -26,6 +26,7 @@ internal sealed class HuntRecorder
     /// <summary>Latest monster entry per instance; the game reuses instances, so a second
     /// Beotodus spawning after the first died gets its own entry ("m2") under the same pointer.</summary>
     private readonly Dictionary<nint, FightLogMonster> _monsters = [];
+    private readonly Dictionary<nint, MonsterState> _previousMonsterStates = [];
     private readonly List<FightLogMonster> _allMonsters = [];
     private readonly Dictionary<int, string> _weaponBySlot = [];
     private int _estimatedHits;
@@ -61,6 +62,7 @@ internal sealed class HuntRecorder
             _gaugeTimeline.Reset();
             _gaugeSamplesDropped = 0;
             _monsters.Clear();
+            _previousMonsterStates.Clear();
             _allMonsters.Clear();
             _weaponBySlot.Clear();
             _estimatedHits = 0;
@@ -78,18 +80,13 @@ internal sealed class HuntRecorder
             foreach (var state in monsters)
             {
                 var exists = _monsters.TryGetValue(state.Instance, out var entry);
-                // Same pointer, but HP jumped back up (after a death or a large heal-from-zero):
-                // the game re-used the instance for a new monster.
-                // A new monster can reuse the same pointer without disappearing.
-                // Compare identity as well as the large HP reset of a new spawn.
+                // Share pointer-generation semantics with HP fallback/gauge
+                // polling. Difficulty scaling is NOT a new monster; its
+                // max-HP changes must preserve the same fight-local ID.
                 var respawned = exists && (
-                    (int)state.Type != entry!.Type
-                    || state.Variant != entry.Variant
-                    || !string.Equals(state.Name, entry.Name, StringComparison.Ordinal)
-                    || Math.Abs(state.MaxHealth - entry.MaxHealth) > 0.01f
-                    || (entry.MaxHealth > 0
-                        && (entry.DiedT.HasValue || state.Health > entry.LastHealth + 0.25f * entry.MaxHealth)
-                        && state.Health > 0.5f * state.MaxHealth));
+                    (_previousMonsterStates.TryGetValue(state.Instance, out var previous)
+                        && MonsterGeneration.Changed(previous, state))
+                    || (entry!.DiedT.HasValue && state.Health > 0.5f * state.MaxHealth));
                 if (!exists || respawned)
                 {
                     entry = new FightLogMonster
@@ -105,6 +102,7 @@ internal sealed class HuntRecorder
                     _allMonsters.Add(entry);
                 }
 
+                _previousMonsterStates[state.Instance] = state;
                 entry!.LastHealth = state.Health;
                 if (entry.MaxHealth <= 0 && state.MaxHealth > 0)
                     entry.MaxHealth = state.MaxHealth;
