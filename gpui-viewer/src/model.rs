@@ -78,6 +78,10 @@ pub struct GaugeSample {
     pub raw_hunt_t: Option<f32>,
     #[serde(default)]
     pub clock_adjusted: bool,
+    /// True on a monster's next stored sample after a clock discontinuity.
+    /// None in pre-fix schema-3 logs where only clock_adjusted was emitted.
+    #[serde(default)]
+    pub clock_boundary: Option<bool>,
     pub monster: String,
     pub source: String,
     #[serde(default)]

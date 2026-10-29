@@ -37,4 +37,24 @@ describe('experimental gauge history', () => {
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment:7').map(p => p.value)).toEqual([20])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'part:2').map(p => p.value)).toEqual([60])
   })
+
+  it('uses one per-monster boundary for a reset followed by three valid records', () => {
+    const times = [100, 102, 104, 106, 108, 110]
+    const values = [10, 20, 30, 40, 50, 60]
+    for (const legacy of [false, true]) {
+      const log = normalizeLog({ questName: 'corrected clock', players: [],
+        gaugeSamples: times.map((t, i) => ({
+          t, monster: 'm1', source: 'local-unverified', stamina: values[i], maxStamina: 100,
+          clockAdjusted: i >= 2,
+          ...(legacy ? {} : { clockBoundary: i === 2 }),
+        })),
+      })
+      const points = gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina')
+      expect(points.map(p => p.segment)).toEqual([
+        'segment-1', 'segment-1', 'segment-2', 'segment-2', 'segment-2', 'segment-2',
+      ])
+      expect(isolatedGaugePoints(points)).toEqual([])
+    }
+  })
+
 })

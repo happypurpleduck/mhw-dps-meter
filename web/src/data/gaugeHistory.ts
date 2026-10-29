@@ -58,15 +58,20 @@ export function gaugeHistoryPoints(samples: FightLogGaugeSample[], monster: stri
   let segment = 0
   let lastT: number | undefined
   let missing = true
+  let wasAdjusted = false
   for (const sample of samples) {
     if (sample.monster !== monster) continue
+    // clockAdjusted records a persistent offset, not a new boundary every time.
+    // Older schema-3 logs omit clockBoundary: infer only the first false→true edge.
+    const clockBoundary = sample.clockBoundary ?? (Boolean(sample.clockAdjusted) && !wasAdjusted)
+    wasAdjusted = Boolean(sample.clockAdjusted)
     const value = metricValue(sample, key)
     const t = sample.t
     if (value === null || !Number.isFinite(t) || t < 0 || (lastT !== undefined && t < lastT)) {
       missing = true
       continue
     }
-    if (missing || sample.clockAdjusted || (lastT !== undefined && t - lastT > 6)) segment++
+    if (missing || clockBoundary || (lastT !== undefined && t - lastT > 6)) segment++
     points.push({ t, value, segment: `segment-${segment}`, source: sample.source })
     lastT = t
     missing = false

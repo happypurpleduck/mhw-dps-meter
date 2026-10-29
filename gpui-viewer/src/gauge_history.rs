@@ -76,13 +76,19 @@ pub fn gauge_segments(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
     let mut result: Vec<Vec<(f32, f32)>> = Vec::new();
     let mut last_t: Option<f32> = None;
     let mut missing = true;
+    let mut was_adjusted = false;
     for sample in samples.iter().filter(|s| s.monster == monster) {
+        // clock_adjusted is a persistent normalization offset. A per-monster
+        // clock_boundary marks one actual discontinuity on the next stored
+        // sample; legacy schema-3 logs use the first adjusted edge as fallback.
+        let boundary = sample.clock_boundary.unwrap_or(sample.clock_adjusted && !was_adjusted);
+        was_adjusted = sample.clock_adjusted;
         let Some(v) = value(sample, metric) else { missing = true; continue; };
         if !sample.t.is_finite() || sample.t < 0.0 || last_t.is_some_and(|t| sample.t < t) {
             missing = true;
             continue;
         }
-        if missing || sample.clock_adjusted || last_t.is_some_and(|t| sample.t - t > 6.0) {
+        if missing || boundary || last_t.is_some_and(|t| sample.t - t > 6.0) {
             result.push(Vec::new());
         }
         result.last_mut().expect("a segment was created").push((sample.t, v));
@@ -95,6 +101,38 @@ pub fn gauge_segments(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+
+    #[test]
+    fn post_reset_samples_join_one_new_curve_in_new_and_legacy_logs() {
+        let new_samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":100,"monster":"m1","source":"local-unverified","stamina":10,"maxStamina":100,"clockAdjusted":false,"clockBoundary":false},
+          {"t":102,"monster":"m1","source":"local-unverified","stamina":20,"maxStamina":100,"clockAdjusted":false,"clockBoundary":false},
+          {"t":104,"monster":"m1","source":"local-unverified","stamina":30,"maxStamina":100,"clockAdjusted":true,"clockBoundary":true},
+          {"t":106,"monster":"m1","source":"local-unverified","stamina":40,"maxStamina":100,"clockAdjusted":true,"clockBoundary":false},
+          {"t":108,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100,"clockAdjusted":true,"clockBoundary":false},
+          {"t":110,"monster":"m1","source":"local-unverified","stamina":60,"maxStamina":100,"clockAdjusted":true,"clockBoundary":false}
+        ]"#).unwrap();
+        let segments = gauge_segments(&new_samples, "m1", &GaugeMetric::Stamina);
+        assert_eq!(segments.len(), 2, "one clock jump yields exactly two curves");
+        assert_eq!(segments[0].len(), 2);
+        assert_eq!(segments[1].len(), 4, "three later valid samples share the corrected curve");
+        assert_eq!(segments[1].last().unwrap().0, 110.0);
+
+        // Pre-fix schema-3 logs have a persistent clockAdjusted flag but
+        // omitted clockBoundary. Only the false -> true edge is a boundary.
+        let old_samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":100,"monster":"m1","source":"local-unverified","stamina":10,"maxStamina":100},
+          {"t":102,"monster":"m1","source":"local-unverified","stamina":20,"maxStamina":100},
+          {"t":104,"monster":"m1","source":"local-unverified","stamina":30,"maxStamina":100,"clockAdjusted":true},
+          {"t":106,"monster":"m1","source":"local-unverified","stamina":40,"maxStamina":100,"clockAdjusted":true},
+          {"t":108,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100,"clockAdjusted":true},
+          {"t":110,"monster":"m1","source":"local-unverified","stamina":60,"maxStamina":100,"clockAdjusted":true}
+        ]"#).unwrap();
+        let legacy = gauge_segments(&old_samples, "m1", &GaugeMetric::Stamina);
+        assert_eq!(legacy.len(), 2);
+        assert_eq!(legacy[1].len(), 4);
+    }
 
     #[test]
     fn old_logs_unknown_values_and_clock_gaps_are_not_zero() {

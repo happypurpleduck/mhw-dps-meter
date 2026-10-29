@@ -42,7 +42,10 @@ export interface FightLogGaugeSample {
   /** Nondecreasing time in capture order, corrected after hunt-clock discontinuities. */
   t: number
   rawHuntT?: number | null
+  /** Persistent normalization offset, not a new break each sample. */
   clockAdjusted?: boolean
+  /** A real clock break, latched until this monster's next recorded sample. */
+  clockBoundary?: boolean | null
   monster: string
   source: string
   stamina: number | null
