@@ -1,6 +1,6 @@
 namespace SharpPluginLoader.Core.Entities
 {
-    public enum MonsterType { SmallBarrel, LargeBarrel, TrainingPole, TrainingWagon, Magmacore, Magmacore2, Unavaliable, LargeMonster }
+    public enum MonsterType { SmallBarrel, LargeBarrel, TrainingPole, TrainingWagon, Magmacore, Magmacore2, Unavaliable, LargeMonster, OtherLargeMonster }
     public enum WeaponType { GreatSword = 0, DualBlades = 2, None = 255 }
 
     public sealed class Monster
@@ -12,9 +12,9 @@ namespace SharpPluginLoader.Core.Entities
         public float Hp { get; set; } = 8000;
         public bool FailHealthRead { get; set; }
         public float Health => FailHealthRead ? throw new InvalidOperationException("Unreadable HP") : Hp;
-        public MonsterType Type => MonsterType.LargeMonster;
-        public string Name => "Test monster";
-        public int Variant => 0;
+        public MonsterType Type { get; init; } = MonsterType.LargeMonster;
+        public string Name { get; init; } = "Test monster";
+        public int Variant { get; init; }
     }
 
     public class Entity(nint instance)

@@ -57,6 +57,64 @@ Equal(4000, hp.Poll(), "real despawn banks damage");
 other.Hp = 7000;
 Equal(5000, hp.Poll(), "damage after despawn remains cumulative");
 
+// Identity-reuse regression. A first 1,000-HP monster takes only 100 damage.
+// The new monster has the same native address but a different type, so the
+// original 25%-of-max-HP heuristic alone would fail to bank its first 100.
+var reusedPointer = (nint)0x90000;
+var firstSpawn = new Monster
+{
+    Instance = reusedPointer, MaxHealth = 1000, Hp = 900,
+    Type = MonsterType.LargeMonster, Name = "First spawn"
+};
+var replacementByType = new Monster
+{
+    Instance = reusedPointer, MaxHealth = 1000, Hp = 1000,
+    Type = MonsterType.OtherLargeMonster, Name = "Second spawn"
+};
+var replacementByVariant = new Monster
+{
+    Instance = reusedPointer, MaxHealth = 1000, Hp = 1000,
+    Type = MonsterType.OtherLargeMonster, Variant = 1, Name = "Third spawn"
+};
+var reusedHp = new MonsterHpTracker();
+var reusedRecorder = new HuntRecorder((_, _) => null);
+Monster.ReadAll = () => [firstSpawn];
+Equal(100, reusedHp.Poll(), "initial 100 damage is counted");
+reusedRecorder.ObserveMonsters(0, reusedHp.LastTracked);
+Equal(1, reusedRecorder.Monsters().Length, "first generation uses first fight-local ID");
+
+Monster.ReadAll = () => [replacementByType];
+Equal(100, reusedHp.Poll(), "different type at same pointer banks the prior 100 exactly once");
+reusedRecorder.ObserveMonsters(1, reusedHp.LastTracked);
+Equal(2, reusedRecorder.Monsters().Length, "different type at same pointer gets a new monster ID");
+Equal("Second spawn", reusedHp.LastTracked.Single().Name,
+    "replacement monster name isn't inherited from the first generation");
+replacementByType.Hp = 900;
+Equal(200, reusedHp.Poll(), "first 100 damage on new type isn't swallowed by old baseline");
+reusedRecorder.ObserveMonsters(2, reusedHp.LastTracked);
+Equal(2, reusedRecorder.Monsters().Length, "ordinary damage doesn't create duplicate monster IDs");
+
+Monster.ReadAll = () => [replacementByVariant];
+Equal(200, reusedHp.Poll(), "variant change banks second generation exactly once");
+reusedRecorder.ObserveMonsters(3, reusedHp.LastTracked);
+Equal(3, reusedRecorder.Monsters().Length, "variant change gets a third monster ID");
+replacementByVariant.Hp = 930;
+Equal(270, reusedHp.Poll(), "first 70 damage on new variant is counted");
+reusedRecorder.ObserveMonsters(4, reusedHp.LastTracked);
+Equal(3, reusedRecorder.Monsters().Length, "continued damage keeps the correct generation");
+Equal("Third spawn", reusedHp.LastTracked.Single().Name,
+    "variant replacement refreshes the cached monster name");
+
+Monster.ReadAll = () => [];
+Equal(270, reusedHp.Poll(), "despawn banks the third generation without double counting");
+Equal(0, reusedHp.LiveInstances.Count, "despawn clears live pointer state");
+Monster.ReadAll = () => [replacementByVariant];
+Equal(340, reusedHp.Poll(), "reappearing pointer starts a new lifecycle's damage");
+reusedHp.Reset();
+Monster.ReadAll = () => [];
+Equal(0, reusedHp.Poll(), "hunt reset discards previous generation baselines");
+Monster.ReadAll = () => [other]; // restore prior simulated game state
+
 // Gauge metadata preserves collision-slot order and separates flinch cycles from HP.
 Equal<int?>(2, MonsterParts.FromNormalSlot(0, 0), "Anjanath normal slot zero is head");
 Equal<int?>(5, MonsterParts.NextBreakThreshold(0, 2, 0), "Anjanath head next break at five cycles");

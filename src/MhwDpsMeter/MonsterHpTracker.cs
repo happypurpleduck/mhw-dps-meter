@@ -19,6 +19,8 @@ internal sealed class MonsterHpTracker
 {
     private readonly Dictionary<nint, int> _live = [];
     private readonly Dictionary<nint, (MonsterType Type, int Variant, string Name)> _names = [];
+    // Match recorder/gauge generation boundaries when the engine recycles a pointer.
+    private readonly Dictionary<nint, MonsterState> _lastByInstance = [];
     private int _completed;
 
     /// <summary>Instances of tracked (large) monsters seen on the last poll.</summary>
@@ -37,6 +39,7 @@ internal sealed class MonsterHpTracker
     {
         _live.Clear();
         _names.Clear();
+        _lastByInstance.Clear();
         _completed = 0;
         LastTracked = [];
         LastPollComplete = false;
@@ -62,12 +65,21 @@ internal sealed class MonsterHpTracker
                 var dealt = (int)Math.Clamp(state.MaxHealth - Math.Max(state.Health, 0f), 0f, state.MaxHealth);
                 if (_live.TryGetValue(state.Instance, out var prev))
                 {
-                    // HP went back up by a lot: the game re-used this instance for a new monster
-                    // (second Beotodus after the first died). Bank the old damage, start over.
-                    if (dealt + 0.25f * state.MaxHealth < prev)
+                    // Recorder/gauge cache treat type, variant, name, max HP and
+                    // significant HP restoration as a new generation even when
+                    // the pointer does not disappear. Bank its earlier damage
+                    // *regardless* of how little the first monster had taken.
+                    var changedGeneration = _lastByInstance.TryGetValue(state.Instance, out var previous)
+                        && MonsterGeneration.Changed(previous, state);
+                    // Also preserve the original max-dealt recovery fallback for
+                    // sparse/failed HP reads, where the most recent snapshot may
+                    // have missed the old monster's lowest HP.
+                    var resetFromBankedDamage = dealt + 0.25f * state.MaxHealth < prev;
+                    if (changedGeneration || resetFromBankedDamage)
                     {
                         _completed += prev;
-                        _names.Remove(state.Instance);
+                        if (resetFromBankedDamage && !changedGeneration)
+                            _names.Remove(state.Instance);
                     }
                     else
                     {
@@ -75,6 +87,7 @@ internal sealed class MonsterHpTracker
                     }
                 }
                 _live[state.Instance] = dealt;
+                _lastByInstance[state.Instance] = state;
                 tracked.Add(state);
             }
         }
@@ -89,6 +102,7 @@ internal sealed class MonsterHpTracker
             _completed += _live[instance];
             _live.Remove(instance);
             _names.Remove(instance);
+            _lastByInstance.Remove(instance);
         }
 
         LastTracked = tracked;
@@ -125,6 +139,11 @@ internal sealed class MonsterHpTracker
                 return false;
 
             var variant = (int)monster.Variant;
+            // A new max-HP template at this same pointer can also mean a
+            // different monster of the same type/variant. Re-read its name.
+            if (_lastByInstance.TryGetValue(instance, out var last)
+                && Math.Abs(last.MaxHealth - max) > 0.01f)
+                _names.Remove(instance);
             state = new MonsterState(instance, type, NameOf(monster, instance, type, variant), variant, max, hp);
             return true;
         }
