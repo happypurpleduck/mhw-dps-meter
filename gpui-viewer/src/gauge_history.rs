@@ -157,14 +157,14 @@ mod tests {
     #[test]
     fn counter_changes_are_sample_intervals_not_precise_proc_events() {
         let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
-          {"t":0,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":0}],"ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100,"procs":0}]},
+          {"t":0,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":0}],"ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100,"procs":0,"duration":0,"maxDuration":0}]},
           {"t":0,"monster":"m2","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":7}]},
-          {"t":2,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":1}],"ailments":[{"id":7,"name":"KO","buildup":15,"maxBuildup":100,"procs":2}]},
+          {"t":2,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":1}],"ailments":[{"id":7,"name":"KO","buildup":15,"maxBuildup":100,"procs":2,"duration":0,"maxDuration":0}]},
           {"t":2,"monster":"m2","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":8}]},
-          {"t":4,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":1}],"ailments":[{"id":7,"name":"KO","buildup":15,"maxBuildup":100,"procs":2}]},
+          {"t":4,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":1}],"ailments":[{"id":7,"name":"KO","buildup":15,"maxBuildup":100,"procs":2,"duration":0,"maxDuration":0}]},
           {"t":-1,"monster":"m1","clockBoundary":true},
-          {"t":6,"monster":"m1","source":"local-unverified","clockBoundary":false,"parts":[{"part":2,"name":"Head","remaining":50,"max":100,"completedFlinches":3}],"ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":4}]},
-          {"t":8,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":40,"max":100,"completedFlinches":4}],"ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":5}]},
+          {"t":6,"monster":"m1","source":"local-unverified","clockBoundary":false,"parts":[{"part":2,"name":"Head","remaining":50,"max":100,"completedFlinches":3}],"ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":4,"duration":0,"maxDuration":0}]},
+          {"t":8,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":40,"max":100,"completedFlinches":4}],"ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":5,"duration":0,"maxDuration":0}]},
           {"t":20,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":40,"max":100,"completedFlinches":5}]},
           {"t":22,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":1}]},
           {"t":24,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":60,"max":100,"completedFlinches":2}]},
@@ -188,7 +188,7 @@ mod tests {
         // Missing optional counters cannot masquerade as an observed 0 -> 1.
         let invalid: Vec<GaugeSample> = serde_json::from_str(r#"[
           {"t":0,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100}]},
-          {"t":2,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":1}]}
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":1,"duration":0,"maxDuration":0}]}
         ]"#).unwrap();
         assert!(observed_counter_intervals(&invalid, "m1", &GaugeMetric::Ailment(7, "KO".into())).is_empty());
     }
