@@ -187,7 +187,7 @@ mod tests {
 
         // Missing optional counters cannot masquerade as an observed 0 -> 1.
         let invalid: Vec<GaugeSample> = serde_json::from_str(r#"[
-          {"t":0,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100}]},
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100,"duration":0,"maxDuration":0}]},
           {"t":2,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":1,"duration":0,"maxDuration":0}]}
         ]"#).unwrap();
         assert!(observed_counter_intervals(&invalid, "m1", &GaugeMetric::Ailment(7, "KO".into())).is_empty());
