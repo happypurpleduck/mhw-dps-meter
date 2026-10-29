@@ -1,4 +1,5 @@
 import type { FightLog, FightLogGaugeSample, FightLogPlayer, IndexEntry } from '../schema/fightlog'
+import { gaugeI32, isGaugeI32 } from './gaugeInteger'
 
 /** Accepts schema-1 or schema-2 JSON and returns a fully populated FightLog. */
 export function normalizeLog(raw: unknown): FightLog {
@@ -64,19 +65,24 @@ function normalizeGaugeSamples(raw: unknown): FightLogGaugeSample[] {
     const t = validTime ? value.t as number : -1
 
     const parts = (validTime && Array.isArray(value.parts) ? value.parts : [])
-      .filter((p): p is FightLogGaugeSample['parts'][number] =>
-        record(p) && Number.isInteger(p.part) && typeof p.name === 'string'
+      .filter((p): p is Record<string, unknown> & { part: number; name: string; remaining: number; max: number } =>
+        record(p) && isGaugeI32(p.part) && typeof p.name === 'string'
         && finite(p.remaining) && finite(p.max))
+      .map(p => ({
+        part: p.part, name: p.name, remaining: p.remaining, max: p.max,
+        completedFlinches: gaugeI32(p.completedFlinches),
+        nextBreakThreshold: gaugeI32(p.nextBreakThreshold),
+      }))
     const ailments = (validTime && Array.isArray(value.ailments) ? value.ailments : [])
       .filter((a): a is Record<string, unknown> & { id: number; name: string } =>
-        record(a) && Number.isInteger(a.id) && typeof a.name === 'string')
+        record(a) && isGaugeI32(a.id) && typeof a.name === 'string')
       // Preserve independent fields: a missing buildup does not erase a valid
       // duration and a missing duration can never be interpreted as zero.
       .map(a => ({
         id: a.id, name: a.name,
         buildup: finite(a.buildup) ? a.buildup : null,
         maxBuildup: finite(a.maxBuildup) ? a.maxBuildup : null,
-        procs: Number.isInteger(a.procs) && typeof a.procs === 'number' ? a.procs : null,
+        procs: gaugeI32(a.procs),
         duration: finite(a.duration) ? a.duration : null,
         maxDuration: finite(a.maxDuration) ? a.maxDuration : null,
       }))

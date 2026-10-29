@@ -401,6 +401,52 @@ mod tests {
 
 
 
+
+    #[test]
+    fn shared_malformed_import_i32_bounds_match_web_and_never_invent_counter_intervals() {
+        let log = crate::model::FightLog::parse(
+            include_str!("../../tests/fixtures/gauge-counter-i32-parity.json")
+        ).expect("valid hunt with intentionally malformed optional gauge fields");
+        let samples = &log.gauge_samples;
+        assert_eq!(samples.len(), 7);
+        assert_eq!(samples[0].parts.iter().map(|p| p.part).collect::<Vec<_>>(), vec![2, 3]);
+        assert_eq!(samples[0].ailments.iter().map(|a| a.id).collect::<Vec<_>>(), vec![7, 8]);
+        assert_eq!(samples[0].parts[0].completed_flinches, None);
+        assert_eq!(samples[0].parts[0].next_break_threshold, None);
+        assert_eq!(samples[0].ailments[0].procs, None);
+        assert_eq!(samples[1].ailments[0].procs, None);
+        assert_eq!(samples[2].ailments[0].procs, None);
+        assert_eq!(samples[2].parts[0].completed_flinches, None);
+        assert_eq!(samples[4].parts.iter().find(|p| p.part == 4).unwrap().completed_flinches, None);
+        assert_eq!(samples[4].parts.iter().find(|p| p.part == 5).unwrap().completed_flinches, None);
+        assert_eq!(samples[4].ailments.iter().find(|a| a.id == 9).unwrap().procs, None);
+        assert_eq!(samples[4].ailments.iter().find(|a| a.id == 10).unwrap().procs, None);
+        let ko = GaugeMetric::Ailment(7, "KO".into());
+        let head = GaugeMetric::Part(2, "Head".into());
+        for metric in [&ko, &head] {
+            assert_eq!(observed_counter_intervals(samples, "m1", metric).iter()
+                .map(|x| (x.start_t, x.end_t, x.before, x.after, x.increase))
+                .collect::<Vec<_>>(), vec![(6., 8., 1, 2, 1)]);
+        }
+        assert_eq!(observed_counter_timeline(samples, "m1").iter()
+            .map(|e| (e.metric.key(), e.interval.start_t, e.interval.end_t, e.interval.increase))
+            .collect::<Vec<_>>(), vec![
+            ("ailment:7".into(), 6., 8., 1),
+            ("ailment:8".into(), 6., 8., 1),
+            ("part:2".into(), 6., 8., 1),
+            ("part:3".into(), 6., 8., 1),
+            ("ailment:8".into(), 4., 6., 1),
+        ]);
+        assert_eq!(samples[5].ailments[0].procs, Some(2147483646));
+        assert_eq!(samples[6].ailments[0].procs, Some(2147483647));
+        assert_eq!(observed_counter_timeline(samples, "m2").iter()
+            .map(|e| (e.metric.key(), e.interval.before, e.interval.after, e.interval.increase))
+            .collect::<Vec<_>>(), vec![
+            ("ailment:7".into(), 2147483646, 2147483647, 1),
+            ("part:2".into(), 2147483646, 2147483647, 1),
+        ]);
+    }
+
     #[test]
     fn counter_timeline_combines_monster_metrics_with_newest_five_deterministic_order() {
         let samples: Vec<GaugeSample> = serde_json::from_str(r#"[

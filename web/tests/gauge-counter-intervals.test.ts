@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { normalizeLog } from '../src/data/parse'
 import { observedCounterIntervals, observedCounterTimeline } from '../src/data/gaugeCounterIntervals'
@@ -157,5 +158,49 @@ describe('observed local gauge counter changes (not exact proc or break events)'
     expect(observedCounterTimeline([], 'm1')).toEqual([])
   })
 
+
+  it('matches GPUI i32 import bounds on one shared malformed counter fixture', () => {
+    const input = JSON.parse(readFileSync(
+      new URL('../../tests/fixtures/gauge-counter-i32-parity.json', import.meta.url), 'utf8'))
+    const log = normalizeLog(input)
+    expect(log.gaugeSamples).toHaveLength(7)
+    const samples = log.gaugeSamples
+    const a0 = samples[0]!
+    expect(a0.parts.map(p => p.part)).toEqual([2, 3])
+    expect(a0.ailments.map(a => a.id)).toEqual([7, 8])
+    expect(a0.parts[0]).toMatchObject({
+      completedFlinches: null, nextBreakThreshold: null,
+    })
+    expect(a0.ailments[0]?.procs).toBeNull()
+    expect(samples[1]?.ailments[0]?.procs).toBeNull()
+    expect(samples[2]?.ailments[0]?.procs).toBeNull()
+    expect(samples[2]?.parts[0]?.completedFlinches).toBeNull()
+    expect(samples[4]?.parts.find(p => p.part === 4)?.completedFlinches).toBeNull()
+    expect(samples[4]?.parts.find(p => p.part === 5)?.completedFlinches).toBeNull()
+    expect(samples[4]?.ailments.find(a => a.id === 9)?.procs).toBeNull()
+    expect(samples[4]?.ailments.find(a => a.id === 10)?.procs).toBeNull()
+    expect(observedCounterIntervals(samples, 'm1', 'ailment:7')).toEqual([
+      { startT: 6, endT: 8, before: 1, after: 2, increase: 1 },
+    ])
+    expect(observedCounterIntervals(samples, 'm1', 'part:2')).toEqual([
+      { startT: 6, endT: 8, before: 1, after: 2, increase: 1 },
+    ])
+    expect(observedCounterIntervals(samples, 'm1', 'ailment:2147483648')).toEqual([])
+    expect(observedCounterTimeline(samples, 'm1').map(e => [e.key, e.startT, e.endT, e.increase]))
+      .toEqual([
+        ['ailment:7', 6, 8, 1],
+        ['ailment:8', 6, 8, 1],
+        ['part:2', 6, 8, 1],
+        ['part:3', 6, 8, 1],
+        ['ailment:8', 4, 6, 1],
+      ])
+    expect(samples[5]?.ailments[0]?.procs).toBe(2147483646)
+    expect(samples[6]?.ailments[0]?.procs).toBe(2147483647)
+    expect(observedCounterTimeline(samples, 'm2').map(e => [e.key, e.before, e.after, e.increase]))
+      .toEqual([
+        ['ailment:7', 2147483646, 2147483647, 1],
+        ['part:2', 2147483646, 2147483647, 1],
+      ])
+  })
 
 })

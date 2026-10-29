@@ -55,7 +55,7 @@ export interface FightLogGaugeSample {
     name: string
     remaining: number
     max: number
-    completedFlinches: number
+    completedFlinches: number | null
     nextBreakThreshold: number | null
   }>
   ailments: Array<{

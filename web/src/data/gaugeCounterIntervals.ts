@@ -1,4 +1,5 @@
 import type { FightLogGaugeSample } from '../schema/fightlog'
+import { isGaugeI32, isObservedGaugeCounter } from './gaugeInteger'
 
 export interface CounterInterval {
   startT: number
@@ -15,7 +16,7 @@ export function observedCounterIntervals(
   if (!metric.startsWith('part:') && !metric.startsWith('ailment:')) return []
   const [kind, rawId] = metric.split(':')
   const id = Number(rawId)
-  if (!Number.isInteger(id)) return []
+  if (!isGaugeI32(id)) return []
 
   const result: CounterInterval[] = []
   let last: { t: number; count: number; source: string } | undefined
@@ -30,11 +31,10 @@ export function observedCounterIntervals(
     // Never combine values from distinct records or invent absent counters.
     const count = kind === 'part'
       ? sample.parts?.find(p => p.part === id)?.completedFlinches
-      : sample.ailments?.find(a => a.id === id && typeof a.procs === 'number'
-        && Number.isInteger(a.procs) && a.procs >= 0)?.procs
+      : sample.ailments?.find(a => a.id === id && isObservedGaugeCounter(a.procs))?.procs
     // Never substitute an absent or invalid counter with 0. The importer may
     // preserve a partial observation whose numeric progress was unreadable.
-    if (typeof count !== 'number' || !Number.isInteger(count) || count < 0
+    if (!isObservedGaugeCounter(count)
       || !Number.isFinite(sample.t) || sample.t < 0) {
       last = undefined
       continue
@@ -70,13 +70,12 @@ export function observedCounterTimeline(
   for (const sample of samples) {
     if (sample.monster !== monster) continue
     for (const a of sample.ailments ?? []) {
-      if (typeof a.procs === 'number' && Number.isInteger(a.procs) && a.procs >= 0) {
+      if (isObservedGaugeCounter(a.procs)) {
         labels.set(`ailment:${a.id}`, `${a.name} sampled proc counter`)
       }
     }
     for (const p of sample.parts ?? []) {
-      if (typeof p.completedFlinches === 'number' && Number.isInteger(p.completedFlinches)
-        && p.completedFlinches >= 0) {
+      if (isObservedGaugeCounter(p.completedFlinches)) {
         labels.set(`part:${p.part}`, `${p.name} sampled flinch counter`)
       }
     }
