@@ -89,10 +89,13 @@ export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, m
       previousCaptureT = undefined
       continue
     }
-    if (previousCaptureT !== undefined && t >= previousCaptureT && t - previousCaptureT > 6) {
+    // Clock corrections and backwards timestamps are not elapsed-time evidence.
+    // Do not reuse a regressing timestamp as the next gap baseline either.
+    const regressed = previousCaptureT !== undefined && t < previousCaptureT
+    if (!boundary && !regressed && previousCaptureT !== undefined && t - previousCaptureT > 6) {
       coverage.gapsOver6s++
     }
-    previousCaptureT = t
+    previousCaptureT = regressed ? undefined : t
     if (metricValue(sample, metric) === null) {
       coverage.missingMetric++
     } else if (lastUsableT !== undefined && t < lastUsableT) {

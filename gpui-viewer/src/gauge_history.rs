@@ -144,10 +144,15 @@ pub fn gauge_coverage(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
             previous_capture_t = None;
             continue;
         }
-        if previous_capture_t.is_some_and(|prev_t| sample.t >= prev_t && sample.t - prev_t > 6.0) {
+        // A clock boundary or regressing time cannot establish a comparable
+        // elapsed interval. Never use the backwards sample as the next anchor.
+        let regressed = previous_capture_t.is_some_and(|prev_t| sample.t < prev_t);
+        if !boundary && !regressed
+            && previous_capture_t.is_some_and(|prev_t| sample.t - prev_t > 6.0)
+        {
             coverage.gaps_over_6s += 1;
         }
-        previous_capture_t = Some(sample.t);
+        previous_capture_t = if regressed { None } else { Some(sample.t) };
         if value(sample, metric).is_none() {
             coverage.missing_metric += 1;
         } else if last_usable_t.is_some_and(|t| sample.t < t) {
@@ -230,6 +235,58 @@ mod tests {
 
 
 
+
+
+    #[test]
+    fn quality_gaps_exclude_backwards_times_and_clock_boundaries() {
+        fn parsed(source: &str) -> Vec<GaugeSample> {
+            serde_json::from_str(source).unwrap()
+        }
+        let backwards = parsed(r#"[
+          {"t":10,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":1,"monster":"m2","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":2,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":11,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":19,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100}
+        ]"#);
+        let metric = GaugeMetric::Stamina;
+        let quality = gauge_coverage(&backwards, "m1", &metric);
+        assert_eq!(quality.gaps_over_6s, 1, "11→19 is comparable, 2→11 is not");
+        assert_eq!(quality.out_of_order, 1);
+        assert_eq!(quality.source_changes, 0);
+        assert_eq!(gauge_coverage(&backwards, "m2", &metric).gaps_over_6s, 0);
+
+        let corrected = parsed(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":1,"monster":"m2","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":20,"monster":"m1","source":"local-unverified","clockBoundary":true,"stamina":50,"maxStamina":100},
+          {"t":20,"monster":"m2","source":"local-unverified","clockBoundary":true,"stamina":50,"maxStamina":100},
+          {"t":22,"monster":"m1","source":"local-unverified","clockBoundary":false,"stamina":50,"maxStamina":100},
+          {"t":30,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100}
+        ]"#);
+        let quality = gauge_coverage(&corrected, "m1", &metric);
+        assert_eq!((quality.gaps_over_6s, quality.clock_boundaries), (1, 1));
+        assert_eq!(gauge_coverage(&corrected, "m2", &metric).gaps_over_6s, 0);
+
+        let legacy = parsed(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":20,"monster":"m1","source":"local-unverified","clockAdjusted":true,"stamina":50,"maxStamina":100},
+          {"t":22,"monster":"m1","source":"local-unverified","clockAdjusted":true,"stamina":50,"maxStamina":100},
+          {"t":30,"monster":"m1","source":"local-unverified","clockAdjusted":true,"stamina":50,"maxStamina":100}
+        ]"#);
+        let quality = gauge_coverage(&legacy, "m1", &metric);
+        assert_eq!((quality.gaps_over_6s, quality.clock_boundaries), (1, 1));
+
+        let source_flip = parsed(r#"[
+          {"t":10,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100},
+          {"t":2,"monster":"m1","source":"unknown","stamina":50,"maxStamina":100},
+          {"t":11,"monster":"m1","source":"local-unverified","stamina":50,"maxStamina":100}
+        ]"#);
+        let quality = gauge_coverage(&source_flip, "m1", &metric);
+        assert_eq!(quality.gaps_over_6s, 0);
+        assert_eq!(quality.source_changes, 2);
+        assert_eq!(quality.out_of_order, 1);
+    }
 
     #[test]
     fn coverage_counts_source_switches_at_invalid_and_backward_times() {

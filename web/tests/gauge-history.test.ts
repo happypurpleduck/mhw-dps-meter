@@ -199,4 +199,47 @@ describe('experimental gauge history', () => {
     expect(gaugeCoverage(log.gaugeSamples, 'm2', 'stamina').sourceChanges).toBe(0)
   })
 
+  it('does not infer capture gaps from backwards timestamps or clock correction boundaries', () => {
+    const reading = (t: number, monster: string, options: Record<string, unknown> = {}) =>
+      ({ t, monster, source: 'local-unverified', stamina: 50, maxStamina: 100, ...options })
+    const cases = [
+      {
+        name: 'backwards time resets gap comparison but later comparable gaps still count',
+        samples: [reading(10, 'm1'), reading(2, 'm1'), reading(11, 'm1'), reading(19, 'm1')],
+        gaps: 1, boundaries: 0,
+      },
+      {
+        name: 'explicit correction boundary resets the elapsed interval',
+        samples: [reading(0, 'm1'), reading(20, 'm1', { clockBoundary: true }),
+          reading(22, 'm1', { clockBoundary: false }), reading(30, 'm1')],
+        gaps: 1, boundaries: 1,
+      },
+      {
+        name: 'legacy clockAdjusted transition breaks comparison once, not every adjusted point',
+        samples: [reading(0, 'm1'), reading(20, 'm1', { clockAdjusted: true }),
+          reading(22, 'm1', { clockAdjusted: true }), reading(30, 'm1', { clockAdjusted: true })],
+        gaps: 1, boundaries: 1,
+      },
+    ]
+    for (const { name, samples, gaps, boundaries } of cases) {
+      const log = normalizeLog({ questName: name, players: [], gaugeSamples: [
+        ...samples, reading(1, 'm2'), reading(20, 'm2', { clockBoundary: true }),
+      ] })
+      const coverage = gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')
+      expect({ name, gaps: coverage.gapsOver6s, boundaries: coverage.clockBoundaries })
+        .toEqual({ name, gaps, boundaries })
+      expect(coverage.sourceChanges).toBe(0)
+      expect(gaugeCoverage(log.gaugeSamples, 'm2', 'stamina').gapsOver6s).toBe(0)
+    }
+
+    const log = normalizeLog({ questName: 'Provenance and time are independent', players: [], gaugeSamples: [
+      reading(10, 'm1', { source: 'local-unverified' }),
+      reading(2, 'm1', { source: 'unknown' }),
+      reading(11, 'm1', { source: 'local-unverified' }),
+    ] })
+    expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')).toMatchObject({
+      gapsOver6s: 0, sourceChanges: 2, outOfOrder: 1,
+    })
+  })
+
 })
