@@ -59,7 +59,8 @@ pub struct FightLog {
     pub samples: Vec<Sample>,
     #[serde(default)]
     pub hits: Vec<Hit>,
-    #[serde(default)]
+    // Optional experimental observations must never reject an otherwise-valid hunt.
+    #[serde(default, deserialize_with = "deserialize_gauge_samples")]
     pub gauge_samples: Vec<GaugeSample>,
     #[serde(default)]
     pub gauge_samples_dropped: usize,
@@ -116,6 +117,77 @@ pub struct AilmentGauge {
     pub procs: i32,
     pub duration: f32,
     pub max_duration: f32,
+}
+
+
+/// Accept only valid optional gauges, independently of core hunt-log parsing.
+/// A recognizable monster with an invalid capture time becomes a non-plottable
+/// gap marker (t=-1), so later readings cannot cross an observed discontinuity.
+fn deserialize_gauge_samples<'de, D>(deserializer: D) -> Result<Vec<GaugeSample>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(value.as_array().map(|items| items.iter().filter_map(decode_gauge_sample).collect())
+        .unwrap_or_default())
+}
+
+fn gauge_number(value: Option<&serde_json::Value>) -> Option<f32> {
+    value?.as_f64().filter(|n| n.is_finite() && n.abs() <= f32::MAX as f64).map(|n| n as f32)
+}
+
+fn gauge_integer(value: Option<&serde_json::Value>) -> Option<i32> {
+    i32::try_from(value?.as_i64()?).ok()
+}
+
+fn decode_gauge_sample(value: &serde_json::Value) -> Option<GaugeSample> {
+    let obj = value.as_object()?;
+    let monster = obj.get("monster")?.as_str()?.to_string();
+    if monster.is_empty() { return None; }
+    let time = gauge_number(obj.get("t")).filter(|t| *t >= 0.0);
+    let gap = time.is_none();
+
+    let parts = if gap { Vec::new() } else {
+        obj.get("parts").and_then(serde_json::Value::as_array).into_iter()
+            .flatten().filter_map(|item| {
+                let part = item.as_object()?;
+                Some(PartGauge {
+                    part: gauge_integer(part.get("part"))?,
+                    name: part.get("name")?.as_str()?.to_string(),
+                    remaining: gauge_number(part.get("remaining"))?,
+                    max: gauge_number(part.get("max"))?,
+                    completed_flinches: gauge_integer(part.get("completedFlinches")).unwrap_or(0),
+                    next_break_threshold: gauge_integer(part.get("nextBreakThreshold")),
+                })
+            }).collect()
+    };
+    let ailments = if gap { Vec::new() } else {
+        obj.get("ailments").and_then(serde_json::Value::as_array).into_iter()
+            .flatten().filter_map(|item| {
+                let ailment = item.as_object()?;
+                Some(AilmentGauge {
+                    id: gauge_integer(ailment.get("id"))?,
+                    name: ailment.get("name")?.as_str()?.to_string(),
+                    buildup: gauge_number(ailment.get("buildup"))?,
+                    max_buildup: gauge_number(ailment.get("maxBuildup"))?,
+                    procs: gauge_integer(ailment.get("procs")).unwrap_or(0),
+                    duration: gauge_number(ailment.get("duration")).unwrap_or(0.0),
+                    max_duration: gauge_number(ailment.get("maxDuration")).unwrap_or(0.0),
+                })
+            }).collect()
+    };
+    Some(GaugeSample {
+        t: time.unwrap_or(-1.0),
+        raw_hunt_t: gauge_number(obj.get("rawHuntT")),
+        clock_adjusted: obj.get("clockAdjusted").and_then(serde_json::Value::as_bool).unwrap_or(false),
+        clock_boundary: obj.get("clockBoundary").and_then(serde_json::Value::as_bool),
+        monster,
+        source: obj.get("source").and_then(serde_json::Value::as_str).unwrap_or("unknown").to_string(),
+        stamina: if gap { None } else { gauge_number(obj.get("stamina")) },
+        max_stamina: if gap { None } else { gauge_number(obj.get("maxStamina")) },
+        parts,
+        ailments,
+    })
 }
 
 fn one() -> u32 {

@@ -213,6 +213,48 @@ pub fn sample_dir() -> Option<std::path::PathBuf> {
 mod tests {
     use super::*;
 
+
+    #[test]
+    fn malformed_optional_gauges_preserve_valid_hunt_and_capture_gaps() {
+        let json = serde_json::json!({
+            "questName":"Preserved hunt",
+            "players":[{"name":"Hunter","damage":321}],
+            "hits":[{"t":1,"slot":0,"damage":75}],
+            "gaugeSamples":[
+                null, 17, [], {},
+                {"t":0,"monster":"m1","source":"local-unverified","stamina":80,"maxStamina":100,
+                    "parts":[null,17,{"part":2,"name":"Head","remaining":40,"max":100}],
+                    "ailments":[null,{"id":7,"name":"KO","buildup":20,"maxBuildup":100}]},
+                {"t":"bad","monster":"m1","clockBoundary":true,"clockAdjusted":true,
+                    "stamina":50,"maxStamina":100},
+                {"t":4,"monster":"m1","clockBoundary":false,"clockAdjusted":true,
+                    "stamina":40,"maxStamina":100},
+                {"t":0,"monster":"m2","source":"local-unverified","stamina":90,"maxStamina":100},
+                {"t":4,"monster":"m2","source":"local-unverified","stamina":70,"maxStamina":100}
+            ]
+        }).to_string();
+        // Exercise the production loader rather than only the deserializer:
+        // a malformed optional gauge must not remove unrelated combat history.
+        let loaded = Loaded::from_files("regression", vec![("valid.json".into(), json)]).unwrap();
+        assert_eq!(loaded.entries.len(), 1);
+        assert_eq!(loaded.entries[0].total_damage, 321);
+        let log = loaded.log("valid.json").unwrap();
+        assert_eq!(log.hits.len(), 1);
+        assert_eq!(log.hits[0].damage, 75);
+        assert_eq!(log.gauge_samples.len(), 5);
+        assert_eq!(log.gauge_samples[0].parts.len(), 1);
+        assert_eq!(log.gauge_samples[0].ailments.len(), 1);
+        assert_eq!(log.gauge_samples[1].t, -1.0);
+        assert_eq!(log.gauge_samples[1].clock_boundary, Some(true));
+        assert!(log.gauge_samples[1].stamina.is_none());
+        let first = crate::gauge_history::gauge_segments(&log.gauge_samples, "m1",
+            &crate::gauge_history::GaugeMetric::Stamina);
+        assert_eq!(first, vec![vec![(0.0, 80.0)], vec![(4.0, 40.0)]]);
+        let second = crate::gauge_history::gauge_segments(&log.gauge_samples, "m2",
+            &crate::gauge_history::GaugeMetric::Stamina);
+        assert_eq!(second, vec![vec![(0.0, 90.0), (4.0, 70.0)]]);
+    }
+
     #[test]
     fn watches_additions_updates_deletions_and_incomplete_writes() {
         let path = std::env::temp_dir().join(format!("mhw-watch-{}-{}", std::process::id(),

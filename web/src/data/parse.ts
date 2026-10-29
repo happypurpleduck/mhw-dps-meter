@@ -57,27 +57,30 @@ function normalizeGaugeSamples(raw: unknown): FightLogGaugeSample[] {
   if (!Array.isArray(raw)) return []
   const samples: FightLogGaugeSample[] = []
   for (const value of raw) {
-    if (!record(value) || typeof value.monster !== 'string' || !value.monster
-      || !finite(value.t) || value.t < 0) continue
+    if (!record(value) || typeof value.monster !== 'string' || !value.monster) continue
+    // Keep an unplottable per-monster marker when a timestamp is corrupt.
+    // Deleting it could falsely join valid samples across a clock boundary.
+    const validTime = finite(value.t) && value.t >= 0
+    const t = validTime ? value.t as number : -1
 
-    const parts = (Array.isArray(value.parts) ? value.parts : [])
+    const parts = (validTime && Array.isArray(value.parts) ? value.parts : [])
       .filter((p): p is FightLogGaugeSample['parts'][number] =>
         record(p) && Number.isInteger(p.part) && typeof p.name === 'string'
         && finite(p.remaining) && finite(p.max))
-    const ailments = (Array.isArray(value.ailments) ? value.ailments : [])
+    const ailments = (validTime && Array.isArray(value.ailments) ? value.ailments : [])
       .filter((a): a is FightLogGaugeSample['ailments'][number] =>
         record(a) && Number.isInteger(a.id) && typeof a.name === 'string'
         && finite(a.buildup) && finite(a.maxBuildup))
 
     samples.push({
-      t: value.t,
+      t,
       monster: value.monster,
       source: str(value.source, 'unknown'),
       rawHuntT: finite(value.rawHuntT) ? value.rawHuntT : null,
       clockAdjusted: value.clockAdjusted === true,
       clockBoundary: typeof value.clockBoundary === 'boolean' ? value.clockBoundary : undefined,
-      stamina: finite(value.stamina) ? value.stamina : null,
-      maxStamina: finite(value.maxStamina) ? value.maxStamina : null,
+      stamina: validTime && finite(value.stamina) ? value.stamina : null,
+      maxStamina: validTime && finite(value.maxStamina) ? value.maxStamina : null,
       parts,
       ailments,
     })

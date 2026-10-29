@@ -75,11 +75,13 @@ describe('experimental gauge history', () => {
       ],
     })
 
-    expect(log.gaugeSamples).toHaveLength(3)
-    expect(log.gaugeSamples[0]?.ailments).toHaveLength(1)
-    expect(log.gaugeSamples[0]?.parts).toHaveLength(1)
-    expect(log.gaugeSamples[1]?.parts).toEqual([])
-    expect(log.gaugeSamples[2]?.stamina).toBeNull()
+    expect(log.gaugeSamples).toHaveLength(4)
+    expect(log.gaugeSamples[0]?.t).toBe(-1) // timestamp is invalid: non-plottable gap
+    expect(log.gaugeSamples[0]?.stamina).toBeNull()
+    expect(log.gaugeSamples[1]?.ailments).toHaveLength(1)
+    expect(log.gaugeSamples[1]?.parts).toHaveLength(1)
+    expect(log.gaugeSamples[2]?.parts).toEqual([])
+    expect(log.gaugeSamples[3]?.stamina).toBeNull()
     expect(availableGaugeMetrics(log.gaugeSamples, 'm1').map(m => m.key))
       .toEqual(['stamina', 'ailment:7', 'part:2'])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina').map(p => p.value))
@@ -88,6 +90,27 @@ describe('experimental gauge history', () => {
       .toEqual([20, 30])
     expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'part:2').map(p => p.value))
       .toEqual([80])
+  })
+
+
+  it('preserves an invalid-t clock boundary without joining unrelated monster curves', () => {
+    const log = normalizeLog({ questName: 'Damaged capture', players: [], gaugeSamples: [
+      { t: 0, monster: 'm1', source: 'local-unverified', stamina: 80, maxStamina: 100 },
+      { t: 0, monster: 'm2', source: 'local-unverified', stamina: 80, maxStamina: 100 },
+      { t: 'invalid', monster: 'm1', clockBoundary: true, clockAdjusted: true,
+        stamina: 50, maxStamina: 100 },
+      { t: 4, monster: 'm1', source: 'local-unverified', clockBoundary: false, clockAdjusted: true,
+        stamina: 40, maxStamina: 100 },
+      { t: 4, monster: 'm2', source: 'local-unverified', stamina: 40, maxStamina: 100 },
+    ] })
+    const damaged = log.gaugeSamples.find(s => s.monster === 'm1' && s.t < 0)
+    expect(damaged).toMatchObject({ t: -1, clockBoundary: true, stamina: null, maxStamina: null,
+      parts: [], ailments: [] })
+    const m1 = gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina')
+    expect(m1.map(p => [p.t, p.segment])).toEqual([[0, 'segment-1'], [4, 'segment-2']])
+    expect(isolatedGaugePoints(m1)).toHaveLength(2)
+    const m2 = gaugeHistoryPoints(log.gaugeSamples, 'm2', 'stamina')
+    expect(m2.map(p => [p.t, p.segment])).toEqual([[0, 'segment-1'], [4, 'segment-1']])
   })
 
 })
