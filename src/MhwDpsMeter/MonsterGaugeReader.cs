@@ -111,13 +111,19 @@ internal static class MonsterGaugeReader
         var result = new List<MonsterAilmentGauge>();
         for (var i = 0; i < MaxAilments; i++)
         {
-            if (!SafeMemory.TryReadProtected<nint>(monster + AilmentsOffset + i * 8, out var ptr)
-                || !SafeMemory.LooksLikeUserPointer(ptr))
+            // Zero is the proposed packed-list terminator; an unreadable or invalid
+            // individual entry is not proof that no later slots are valid. Bounded
+            // scan remains conservative until live list-layout verification in #17.
+            if (!SafeMemory.TryReadProtected<nint>(monster + AilmentsOffset + i * 8, out var ptr))
+                continue;
+            if (ptr == 0)
                 break;
+            if (!SafeMemory.LooksLikeUserPointer(ptr))
+                continue;
 
             var address = ptr + AilmentValueOffset;
             if (!SafeMemory.TryReadProtected<nint>(address, out var owner) || owner != monster)
-                break;
+                continue;
             if (!SafeMemory.TryReadProtected<int>(address + 0x10, out var id)
                 || id < 0 || id >= StatusNames.Length
                 || !SafeMemory.TryReadProtected<float>(address + 0x30, out var buildup)

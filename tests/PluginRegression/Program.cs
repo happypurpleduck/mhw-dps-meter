@@ -27,8 +27,10 @@ var monster = new Monster { Instance = 0x10000 };
 Monster.ReadAll = () => [monster];
 var hp = new MonsterHpTracker();
 Equal(2000, hp.Poll(), "initial HP loss");
+Equal(true, hp.LastPollComplete, "successful monster enumeration is fresh");
 Monster.ReadAll = () => throw new InvalidOperationException("Unreadable list");
 Equal(2000, hp.Poll(), "failed enumeration preserves damage");
+Equal(false, hp.LastPollComplete, "failed enumeration cannot authorize a fresh gauge read");
 Monster.ReadAll = () => [monster];
 Equal(2000, hp.Poll(), "recovered enumeration does not double count");
 monster.FailHealthRead = true;
@@ -47,6 +49,7 @@ IEnumerable<Monster> PartialRead()
 }
 Monster.ReadAll = PartialRead;
 Equal(4000, hp.Poll(), "partial enumeration preserves unseen monster");
+Equal(false, hp.LastPollComplete, "partially torn list is not a fresh snapshot");
 Monster.ReadAll = () => [monster, other];
 Equal(4000, hp.Poll(), "partial enumeration recovery");
 Monster.ReadAll = () => [other];
@@ -89,6 +92,53 @@ Equal(7, observed.Ailments[0].Id, "KO status id");
 Equal(75f, observed.Ailments[0].Buildup, "KO buildup");
 Equal(2, observed.Ailments[0].Procs, "KO proc count");
 
+// An independently unreadable middle ailment is skipped without losing later data.
+nint corruptAilment = 0x50000, laterAilment = 0x60000;
+SafeMemory.Values[gaugeMonster + 0x1BC48] = corruptAilment;
+SafeMemory.Values[corruptAilment + 0x148] = (nint)0x70000; // incorrect owner
+SafeMemory.Values[gaugeMonster + 0x1BC50] = laterAilment;
+SafeMemory.Values[gaugeMonster + 0x1BC58] = (nint)0;
+SafeMemory.Values[laterAilment + 0x148] = gaugeMonster;
+SafeMemory.Values[laterAilment + 0x148 + 0x10] = 1; // poison
+SafeMemory.Values[laterAilment + 0x148 + 0x14] = 15f;
+SafeMemory.Values[laterAilment + 0x148 + 0x30] = 20f;
+SafeMemory.Values[laterAilment + 0x148 + 0x40] = 200f;
+SafeMemory.Values[laterAilment + 0x148 + 0x70] = 0f;
+SafeMemory.Values[laterAilment + 0x148 + 0x78] = 1;
+Equal(2, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
+    "invalid middle owner does not hide later ailment");
+SafeMemory.Values.Remove(corruptAilment + 0x148);
+Equal(2, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
+    "unreadable middle owner does not hide later ailment");
+SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)0;
+Equal(1, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
+    "real null terminator stops even when later pointer is non-null");
+
+// The expensive memory reader has its own cadence and does not need party data.
+var gaugePoller = new MonsterGaugePoller();
+var gaugeReadCalls = 0;
+MonsterGaugeState[] Sample(IReadOnlyList<MonsterState> _) { gaugeReadCalls++; return [observed]; }
+var noPartySnapshot = (PartySnapshot?)null; // party-table acquisition failed
+var firstRead = gaugePoller.Tick(0f, true, true, [gaugeInput], Sample);
+Equal(true, noPartySnapshot is null && firstRead?.Length == 1,
+    "live monster gauges survive independent transient party read failure");
+Equal(1, gaugeReadCalls, "first gauge reading refreshes immediately");
+Equal<MonsterGaugeState[]?>(null, gaugePoller.Tick(0.1f, true, true, [gaugeInput], Sample),
+    "100ms DPS poll doesn't also fetch every monster gauge");
+Equal(1, gaugeReadCalls, "no extra native reads before refresh interval");
+Equal(1, gaugePoller.Tick(1.1f, true, true, [gaugeInput], Sample)!.Length,
+    "gauge refresh happens on its independent cadence");
+Equal(2, gaugeReadCalls, "one read per 1s interval");
+Equal<MonsterGaugeState[]?>(null, gaugePoller.Tick(1.2f, true, false, [gaugeInput], Sample),
+    "torn monster enumeration prevents another protected read");
+Equal(0, gaugePoller.Current.Length, "torn monster list invalidates stale overlay");
+Equal(1, gaugePoller.Tick(1.3f, true, true, [gaugeInput], Sample)!.Length,
+    "reader recovers immediately when a complete monster list returns");
+Equal<MonsterGaugeState[]?>(null, gaugePoller.Tick(1.4f, false, true, [gaugeInput], Sample),
+    "turning off experimental feature disables all gauge reads");
+Equal(0, gaugePoller.Current.Length, "disabled readings never remain on overlay");
+
+
 var gaugeRecorder = new HuntRecorder((_, _) => null);
 gaugeRecorder.ObserveMonsters(0, [gaugeInput]);
 gaugeRecorder.ObserveGauges(0, [observed]);
@@ -97,6 +147,14 @@ gaugeRecorder.ObserveGauges(2.1f, [observed]);
 Equal(2, gaugeRecorder.GaugeSamples().Length, "two-second state capture cadence");
 Equal("local-unverified", gaugeRecorder.GaugeSamples()[0].Source, "never claims host authority");
 Equal("m1", gaugeRecorder.GaugeSamples()[0].Monster, "stable fight-local monster link");
+for (var sampleIndex = 2; sampleIndex < HuntRecorder.MaxGaugeSamples + 3; sampleIndex++)
+    gaugeRecorder.ObserveGauges(sampleIndex * 2.1f, [observed]);
+Equal(HuntRecorder.MaxGaugeSamples, gaugeRecorder.GaugeSamples().Length,
+    "bounded gauge samples never exceed global cap");
+Equal(3, gaugeRecorder.GaugeSamplesDropped,
+    "truncated intervals counted instead of silently omitted");
+gaugeRecorder.Reset();
+Equal(0, gaugeRecorder.GaugeSamplesDropped, "new quest resets truncated gauge coverage");
 SafeMemory.Values[gaugeMonster + 0x1C0F0] = -1f;
 SafeMemory.Values[partController + 0x40 + 0x10] = -5f;
 var invalidGauge = MonsterGaugeReader.Read([gaugeInput]).Single();

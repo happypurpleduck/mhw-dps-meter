@@ -87,6 +87,12 @@ function Header(props: { log: FightLog }) {
           )}
         </Show>
       </div>
+      <Show when={props.log.gaugeSamplesDropped > 0}>
+        <p class="text-sm text-warning">
+          Experimental monster gauge history is incomplete: {props.log.gaugeSamplesDropped} observation intervals
+          were omitted after the recording limit was reached.
+        </p>
+      </Show>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
         <StatTile title="Total damage" value={formatInt(total())} desc={`${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
         <StatTile title="Party DPS" value={(total() / duration()).toFixed(1)} desc={`over ${formatDuration(props.log.durationSeconds)}`} />
@@ -393,8 +399,8 @@ function Timeline(props: { log: FightLog }) {
 
 function Raw(props: { log: FightLog }) {
   const summary = () => {
-    const { hits, samples, events, ...rest } = props.log
-    return JSON.stringify({ ...rest, hits: `${hits.length} hits`, samples: `${samples.length} samples`, events: `${events.length} events` }, null, 2)
+    const { hits, samples, gaugeSamples, events, ...rest } = props.log
+    return JSON.stringify({ ...rest, hits: `${hits.length} hits`, samples: `${samples.length} samples`, gaugeSamples: `${gaugeSamples.length} gauge samples`, events: `${events.length} events` }, null, 2)
   }
   const download = () => {
     const blob = new Blob([JSON.stringify(props.log, null, 1)], { type: 'application/json' })

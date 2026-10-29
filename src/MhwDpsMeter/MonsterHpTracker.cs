@@ -27,6 +27,9 @@ internal sealed class MonsterHpTracker
     /// <summary>Tracked monsters from the last poll with their current HP.</summary>
     public IReadOnlyList<MonsterState> LastTracked { get; private set; } = [];
 
+    /// <summary>False when native enumeration tore; LastTracked may then be from a prior poll.</summary>
+    public bool LastPollComplete { get; private set; }
+
     /// <summary>Last poll's monster list for diagnostics: every monster SPL reports, tracked or not.</summary>
     public string LastMonsters { get; private set; } = "";
 
@@ -36,10 +39,12 @@ internal sealed class MonsterHpTracker
         _names.Clear();
         _completed = 0;
         LastTracked = [];
+        LastPollComplete = false;
     }
 
     public int Poll()
     {
+        LastPollComplete = false;
         HashSet<nint> seen = [];
         var described = new List<string>();
         var tracked = new List<MonsterState>();
@@ -87,6 +92,7 @@ internal sealed class MonsterHpTracker
         }
 
         LastTracked = tracked;
+        LastPollComplete = true;
         LastMonsters = described.Count == 0 ? "(none)" : string.Join(" | ", described);
         return _completed + _live.Values.Sum();
     }

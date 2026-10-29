@@ -19,7 +19,8 @@ internal sealed class HuntRecorder
     private readonly List<FightLogEvent> _events = [];
     private readonly List<FightLogGaugeSample> _gaugeSamples = [];
     private readonly Dictionary<string, float> _lastGaugeSampleTime = [];
-    private const int MaxGaugeSamples = 3600;
+    public const int MaxGaugeSamples = 3600;
+    private int _gaugeSamplesDropped;
     private const float GaugeSamplePeriod = 2f;
     /// <summary>Latest monster entry per instance; the game reuses instances, so a second
     /// Beotodus spawning after the first died gets its own entry ("m2") under the same pointer.</summary>
@@ -56,6 +57,7 @@ internal sealed class HuntRecorder
             _events.Clear();
             _gaugeSamples.Clear();
             _lastGaugeSampleTime.Clear();
+            _gaugeSamplesDropped = 0;
             _monsters.Clear();
             _allMonsters.Clear();
             _weaponBySlot.Clear();
@@ -113,8 +115,6 @@ internal sealed class HuntRecorder
         {
             foreach (var gauge in gauges)
             {
-                if (_gaugeSamples.Count >= MaxGaugeSamples)
-                    break;
                 if (!_monsters.TryGetValue(gauge.Instance, out var monster))
                     continue;
                 if (gauge.Stamina is null && gauge.Parts.Length == 0 && gauge.Ailments.Length == 0)
@@ -124,6 +124,13 @@ internal sealed class HuntRecorder
                     continue;
 
                 _lastGaugeSampleTime[monster.Id] = elapsed;
+                if (_gaugeSamples.Count >= MaxGaugeSamples)
+                {
+                    // Count due samples only, not repeated 100ms polls.
+                    if (_gaugeSamplesDropped < int.MaxValue)
+                        _gaugeSamplesDropped++;
+                    continue;
+                }
                 _gaugeSamples.Add(new FightLogGaugeSample
                 {
                     T = Math.Max(0, elapsed),
@@ -136,6 +143,11 @@ internal sealed class HuntRecorder
                 });
             }
         }
+    }
+
+    public int GaugeSamplesDropped
+    {
+        get { lock (_gate) return _gaugeSamplesDropped; }
     }
 
     public FightLogGaugeSample[] GaugeSamples()

@@ -25,6 +25,7 @@ public sealed class Plugin : IPlugin
     private readonly Overlay _overlay = new();
     private readonly Stopwatch _questTimer = new();
     private readonly MonsterHpTracker _monsterHp = new();
+    private readonly MonsterGaugePoller _gaugePoller = new();
     private MonsterGaugeState[] _gaugeStates = [];
     private readonly DamageTracker _hits = new();
     private readonly HuntRecorder _recorder;
@@ -287,22 +288,30 @@ public sealed class Plugin : IPlugin
     {
         try
         {
+            // Monster enumeration happens even when the party table is temporarily unreadable.
+            // Gauge capture must never depend on the party snapshot's success.
+            _elapsedSeconds = HuntElapsedSeconds();
             var snapshot = ReadPartyWithFallbacks();
+            if (_monsterHp.LastPollComplete)
+                _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+
+            var enabled = _settings.ExperimentalMonsterGauges && _mapMatchesBuild
+                && _buildConfirmed && _gameBuild == 421810;
+            var sampled = _gaugePoller.Tick(
+                _elapsedSeconds, enabled, _monsterHp.LastPollComplete,
+                _monsterHp.LastTracked, MonsterGaugeReader.Read);
+            _gaugeStates = _gaugePoller.Current;
+            if (sampled is { Length: > 0 })
+                _recorder.ObserveGauges(_elapsedSeconds, sampled);
+
             if (snapshot is null)
                 return;
 
-            _elapsedSeconds = HuntElapsedSeconds();
             _snapshot = snapshot.WithRates(_elapsedSeconds);
             _status = string.IsNullOrEmpty(_reader!.LastError)
                 ? $"{snapshot.Members.Length} hunters ({_damageSource})"
                 : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
 
-            _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
-            _gaugeStates = _settings.ExperimentalMonsterGauges && _mapMatchesBuild
-                && _buildConfirmed && _gameBuild == 421810
-                ? MonsterGaugeReader.Read(_monsterHp.LastTracked)
-                : [];
-            _recorder.ObserveGauges(_elapsedSeconds, _gaugeStates);
             _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
             _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);
@@ -1034,6 +1043,7 @@ public sealed class Plugin : IPlugin
         _pollAccumulator = 0;
         _questTimer.Restart();
         _monsterHp.Reset();
+        _gaugePoller.Reset();
         _gaugeStates = [];
         _hits.Reset();
         _hits.RecordHits = true;

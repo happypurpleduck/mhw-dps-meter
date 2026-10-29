@@ -40,6 +40,15 @@ impl ViewerApp {
         v_flex()
             .gap_4()
             .child(render_header(&log, cx))
+            .when(log.gauge_samples_dropped > 0, |this| this.child(
+                muted(
+                    format!(
+                        "Experimental monster gauge history is incomplete: {} observation intervals omitted after the recording cap.",
+                        log.gauge_samples_dropped
+                    ),
+                    cx,
+                )
+            ))
             .child(
                 TabBar::new("detail-tabs")
                     .underline()

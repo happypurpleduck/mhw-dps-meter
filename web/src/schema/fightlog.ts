@@ -31,6 +31,8 @@ export interface FightLog {
   hits: FightLogHit[]
   /** Experimental local-only sampled observations (not host-authoritative). */
   gaugeSamples: FightLogGaugeSample[]
+  /** Due observation intervals omitted after the gauge recording limit. */
+  gaugeSamplesDropped: number
   events: FightLogEvent[]
 }
 

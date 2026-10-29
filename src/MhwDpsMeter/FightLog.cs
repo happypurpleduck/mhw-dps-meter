@@ -90,6 +90,10 @@ internal sealed class FightLog
     [JsonPropertyName("gaugeSamples")]
     public FightLogGaugeSample[] GaugeSamples { get; set; } = [];
 
+    /// <summary>Due observation intervals omitted when the bounded buffer filled.</summary>
+    [JsonPropertyName("gaugeSamplesDropped")]
+    public int GaugeSamplesDropped { get; set; }
+
     [JsonPropertyName("events")]
     public FightLogEvent[] Events { get; set; } = [];
 

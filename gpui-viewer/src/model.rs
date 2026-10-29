@@ -62,6 +62,8 @@ pub struct FightLog {
     #[serde(default)]
     pub gauge_samples: Vec<GaugeSample>,
     #[serde(default)]
+    pub gauge_samples_dropped: usize,
+    #[serde(default)]
     pub events: Vec<Event>,
 }
 
