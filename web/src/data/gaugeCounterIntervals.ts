@@ -25,12 +25,13 @@ export function observedCounterIntervals(
     if (sample.monster !== monster) continue
     const boundary = sample.clockBoundary ?? (Boolean(sample.clockAdjusted) && !wasAdjusted)
     wasAdjusted = Boolean(sample.clockAdjusted)
-    const item = kind === 'part'
-      ? sample.parts?.find(p => p.part === id)
-      : sample.ailments?.find(a => a.id === id)
-    const count = item && (kind === 'part'
-      ? (item as FightLogGaugeSample['parts'][number]).completedFlinches
-      : (item as FightLogGaugeSample['ailments'][number]).procs)
+    // Imported/partial records can repeat an ailment ID. Select a real
+    // nonnegative proc counter, not an earlier duration-only same-ID entry.
+    // Never combine values from distinct records or invent absent counters.
+    const count = kind === 'part'
+      ? sample.parts?.find(p => p.part === id)?.completedFlinches
+      : sample.ailments?.find(a => a.id === id && typeof a.procs === 'number'
+        && Number.isInteger(a.procs) && a.procs >= 0)?.procs
     // Never substitute an absent or invalid counter with 0. The importer may
     // preserve a partial observation whose numeric progress was unreadable.
     if (typeof count !== 'number' || !Number.isInteger(count) || count < 0

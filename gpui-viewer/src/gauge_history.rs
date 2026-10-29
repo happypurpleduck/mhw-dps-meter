@@ -239,7 +239,10 @@ pub fn observed_counter_intervals(
         was_adjusted = sample.clock_adjusted;
         let count = match metric {
             GaugeMetric::Stamina | GaugeMetric::AilmentDuration(..) => None,
-            GaugeMetric::Ailment(id, _) => sample.ailments.iter().find(|a| a.id == *id).and_then(|a| a.procs),
+            GaugeMetric::Ailment(id, _) => sample.ailments.iter()
+                .filter(|a| a.id == *id)
+                .filter_map(|a| a.procs)
+                .find(|count| *count >= 0),
             GaugeMetric::Part(id, _) => sample.parts.iter().find(|p| p.part == *id).and_then(|p| p.completed_flinches),
         };
         let Some(count) = count.filter(|count| *count >= 0) else {
@@ -543,6 +546,43 @@ mod tests {
         assert_eq!(curves.iter().map(Vec::len).collect::<Vec<_>>(), vec![2, 2, 2]);
         assert_eq!(curves.iter().map(|segment| segment[0].0).collect::<Vec<_>>(), vec![0.0, 4.0, 8.0]);
         assert_eq!(gauge_segments(&samples, "m2", &GaugeMetric::Stamina).len(), 1);
+    }
+
+
+    #[test]
+    fn duplicate_partial_ailments_keep_valid_observed_proc_intervals() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":30,"maxBuildup":100,"procs":0}]},
+          {"t":0,"monster":"m2","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":30,"maxBuildup":100,"procs":9}]},
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":5,"maxDuration":10},
+            {"id":7,"name":"KO","procs":-2,"buildup":33,"maxBuildup":100},
+            {"id":7,"name":"KO","buildup":50,"maxBuildup":100,"procs":1}]},
+          {"t":2,"monster":"m2","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":1,"maxDuration":10},{"id":7,"name":"KO","procs":10}]},
+          {"t":4,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":4,"maxDuration":10},{"id":7,"name":"KO","procs":3}]},
+          {"t":6,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","duration":2,"maxDuration":10}]},
+          {"t":8,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","procs":4}]},
+          {"t":10,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":2,"maxDuration":10},{"id":7,"name":"KO","procs":5}]},
+          {"t":12,"monster":"m1","source":"local-unverified","clockBoundary":true,"ailments":[{"id":7,"name":"KO","procs":6}]},
+          {"t":14,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":7}]},
+          {"t":16,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":8}]},
+          {"t":18,"monster":"m1","source":"unknown","ailments":[
+            {"id":7,"name":"KO","procs":-1},{"id":7,"name":"KO","duration":2,"maxDuration":10}]},
+          {"t":20,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":9}]},
+          {"t":22,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":10}]}
+        ]"#).unwrap();
+        let ko = GaugeMetric::Ailment(7, "KO".into());
+        let tuples = |monster: &str| observed_counter_intervals(&samples, monster, &ko).iter()
+            .map(|change| (change.start_t, change.end_t, change.before, change.after, change.increase))
+            .collect::<Vec<_>>();
+        assert_eq!(tuples("m1"), vec![(0., 2., 0, 1, 1), (2., 4., 1, 3, 2),
+            (8., 10., 4, 5, 1), (14., 16., 7, 8, 1), (20., 22., 9, 10, 1)]);
+        assert_eq!(tuples("m2"), vec![(0., 2., 9, 10, 1)]);
+        assert!(observed_counter_intervals(&samples, "m1", &GaugeMetric::AilmentDuration(7, "KO".into())).is_empty());
+        assert!(observed_counter_intervals(&samples, "m1", &GaugeMetric::Ailment(8, "Other".into())).is_empty());
     }
 
     #[test]
