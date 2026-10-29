@@ -34,7 +34,7 @@ export function GaugeHistory(props: { log: FightLog }) {
             <div role="group" aria-label="Gauge metric" class="flex flex-wrap gap-1">
               <For each={options()}>{metric => (
                 <button type="button" class={['btn btn-xs', activeMetric()?.key === metric.key ? 'btn-primary' : 'btn-ghost']}
-                  aria-pressed={activeMetric()?.key === metric.key}
+                  aria-pressed={activeMetric()?.key === metric.key ? 'true' : 'false'}
                   onClick={() => setMetric(metric.key)}>{metric.label}</button>
               )}</For>
             </div>
