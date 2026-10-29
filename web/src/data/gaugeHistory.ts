@@ -68,7 +68,10 @@ export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, m
     outOfOrder: 0, gapsOver6s: 0, sourceChanges: 0, clockBoundaries: 0,
     nonDefaultSource: 0,
   }
-  let previousCapture: { t: number; source: string } | undefined
+  let previousCaptureT: number | undefined
+  // Source transitions are properties of capture order, even if t is damaged
+  // or goes backwards. Time-comparable pairs are only needed for gap counts.
+  let previousSource: string | undefined
   let lastUsableT: number | undefined
   let wasAdjusted = false
   for (const sample of samples) {
@@ -78,17 +81,18 @@ export function gaugeCoverage(samples: FightLogGaugeSample[], monster: string, m
     wasAdjusted = Boolean(sample.clockAdjusted)
     if (boundary) coverage.clockBoundaries++
     if (sample.source !== 'local-unverified') coverage.nonDefaultSource++
+    if (previousSource !== undefined && sample.source !== previousSource) coverage.sourceChanges++
+    previousSource = sample.source
     const t = sample.t
     if (!Number.isFinite(t) || t < 0) {
       coverage.invalidTime++
-      previousCapture = undefined
+      previousCaptureT = undefined
       continue
     }
-    if (previousCapture && t >= previousCapture.t) {
-      if (t - previousCapture.t > 6) coverage.gapsOver6s++
-      if (sample.source !== previousCapture.source) coverage.sourceChanges++
+    if (previousCaptureT !== undefined && t >= previousCaptureT && t - previousCaptureT > 6) {
+      coverage.gapsOver6s++
     }
-    previousCapture = { t, source: sample.source }
+    previousCaptureT = t
     if (metricValue(sample, metric) === null) {
       coverage.missingMetric++
     } else if (lastUsableT !== undefined && t < lastUsableT) {

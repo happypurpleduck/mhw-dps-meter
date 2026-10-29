@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, hunt_wide_quality_notice};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -423,11 +423,17 @@ impl ViewerApp {
         let monsters: Vec<_> = log.monsters.iter().filter(|m|
             log.gauge_samples.iter().any(|s| s.monster == m.id)
         ).collect();
+        let quality_notice = hunt_wide_quality_notice(
+            log.gauge_samples_dropped, log.gauge_clock_discontinuities,
+        );
         if monsters.is_empty() {
-            return card(cx)
+            let mut panel = card(cx)
                 .child(section_title("Experimental monster state history", cx))
-                .child(muted("No locally recorded gauge samples for this hunt. Older logs and disabled capture legitimately have none.", cx))
-                .into_any_element();
+                .child(muted("No locally recorded gauge samples for this hunt. Older logs and disabled capture legitimately have none.", cx));
+            if let Some(notice) = quality_notice {
+                panel = panel.child(muted(notice, cx));
+            }
+            return panel.into_any_element();
         }
 
         let selected_id = self.gauge_monster.as_deref()
@@ -542,11 +548,8 @@ impl ViewerApp {
                 }
             }
         }
-        if log.gauge_clock_discontinuities > 0 || log.gauge_samples_dropped > 0 {
-            panel = panel.child(muted(format!(
-                "Hunt-wide quality: {} due observation interval(s) omitted by recording cap; {} clock correction(s). These cannot be assigned to this monster. Do not align gauge curves with hit/DPS times as exact events.",
-                log.gauge_samples_dropped, log.gauge_clock_discontinuities,
-            ), cx));
+        if let Some(notice) = quality_notice {
+            panel = panel.child(muted(notice, cx));
         }
         panel.into_any_element()
     }

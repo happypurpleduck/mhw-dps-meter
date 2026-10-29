@@ -78,13 +78,13 @@ export function GaugeHistory(props: { log: FightLog }) {
               </div>
             </Show>
           </Show>
-          <Show when={props.log.gaugeSamplesDropped > 0 || props.log.gaugeClockDiscontinuities > 0}>
-            <p class="text-xs text-warning">
-              Hunt-wide quality: {props.log.gaugeSamplesDropped} due observation interval(s) omitted by recording cap;
-              {props.log.gaugeClockDiscontinuities} clock correction(s). These totals cannot be assigned to the selected monster.
-              Gauge timestamps must not be treated as exact hit or DPS event times.
-            </p>
-          </Show>
+        </Show>
+        <Show when={props.log.gaugeSamplesDropped > 0 || props.log.gaugeClockDiscontinuities > 0}>
+          <p class="text-xs text-warning">
+            Hunt-wide quality: {props.log.gaugeSamplesDropped} due observation interval(s) omitted by recording cap;
+            {props.log.gaugeClockDiscontinuities} clock correction(s). These totals cannot be assigned to a monster.
+            Gauge timestamps must not be treated as exact hit or DPS event times.
+          </p>
         </Show>
       </div>
     </section>

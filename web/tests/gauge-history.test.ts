@@ -157,7 +157,7 @@ describe('experimental gauge history', () => {
       ] })
     expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')).toEqual({
       observations: 11, usable: 7, missingMetric: 2, invalidTime: 1,
-      outOfOrder: 1, gapsOver6s: 1, sourceChanges: 1, clockBoundaries: 1,
+      outOfOrder: 1, gapsOver6s: 1, sourceChanges: 2, clockBoundaries: 1,
       nonDefaultSource: 2,
     })
     expect(gaugeCoverage(log.gaugeSamples, 'm2', 'stamina')).toEqual({
@@ -179,6 +179,24 @@ describe('experimental gauge history', () => {
     expect(points.map(p => p.segment)).toEqual(['segment-1', 'segment-2', 'segment-3'])
     expect(isolatedGaugePoints(points)).toHaveLength(3)
     expect(gaugeCoverage(log.gaugeSamples, 'm1', 'stamina').sourceChanges).toBe(2)
+  })
+
+  it('counts source switches across invalid and backward timestamps in capture order', () => {
+    const log = normalizeLog({ questName: 'Mixed timestamps', players: [], gaugeSamples: [
+      { t: 0, monster: 'm1', source: 'local-unverified', stamina: 10, maxStamina: 100 },
+      { t: 0, monster: 'm2', source: 'local-unverified', stamina: 10, maxStamina: 100 },
+      { t: 'bad', monster: 'm1', source: 'unknown', stamina: 20, maxStamina: 100 },
+      { t: 2, monster: 'm1', source: 'unknown', stamina: 30, maxStamina: 100 },
+      { t: 1, monster: 'm1', source: 'local-unverified', stamina: 40, maxStamina: 100 },
+      { t: 3, monster: 'm1', source: 'local-unverified', stamina: 50, maxStamina: 100 },
+      { t: 4, monster: 'm2', source: 'local-unverified', stamina: 20, maxStamina: 100 },
+    ] })
+    const m1 = gaugeCoverage(log.gaugeSamples, 'm1', 'stamina')
+    expect(m1).toMatchObject({
+      observations: 5, invalidTime: 1, outOfOrder: 1,
+      sourceChanges: 2, gapsOver6s: 0, nonDefaultSource: 2,
+    })
+    expect(gaugeCoverage(log.gaugeSamples, 'm2', 'stamina').sourceChanges).toBe(0)
   })
 
 })
