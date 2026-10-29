@@ -1,4 +1,4 @@
-import type { FightLog, FightLogPlayer, IndexEntry } from '../schema/fightlog'
+import type { FightLog, FightLogGaugeSample, FightLogPlayer, IndexEntry } from '../schema/fightlog'
 
 /** Accepts schema-1 or schema-2 JSON and returns a fully populated FightLog. */
 export function normalizeLog(raw: unknown): FightLog {
@@ -40,11 +40,57 @@ export function normalizeLog(raw: unknown): FightLog {
     monsters: Array.isArray(r.monsters) ? (r.monsters as FightLog['monsters']) : [],
     samples: Array.isArray(r.samples) ? (r.samples as FightLog['samples']) : [],
     hits: Array.isArray(r.hits) ? (r.hits as FightLog['hits']) : [],
-    gaugeSamples: Array.isArray(r.gaugeSamples) ? (r.gaugeSamples as FightLog['gaugeSamples']) : [],
+    gaugeSamples: normalizeGaugeSamples(r.gaugeSamples),
     gaugeSamplesDropped: Math.max(0, num(r.gaugeSamplesDropped, 0)),
     gaugeClockDiscontinuities: Math.max(0, num(r.gaugeClockDiscontinuities, 0)),
     events: Array.isArray(r.events) ? (r.events as FightLog['events']) : [],
   }
+}
+
+
+/**
+ * Optional gauge captures may come from imported or older schema-3 files.
+ * Validate their nested arrays before returning typed data to either chart or
+ * history selector. Corrupt observations are unavailable, never zero readings.
+ */
+function normalizeGaugeSamples(raw: unknown): FightLogGaugeSample[] {
+  if (!Array.isArray(raw)) return []
+  const samples: FightLogGaugeSample[] = []
+  for (const value of raw) {
+    if (!record(value) || typeof value.monster !== 'string' || !value.monster
+      || !finite(value.t) || value.t < 0) continue
+
+    const parts = (Array.isArray(value.parts) ? value.parts : [])
+      .filter((p): p is FightLogGaugeSample['parts'][number] =>
+        record(p) && Number.isInteger(p.part) && typeof p.name === 'string'
+        && finite(p.remaining) && finite(p.max))
+    const ailments = (Array.isArray(value.ailments) ? value.ailments : [])
+      .filter((a): a is FightLogGaugeSample['ailments'][number] =>
+        record(a) && Number.isInteger(a.id) && typeof a.name === 'string'
+        && finite(a.buildup) && finite(a.maxBuildup))
+
+    samples.push({
+      t: value.t,
+      monster: value.monster,
+      source: str(value.source, 'unknown'),
+      rawHuntT: finite(value.rawHuntT) ? value.rawHuntT : null,
+      clockAdjusted: value.clockAdjusted === true,
+      clockBoundary: typeof value.clockBoundary === 'boolean' ? value.clockBoundary : undefined,
+      stamina: finite(value.stamina) ? value.stamina : null,
+      maxStamina: finite(value.maxStamina) ? value.maxStamina : null,
+      parts,
+      ailments,
+    })
+  }
+  return samples
+}
+
+function record(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
+}
+
+function finite(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v)
 }
 
 export function parseLog(text: string): FightLog {

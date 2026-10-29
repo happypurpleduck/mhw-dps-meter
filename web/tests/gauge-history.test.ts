@@ -57,4 +57,37 @@ describe('experimental gauge history', () => {
     }
   })
 
+
+  it('treats malformed imported optional gauge entries as unavailable, not chart data', () => {
+    const log = normalizeLog({
+      questName: 'Imported mixed data', players: [],
+      monsters: [{ id: 'm1', name: 'Anjanath', type: 1, variant: 0, maxHealth: 1000, lastHealth: 500, firstSeenT: 0 }],
+      gaugeSamples: [
+        null, false, 42, [], {}, { t: 'invalid', monster: 'm1' },
+        { t: 0, monster: 'm1', source: 'local-unverified', stamina: 50, maxStamina: 100,
+          ailments: [null, 17, {}, { id: 7, name: 'KO', buildup: 20, maxBuildup: 100 }, { id: 'bad', name: 'Invalid' }],
+          parts: [null, 'nope', { part: 2, name: 'Head', remaining: 80, max: 100 }] },
+        { t: 2, monster: 'm1', source: 'local-unverified', stamina: 40, maxStamina: 100,
+          ailments: [null, { id: 7, name: 'KO', buildup: 30, maxBuildup: 100 }],
+          parts: { invalid: true } },
+        { t: 4, monster: 'm1', source: 'local-unverified', stamina: 'not numeric', maxStamina: 100,
+          ailments: [null], parts: [false] },
+      ],
+    })
+
+    expect(log.gaugeSamples).toHaveLength(3)
+    expect(log.gaugeSamples[0]?.ailments).toHaveLength(1)
+    expect(log.gaugeSamples[0]?.parts).toHaveLength(1)
+    expect(log.gaugeSamples[1]?.parts).toEqual([])
+    expect(log.gaugeSamples[2]?.stamina).toBeNull()
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1').map(m => m.key))
+      .toEqual(['stamina', 'ailment:7', 'part:2'])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'stamina').map(p => p.value))
+      .toEqual([50, 40])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'ailment:7').map(p => p.value))
+      .toEqual([20, 30])
+    expect(gaugeHistoryPoints(log.gaugeSamples, 'm1', 'part:2').map(p => p.value))
+      .toEqual([80])
+  })
+
 })
