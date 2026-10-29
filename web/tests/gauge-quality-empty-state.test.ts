@@ -109,4 +109,33 @@ describe('GaugeHistory with no recognized samples', () => {
     expect(withinMonster).toBe(true)
   })
 
+  it('renders the combined observed counter timeline even when no chartable metrics exist', () => {
+    const source = ts.createSourceFile('GaugeHistory.tsx',
+      readFileSync(new URL('../src/components/GaugeHistory.tsx', import.meta.url), 'utf8'),
+      ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const elements: ts.JsxElement[] = []
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxElement(node)) elements.push(node)
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    const monsterGuard = elements.find(node =>
+      node.openingElement.getText(source).includes('when={monsters().length}'))
+    const metricGuard = elements.find(node =>
+      node.openingElement.getText(source).includes('when={options().length}'))
+    const list = elements.find(node =>
+      node.openingElement.getText(source).includes('aria-label="Combined observed gauge counter timeline"'))
+    expect(monsterGuard).toBeDefined()
+    expect(metricGuard).toBeDefined()
+    expect(list).toBeDefined()
+    expect(list!.getText(source)).toContain('counterTimeline()')
+    let withinMonster = false
+    for (let parent = list!.parent; parent; parent = parent.parent) {
+      if (parent === metricGuard) throw new Error('Counter-only observations hidden behind chart selection')
+      if (parent === monsterGuard) withinMonster = true
+    }
+    expect(withinMonster).toBe(true)
+  })
+
+
 })

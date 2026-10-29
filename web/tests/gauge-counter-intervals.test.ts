@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeLog } from '../src/data/parse'
-import { observedCounterIntervals } from '../src/data/gaugeCounterIntervals'
+import { observedCounterIntervals, observedCounterTimeline } from '../src/data/gaugeCounterIntervals'
+import { availableGaugeMetrics } from '../src/data/gaugeHistory'
 
 describe('observed local gauge counter changes (not exact proc or break events)', () => {
   it('reports only consecutive positive counter changes in capture intervals', () => {
@@ -83,5 +84,78 @@ describe('observed local gauge counter changes (not exact proc or break events)'
     expect(observedCounterIntervals(log.gaugeSamples, 'm1', 'ailment-duration:7')).toEqual([])
     expect(observedCounterIntervals(log.gaugeSamples, 'm1', 'ailment:8')).toEqual([])
   })
+
+  it('combines observed ailment and part counter intervals, newest five, without converting to exact events', () => {
+    const ailment = (id: number, procs: number, name = id === 7 ? 'KO' : 'Exhaust') =>
+      ({ id, name, procs })
+    const part = (count: number) =>
+      ({ part: 2, name: 'Head', remaining: 30, max: 100, completedFlinches: count })
+    const reading = (t: number, monster: string, count: number,
+      extra: Record<string, unknown> = {}) => ({
+      t, monster, source: 'local-unverified',
+      ailments: [ailment(7, count), ailment(6, count)],
+      parts: t >= 4 ? [part(count)] : [], ...extra,
+    })
+    const log = normalizeLog({ questName: 'Combined counter timeline', players: [], gaugeSamples: [
+      reading(0, 'm1', 0),
+      reading(0, 'm2', 10),
+      reading(2, 'm1', 1, { ailments: [
+        { id: 7, name: 'KO', duration: 5, maxDuration: 10 },
+        ailment(7, 1), ailment(6, 1)] }),
+      reading(4, 'm1', 2),
+      reading(6, 'm1', 3),
+      reading(8, 'm1', 4),
+      reading(10, 'm1', 5),
+      reading(12, 'm1', 6, { source: 'unknown' }),
+      reading(14, 'm1', 7, { source: 'unknown' }),
+      reading(2, 'm2', 11),
+    ] })
+    const recent = observedCounterTimeline(log.gaugeSamples, 'm1')
+    expect(recent.map(v => [v.key, v.startT, v.endT, v.increase])).toEqual([
+      ['ailment:6', 12, 14, 1],
+      ['ailment:7', 12, 14, 1],
+      ['ailment:6', 8, 10, 1],
+      ['ailment:7', 8, 10, 1],
+      ['part:2', 8, 10, 1],
+    ])
+    expect(recent.map(v => v.label)).toEqual([
+      'Exhaust sampled proc counter', 'KO sampled proc counter',
+      'Exhaust sampled proc counter', 'KO sampled proc counter',
+      'Head sampled flinch counter',
+    ])
+    expect(observedCounterTimeline(log.gaugeSamples, 'm2')
+      .map(v => [v.key, v.startT, v.endT, v.increase])).toEqual([
+      ['ailment:6', 0, 2, 1], ['ailment:7', 0, 2, 1],
+    ])
+  })
+
+  it('shows observed counter-only intervals without a selectable percentage metric or invented zero', () => {
+    const sample = (t: unknown, procs: unknown, extras: Record<string, unknown> = {}) => ({
+      t, monster: 'm1', source: 'local-unverified',
+      ailments: [{ id: 7, name: 'KO', procs }], ...extras,
+    })
+    const log = normalizeLog({ questName: 'Counter-only samples', players: [], gaugeSamples: [
+      sample(0, 0),
+      sample(2, 1),
+      sample(4, null),
+      sample(6, 3),
+      sample(8, 4),
+      sample(10, 5, { clockBoundary: true }),
+      sample(12, 6, { source: 'unknown' }),
+      sample(14, 7, { source: 'unknown' }),
+      sample(16, 8, { source: 'unknown' }),
+    ] })
+    expect(availableGaugeMetrics(log.gaugeSamples, 'm1')).toEqual([])
+    expect(observedCounterTimeline(log.gaugeSamples, 'm1')
+      .map(v => [v.key, v.startT, v.endT, v.before, v.after])).toEqual([
+      ['ailment:7', 14, 16, 7, 8],
+      ['ailment:7', 12, 14, 6, 7],
+      ['ailment:7', 6, 8, 3, 4],
+      ['ailment:7', 0, 2, 0, 1],
+    ])
+    expect(observedCounterTimeline(log.gaugeSamples, 'absent')).toEqual([])
+    expect(observedCounterTimeline([], 'm1')).toEqual([])
+  })
+
 
 })

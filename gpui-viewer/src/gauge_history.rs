@@ -338,6 +338,53 @@ pub fn observed_counter_intervals(
     intervals
 }
 
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CounterTimelineEntry {
+    pub metric: GaugeMetric,
+    pub interval: CounterInterval,
+}
+
+impl CounterTimelineEntry {
+    pub fn label(&self) -> String {
+        match &self.metric {
+            GaugeMetric::Ailment(_, name) => format!("{name} sampled proc counter"),
+            GaugeMetric::Part(_, name) => format!("{name} sampled flinch counter"),
+            _ => String::new(),
+        }
+    }
+}
+
+/// Newest five stored positive counter changes across all recorded local gauges,
+/// independent of chartable percentage metrics. Each interval must pass the same
+/// per-metric missing, source, time and clock guards as the existing analyzer.
+pub fn observed_counter_timeline(samples: &[GaugeSample], monster: &str) -> Vec<CounterTimelineEntry> {
+    let mut metrics = BTreeMap::new();
+    for sample in samples.iter().filter(|s| s.monster == monster) {
+        for a in &sample.ailments {
+            if a.procs.is_some_and(|count| count >= 0) {
+                metrics.insert(format!("ailment:{}", a.id), GaugeMetric::Ailment(a.id, a.name.clone()));
+            }
+        }
+        for p in &sample.parts {
+            if p.completed_flinches.is_some_and(|count| count >= 0) {
+                metrics.insert(format!("part:{}", p.part), GaugeMetric::Part(p.part, p.name.clone()));
+            }
+        }
+    }
+    let mut result = Vec::new();
+    for metric in metrics.into_values() {
+        for interval in observed_counter_intervals(samples, monster, &metric) {
+            result.push(CounterTimelineEntry { metric: metric.clone(), interval });
+        }
+    }
+    result.sort_by(|a, b| b.interval.end_t.total_cmp(&a.interval.end_t)
+        .then_with(|| b.interval.start_t.total_cmp(&a.interval.start_t))
+        .then_with(|| a.metric.key().cmp(&b.metric.key())));
+    result.truncate(5);
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,6 +399,87 @@ mod tests {
 
 
 
+
+
+    #[test]
+    fn counter_timeline_combines_monster_metrics_with_newest_five_deterministic_order() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","procs":0},{"id":6,"name":"Exhaust","procs":0}]},
+          {"t":0,"monster":"m2","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","procs":10},{"id":6,"name":"Exhaust","procs":10}]},
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","duration":5,"maxDuration":10},
+            {"id":7,"name":"KO","procs":1},{"id":6,"name":"Exhaust","procs":1}]},
+          {"t":4,"monster":"m1","source":"local-unverified","parts":[
+            {"part":2,"name":"Head","remaining":30,"max":100,"completedFlinches":2}],
+            "ailments":[{"id":7,"name":"KO","procs":2},{"id":6,"name":"Exhaust","procs":2}]},
+          {"t":6,"monster":"m1","source":"local-unverified","parts":[
+            {"part":2,"name":"Head","remaining":30,"max":100,"completedFlinches":3}],
+            "ailments":[{"id":7,"name":"KO","procs":3},{"id":6,"name":"Exhaust","procs":3}]},
+          {"t":8,"monster":"m1","source":"local-unverified","parts":[
+            {"part":2,"name":"Head","remaining":30,"max":100,"completedFlinches":4}],
+            "ailments":[{"id":7,"name":"KO","procs":4},{"id":6,"name":"Exhaust","procs":4}]},
+          {"t":10,"monster":"m1","source":"local-unverified","parts":[
+            {"part":2,"name":"Head","remaining":30,"max":100,"completedFlinches":5}],
+            "ailments":[{"id":7,"name":"KO","procs":5},{"id":6,"name":"Exhaust","procs":5}]},
+          {"t":12,"monster":"m1","source":"unknown","ailments":[
+            {"id":7,"name":"KO","procs":6},{"id":6,"name":"Exhaust","procs":6}]},
+          {"t":14,"monster":"m1","source":"unknown","ailments":[
+            {"id":7,"name":"KO","procs":7},{"id":6,"name":"Exhaust","procs":7}]},
+          {"t":2,"monster":"m2","source":"local-unverified","ailments":[
+            {"id":7,"name":"KO","procs":11},{"id":6,"name":"Exhaust","procs":11}]}
+        ]"#).unwrap();
+        let recent = observed_counter_timeline(&samples, "m1");
+        assert_eq!(recent.iter().map(|item| (item.metric.key(), item.interval.start_t,
+            item.interval.end_t, item.interval.increase)).collect::<Vec<_>>(), vec![
+            ("ailment:6".into(), 12., 14., 1), ("ailment:7".into(), 12., 14., 1),
+            ("ailment:6".into(), 8., 10., 1), ("ailment:7".into(), 8., 10., 1),
+            ("part:2".into(), 8., 10., 1),
+        ]);
+        assert_eq!(recent.iter().map(CounterTimelineEntry::label).collect::<Vec<_>>(),
+            vec!["Exhaust sampled proc counter", "KO sampled proc counter",
+                "Exhaust sampled proc counter", "KO sampled proc counter",
+                "Head sampled flinch counter"]);
+        assert_eq!(observed_counter_timeline(&samples, "m2").iter()
+            .map(|item| (item.metric.key(), item.interval.start_t, item.interval.end_t))
+            .collect::<Vec<_>>(), vec![
+            ("ailment:6".into(), 0., 2.), ("ailment:7".into(), 0., 2.),
+        ]);
+    }
+
+    #[test]
+    fn counter_only_capture_intervals_visible_without_numeric_metric_or_exact_events() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","procs":0}]},
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","procs":1}]},
+          {"t":4,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO"}]},
+          {"t":6,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","procs":3}]},
+          {"t":8,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","procs":4}]},
+          {"t":10,"monster":"m1","source":"local-unverified","clockBoundary":true,"ailments":[{"id":7,"name":"KO","procs":5}]},
+          {"t":12,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":6}]},
+          {"t":14,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":7}]},
+          {"t":16,"monster":"m1","source":"unknown","ailments":[{"id":7,"name":"KO","procs":8}]}
+        ]"#).unwrap();
+        assert!(available_metrics(&samples, "m1").is_empty());
+        assert_eq!(observed_counter_timeline(&samples, "m1").iter()
+            .map(|v| (v.metric.key(), v.interval.start_t, v.interval.end_t, v.interval.before, v.interval.after))
+            .collect::<Vec<_>>(), vec![
+            ("ailment:7".into(), 14., 16., 7, 8),
+            ("ailment:7".into(), 12., 14., 6, 7),
+            ("ailment:7".into(), 6., 8., 3, 4),
+            ("ailment:7".into(), 0., 2., 0, 1),
+        ]);
+        assert!(observed_counter_timeline(&samples, "absent").is_empty());
+        assert!(observed_counter_timeline(&[], "m1").is_empty());
+
+        let ui = include_str!("ui/detail.rs");
+        let presented = ui.find("if !counter_timeline.is_empty()")
+            .expect("counter-only timeline rendered when it has observations");
+        let metric_guard = ui.find("if choices.is_empty()")
+            .expect("numeric chart metric fallback remains");
+        assert!(presented < metric_guard, "counter-only evidence must render outside chart-availability guard");
+    }
 
     #[test]
     fn backward_clock_boundary_preserves_both_markers_and_last_five_display_order() {

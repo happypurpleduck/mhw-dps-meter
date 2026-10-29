@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, gauge_quality_markers, recent_gauge_quality_markers, hunt_wide_quality_notice, GaugeMetric};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, gauge_quality_markers, recent_gauge_quality_markers, observed_counter_timeline, hunt_wide_quality_notice, GaugeMetric};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -448,8 +448,7 @@ impl ViewerApp {
         let mut isolated = Vec::new();
         let mut last_value: Option<(f32, f32)> = None;
         let mut has_trend = false;
-        let counter_intervals = chosen.map(|metric| observed_counter_intervals(&log.gauge_samples, selected_id, metric))
-            .unwrap_or_default();
+        let counter_timeline = observed_counter_timeline(&log.gauge_samples, selected_id);
         if let Some(metric) = chosen {
             for points in gauge_segments(&log.gauge_samples, selected_id, metric) {
                 if let Some(last) = points.last() {
@@ -510,6 +509,17 @@ impl ViewerApp {
                 panel = panel.child(muted(marker.label(), cx));
             }
         }
+        if !counter_timeline.is_empty() {
+            panel = panel.child(muted("Recent observed counter increases across sampled ailments and parts (latest five by interval end; not exact proc/break times or hunter attribution):", cx));
+            for item in &counter_timeline {
+                let change = &item.interval;
+                panel = panel.child(muted(format!(
+                    "{}: +{} ({} to {}) observed between {:.1}s and {:.1}s",
+                    item.label(), change.increase, change.before, change.after,
+                    change.start_t, change.end_t,
+                ), cx));
+            }
+        }
         if choices.is_empty() {
             panel = panel.child(muted("No usable numeric gauge readings for this monster; metric-specific quality is unavailable.", cx));
         } else {
@@ -543,14 +553,6 @@ impl ViewerApp {
                     "{} isolated valid reading(s), shown without connecting lines (latest five):", isolated.len()), cx));
                 for &(t, pct) in isolated.iter().rev().take(5) {
                     panel = panel.child(muted(format!("  {:.1}% at {:.1}s (isolated)", pct, t), cx));
-                }
-            }
-            if !counter_intervals.is_empty() {
-                panel = panel.child(muted("Observed counter increases between consecutive valid same-source samples (latest five); these are intervals, NOT exact proc/break times or hunter attribution.", cx));
-                for change in counter_intervals.iter().rev().take(5) {
-                    panel = panel.child(muted(format!(
-                        "  +{} ({} to {}) observed between {:.1}s and {:.1}s",
-                        change.increase, change.before, change.after, change.start_t, change.end_t), cx));
                 }
             }
         }

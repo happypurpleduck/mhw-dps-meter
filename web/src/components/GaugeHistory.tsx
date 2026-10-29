@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import type { FightLog } from '../schema/fightlog'
 import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints, gaugeCoverage, gaugeQualityMarkers, gaugeQualityMarkerLabel, recentGaugeQualityMarkers } from '../data/gaugeHistory'
-import { observedCounterIntervals } from '../data/gaugeCounterIntervals'
+import { observedCounterTimeline } from '../data/gaugeCounterIntervals'
 import { gaugeHistoryChart } from '../charts/definitions'
 import { Chart } from '../lib/Chart'
 
@@ -19,8 +19,8 @@ export function GaugeHistory(props: { log: FightLog }) {
   const hasTrend = () => points().some((p, i) => i > 0 && points()[i - 1]?.segment === p.segment)
   const isolated = createMemo(() => isolatedGaugePoints(points()))
   const coverage = createMemo(() => gaugeCoverage(props.log.gaugeSamples, monster() ?? '', activeMetric()?.key))
-  const counterIntervals = createMemo(() => observedCounterIntervals(
-    props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? '',
+  const counterTimeline = createMemo(() => observedCounterTimeline(
+    props.log.gaugeSamples, monster() ?? '',
   ))
   const qualityMarkers = createMemo(() => gaugeQualityMarkers(props.log.gaugeSamples, monster() ?? ''))
 
@@ -52,6 +52,16 @@ export function GaugeHistory(props: { log: FightLog }) {
               </ul>
             </div>
           </Show>
+          <Show when={counterTimeline().length > 0}>
+            <div class="text-xs text-base-content/70">
+              <p>Recent observed counter increases across sampled ailments and parts (latest five by interval end; not exact proc/break times or hunter attribution):</p>
+              <ul class="list-disc pl-5" aria-label="Combined observed gauge counter timeline">
+                <For each={counterTimeline()}>{change =>
+                  <li>{change.label}: +{change.increase} ({change.before} to {change.after}) observed between {change.startT.toFixed(1)}s and {change.endT.toFixed(1)}s</li>
+                }</For>
+              </ul>
+            </div>
+          </Show>
           <Show when={options().length} fallback={<p class="text-sm text-base-content/60">No usable numeric gauge readings for this monster; metric-specific quality is unavailable.</p>}>
             <div role="group" aria-label="Gauge metric" class="flex flex-wrap gap-1">
               <For each={options()}>{metric => (
@@ -78,16 +88,6 @@ export function GaugeHistory(props: { log: FightLog }) {
                 <p>{isolated().length} isolated valid reading(s) (not joined by a line; latest five):</p>
                 <ul class="list-disc pl-5" aria-label="Isolated gauge observations">
                   <For each={isolated().slice(-5).reverse()}>{p => <li>{p.value.toFixed(1)}% at {p.t.toFixed(1)}s</li>}</For>
-                </ul>
-              </div>
-            </Show>
-            <Show when={counterIntervals().length > 0}>
-              <div class="text-xs text-base-content/70">
-                <p>Observed counter increases between consecutive valid same-source samples (latest five). These are capture intervals, not exact proc/break times or hunter attribution.</p>
-                <ul class="list-disc pl-5" aria-label="Observed gauge counter intervals">
-                  <For each={counterIntervals().slice(-5).reverse()}>{change => (
-                    <li>+{change.increase} ({change.before} to {change.after}) observed between {change.startT.toFixed(1)}s and {change.endT.toFixed(1)}s</li>
-                  )}</For>
                 </ul>
               </div>
             </Show>

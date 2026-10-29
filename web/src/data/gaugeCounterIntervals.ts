@@ -52,3 +52,42 @@ export function observedCounterIntervals(
   }
   return result
 }
+
+/** All observed positive changes across recorded counters for one monster.
+ * Limited to the most recent five intervals by stored capture end time.
+ * Never an exact proc/break timestamp, a completed hit, or hunter attribution.
+ * Counter-only observations remain eligible even when no chart metric exists.
+ */
+export interface CounterTimelineEntry extends CounterInterval {
+  key: string
+  label: string
+}
+
+export function observedCounterTimeline(
+  samples: FightLogGaugeSample[], monster: string,
+): CounterTimelineEntry[] {
+  const labels = new Map<string, string>()
+  for (const sample of samples) {
+    if (sample.monster !== monster) continue
+    for (const a of sample.ailments ?? []) {
+      if (typeof a.procs === 'number' && Number.isInteger(a.procs) && a.procs >= 0) {
+        labels.set(`ailment:${a.id}`, `${a.name} sampled proc counter`)
+      }
+    }
+    for (const p of sample.parts ?? []) {
+      if (typeof p.completedFlinches === 'number' && Number.isInteger(p.completedFlinches)
+        && p.completedFlinches >= 0) {
+        labels.set(`part:${p.part}`, `${p.name} sampled flinch counter`)
+      }
+    }
+  }
+  const events: CounterTimelineEntry[] = []
+  for (const [key, label] of labels) {
+    for (const interval of observedCounterIntervals(samples, monster, key)) {
+      events.push({ key, label, ...interval })
+    }
+  }
+  events.sort((a, b) => b.endT - a.endT || b.startT - a.startT
+    || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+  return events.slice(0, 5)
+}
