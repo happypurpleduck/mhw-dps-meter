@@ -26,7 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
-use crate::gauge_history::{available_metrics, gauge_segments};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -442,6 +442,8 @@ impl ViewerApp {
         let mut isolated = Vec::new();
         let mut last_value: Option<(f32, f32)> = None;
         let mut has_trend = false;
+        let counter_intervals = chosen.map(|metric| observed_counter_intervals(&log.gauge_samples, selected_id, metric))
+            .unwrap_or_default();
         if let Some(metric) = chosen {
             for points in gauge_segments(&log.gauge_samples, selected_id, metric) {
                 if let Some(last) = points.last() {
@@ -516,6 +518,14 @@ impl ViewerApp {
                     "{} isolated valid reading(s), shown without connecting lines (latest five):", isolated.len()), cx));
                 for &(t, pct) in isolated.iter().rev().take(5) {
                     panel = panel.child(muted(format!("  {:.1}% at {:.1}s (isolated)", pct, t), cx));
+                }
+            }
+            if !counter_intervals.is_empty() {
+                panel = panel.child(muted("Observed counter increases between consecutive valid local samples (latest five); these are intervals, NOT exact proc/break times or hunter attribution.", cx));
+                for change in counter_intervals.iter().rev().take(5) {
+                    panel = panel.child(muted(format!(
+                        "  +{} ({} to {}) observed between {:.1}s and {:.1}s",
+                        change.increase, change.before, change.after, change.start_t, change.end_t), cx));
                 }
             }
         }

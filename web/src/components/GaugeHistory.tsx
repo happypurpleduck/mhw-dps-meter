@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import type { FightLog } from '../schema/fightlog'
 import { availableGaugeMetrics, gaugeHistoryPoints, isolatedGaugePoints } from '../data/gaugeHistory'
+import { observedCounterIntervals } from '../data/gaugeCounterIntervals'
 import { gaugeHistoryChart } from '../charts/definitions'
 import { Chart } from '../lib/Chart'
 
@@ -17,6 +18,9 @@ export function GaugeHistory(props: { log: FightLog }) {
   const last = () => points().at(-1)
   const hasTrend = () => points().some((p, i) => i > 0 && points()[i - 1]?.segment === p.segment)
   const isolated = createMemo(() => isolatedGaugePoints(points()))
+  const counterIntervals = createMemo(() => observedCounterIntervals(
+    props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? '',
+  ))
 
   return (
     <section class="card bg-base-200">
@@ -51,6 +55,16 @@ export function GaugeHistory(props: { log: FightLog }) {
                 <p>{isolated().length} isolated valid reading(s) (not joined by a line; latest five):</p>
                 <ul class="list-disc pl-5" aria-label="Isolated gauge observations">
                   <For each={isolated().slice(-5).reverse()}>{p => <li>{p.value.toFixed(1)}% at {p.t.toFixed(1)}s</li>}</For>
+                </ul>
+              </div>
+            </Show>
+            <Show when={counterIntervals().length > 0}>
+              <div class="text-xs text-base-content/70">
+                <p>Observed counter increases between consecutive valid local samples (latest five). These are capture intervals, not exact proc/break times or hunter attribution.</p>
+                <ul class="list-disc pl-5" aria-label="Observed gauge counter intervals">
+                  <For each={counterIntervals().slice(-5).reverse()}>{change => (
+                    <li>+{change.increase} ({change.before} to {change.after}) observed between {change.startT.toFixed(1)}s and {change.endT.toFixed(1)}s</li>
+                  )}</For>
                 </ul>
               </div>
             </Show>

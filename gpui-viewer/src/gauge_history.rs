@@ -98,10 +98,100 @@ pub fn gauge_segments(samples: &[GaugeSample], monster: &str, metric: &GaugeMetr
     result
 }
 
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CounterInterval {
+    pub start_t: f32,
+    pub end_t: f32,
+    pub before: i32,
+    pub after: i32,
+    pub increase: i32,
+}
+
+/// Captured counter *differences* are known only within the sampling interval.
+/// Never turn an observed increment into an exact proc/break event or attacker.
+pub fn observed_counter_intervals(
+    samples: &[GaugeSample], monster: &str, metric: &GaugeMetric,
+) -> Vec<CounterInterval> {
+    let mut intervals = Vec::new();
+    let mut last: Option<(f32, i32, &str)> = None;
+    let mut was_adjusted = false;
+
+    for sample in samples.iter().filter(|s| s.monster == monster) {
+        let boundary = sample.clock_boundary.unwrap_or(sample.clock_adjusted && !was_adjusted);
+        was_adjusted = sample.clock_adjusted;
+        let count = match metric {
+            GaugeMetric::Stamina => None,
+            GaugeMetric::Ailment(id, _) => sample.ailments.iter().find(|a| a.id == *id).and_then(|a| a.procs),
+            GaugeMetric::Part(id, _) => sample.parts.iter().find(|p| p.part == *id).and_then(|p| p.completed_flinches),
+        };
+        let Some(count) = count.filter(|count| *count >= 0) else {
+            last = None;
+            continue;
+        };
+        if !sample.t.is_finite() || sample.t < 0.0 {
+            last = None;
+            continue;
+        }
+        if let Some((prev_t, prev_count, prev_source)) = last {
+            if !boundary && sample.t > prev_t && sample.t - prev_t <= 6.0
+                && sample.source == prev_source && count > prev_count
+            {
+                intervals.push(CounterInterval {
+                    start_t: prev_t, end_t: sample.t,
+                    before: prev_count, after: count, increase: count - prev_count,
+                });
+            }
+        }
+        last = Some((sample.t, count, &sample.source));
+    }
+    intervals
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+
+
+    #[test]
+    fn counter_changes_are_sample_intervals_not_precise_proc_events() {
+        let samples: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":0}],"ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100,"procs":0}]},
+          {"t":0,"monster":"m2","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":7}]},
+          {"t":2,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":1}],"ailments":[{"id":7,"name":"KO","buildup":15,"maxBuildup":100,"procs":2}]},
+          {"t":2,"monster":"m2","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":8}]},
+          {"t":4,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":70,"max":100,"completedFlinches":1}],"ailments":[{"id":7,"name":"KO","buildup":15,"maxBuildup":100,"procs":2}]},
+          {"t":-1,"monster":"m1","clockBoundary":true},
+          {"t":6,"monster":"m1","source":"local-unverified","clockBoundary":false,"parts":[{"part":2,"name":"Head","remaining":50,"max":100,"completedFlinches":3}],"ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":4}]},
+          {"t":8,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":40,"max":100,"completedFlinches":4}],"ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":5}]},
+          {"t":20,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":40,"max":100,"completedFlinches":5}]},
+          {"t":22,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":1}]},
+          {"t":24,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":60,"max":100,"completedFlinches":2}]},
+          {"t":26,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":50,"max":100}]},
+          {"t":28,"monster":"m1","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":50,"max":100,"completedFlinches":3}]},
+          {"t":30,"monster":"m1","source":"local-unverified","clockBoundary":true,"parts":[{"part":2,"name":"Head","remaining":40,"max":100,"completedFlinches":4}]},
+          {"t":32,"monster":"m1","source":"local-unverified","clockBoundary":false,"parts":[{"part":2,"name":"Head","remaining":30,"max":100,"completedFlinches":5}]},
+          {"t":34,"monster":"m1","source":"another-source","parts":[{"part":2,"name":"Head","remaining":30,"max":100,"completedFlinches":6}]},
+          {"t":36,"monster":"m1","source":"another-source","parts":[{"part":2,"name":"Head","remaining":20,"max":100,"completedFlinches":7}]}
+        ]"#).unwrap();
+        let part = observed_counter_intervals(&samples, "m1", &GaugeMetric::Part(2, "Head".into()));
+        assert_eq!(part.iter().map(|x| (x.start_t, x.end_t, x.increase)).collect::<Vec<_>>(),
+            vec![(0.0, 2.0, 1), (6.0, 8.0, 1), (22.0, 24.0, 1),
+                (30.0, 32.0, 1), (34.0, 36.0, 1)]);
+        let ailment = observed_counter_intervals(&samples, "m1", &GaugeMetric::Ailment(7, "KO".into()));
+        assert_eq!(ailment.iter().map(|x| (x.start_t, x.end_t, x.increase)).collect::<Vec<_>>(),
+            vec![(0.0, 2.0, 2), (6.0, 8.0, 1)]);
+        assert_eq!(observed_counter_intervals(&samples, "m2", &GaugeMetric::Part(2, "Head".into())).len(), 1);
+        assert!(observed_counter_intervals(&samples, "m1", &GaugeMetric::Stamina).is_empty());
+
+        // Missing optional counters cannot masquerade as an observed 0 -> 1.
+        let invalid: Vec<GaugeSample> = serde_json::from_str(r#"[
+          {"t":0,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":10,"maxBuildup":100}]},
+          {"t":2,"monster":"m1","source":"local-unverified","ailments":[{"id":7,"name":"KO","buildup":20,"maxBuildup":100,"procs":1}]}
+        ]"#).unwrap();
+        assert!(observed_counter_intervals(&invalid, "m1", &GaugeMetric::Ailment(7, "KO".into())).is_empty());
+    }
 
     #[test]
     fn post_reset_samples_join_one_new_curve_in_new_and_legacy_logs() {

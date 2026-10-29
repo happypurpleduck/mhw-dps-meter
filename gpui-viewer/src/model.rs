@@ -102,7 +102,8 @@ pub struct PartGauge {
     pub name: String,
     pub remaining: f32,
     pub max: f32,
-    pub completed_flinches: i32,
+    #[serde(default)]
+    pub completed_flinches: Option<i32>,
     #[serde(default)]
     pub next_break_threshold: Option<i32>,
 }
@@ -114,7 +115,8 @@ pub struct AilmentGauge {
     pub name: String,
     pub buildup: f32,
     pub max_buildup: f32,
-    pub procs: i32,
+    #[serde(default)]
+    pub procs: Option<i32>,
     pub duration: f32,
     pub max_duration: f32,
 }
@@ -156,7 +158,7 @@ fn decode_gauge_sample(value: &serde_json::Value) -> Option<GaugeSample> {
                     name: part.get("name")?.as_str()?.to_string(),
                     remaining: gauge_number(part.get("remaining"))?,
                     max: gauge_number(part.get("max"))?,
-                    completed_flinches: gauge_integer(part.get("completedFlinches")).unwrap_or(0),
+                    completed_flinches: gauge_integer(part.get("completedFlinches")),
                     next_break_threshold: gauge_integer(part.get("nextBreakThreshold")),
                 })
             }).collect()
@@ -170,7 +172,7 @@ fn decode_gauge_sample(value: &serde_json::Value) -> Option<GaugeSample> {
                     name: ailment.get("name")?.as_str()?.to_string(),
                     buildup: gauge_number(ailment.get("buildup"))?,
                     max_buildup: gauge_number(ailment.get("maxBuildup"))?,
-                    procs: gauge_integer(ailment.get("procs")).unwrap_or(0),
+                    procs: gauge_integer(ailment.get("procs")),
                     duration: gauge_number(ailment.get("duration")).unwrap_or(0.0),
                     max_duration: gauge_number(ailment.get("maxDuration")).unwrap_or(0.0),
                 })
