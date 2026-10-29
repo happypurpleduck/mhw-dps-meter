@@ -24,6 +24,9 @@ internal sealed class PluginSettings
     [JsonPropertyName("overlayOpacity")]
     public float OverlayOpacity { get; set; } = 0.92f;
 
+    [JsonPropertyName("experimentalMonsterGauges")]
+    public bool ExperimentalMonsterGauges { get; set; } = false;
+
     [JsonPropertyName("trialDurationSeconds")]
     public int TrialDurationSeconds { get; set; } = TimeTrial.DefaultDurationSeconds;
 

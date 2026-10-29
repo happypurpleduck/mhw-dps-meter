@@ -17,6 +17,7 @@
     <Compile Include="../../src/MhwDpsMeter/AddressMap.cs" Link="AddressMap.cs" />
     <Compile Include="../../src/MhwDpsMeter/GameNames.cs" Link="GameNames.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterParts.cs" Link="MonsterParts.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeReader.cs" Link="MonsterGaugeReader.cs" />
     <Compile Include="../../src/MhwDpsMeter/DamageTracker.cs" Link="DamageTracker.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterPartResolver.cs" Link="MonsterPartResolver.cs" />
     <Compile Include="../../src/MhwDpsMeter/HunterActionNames.cs" Link="HunterActionNames.cs" />

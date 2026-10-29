@@ -47,7 +47,7 @@ internal sealed class Overlay
         ImGui.PopTextWrapPos();
     }
 
-    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null)
+    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null)
     {
         if (!Visible || !inQuest)
             return;
@@ -83,6 +83,8 @@ internal sealed class Overlay
         }
 
         DrawPartyTable(snapshot, elapsedSeconds, carts);
+        if (gauges is { Count: > 0 })
+            DrawGaugeSummary(gauges);
 
         if (trial is { Active: true })
             DrawTrial(trial);
@@ -144,6 +146,30 @@ internal sealed class Overlay
         {
             ImGui.SameLine();
             Disabled($"  Carts {carts.Deaths}/{Math.Max(carts.MaxDeaths, carts.Deaths)}");
+        }
+    }
+
+    private static void DrawGaugeSummary(IReadOnlyList<MonsterGaugeState> gauges)
+    {
+        ImGui.Separator();
+        Disabled("Experimental gauges: local observation only, NOT verified host state");
+        foreach (var gauge in gauges.Take(2))
+        {
+            ImGui.TextUnformatted(gauge.Name);
+            if (gauge.Stamina is float stamina && gauge.MaxStamina is float max)
+                Disabled($"  Stamina {stamina:0}/{max:0}");
+
+            foreach (var ailment in gauge.Ailments
+                         .Where(a => a.Buildup > 0 || a.Duration > 0)
+                         .OrderByDescending(a => a.Buildup / a.MaxBuildup)
+                         .Take(3))
+                Disabled($"  {ailment.Name}: {ailment.Buildup:0}/{ailment.MaxBuildup:0}, procs {ailment.Procs}");
+
+            foreach (var part in gauge.Parts
+                         .Where(p => p.NextBreakThreshold is not null)
+                         .OrderBy(p => p.Remaining / p.Max)
+                         .Take(2))
+                Disabled($"  {part.Name}: flinch {part.Remaining:0}/{part.Max:0} remaining, cycle {part.CompletedFlinches}/{part.NextBreakThreshold}");
         }
     }
 
@@ -218,6 +244,14 @@ internal sealed class Overlay
             if (ImGui.Button("Reset training damage (F7)"))
                 onResetTraining();
         }
+
+        var experimental = settings.ExperimentalMonsterGauges;
+        if (ImGui.Checkbox("Experimental monster gauges (421810)", ref experimental))
+        {
+            settings.ExperimentalMonsterGauges = experimental;
+            settings.Save();
+        }
+        Disabled("Unverified local memory readings; not authoritative on multiplayer guests.");
 
         var visible = Visible;
         if (ImGui.Checkbox("Show overlay", ref visible))

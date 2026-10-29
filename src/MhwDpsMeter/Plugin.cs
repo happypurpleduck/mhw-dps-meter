@@ -25,6 +25,7 @@ public sealed class Plugin : IPlugin
     private readonly Overlay _overlay = new();
     private readonly Stopwatch _questTimer = new();
     private readonly MonsterHpTracker _monsterHp = new();
+    private MonsterGaugeState[] _gaugeStates = [];
     private readonly DamageTracker _hits = new();
     private readonly HuntRecorder _recorder;
     private readonly PartyActionTracker _party;
@@ -297,6 +298,10 @@ public sealed class Plugin : IPlugin
                 : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
 
             _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+            _gaugeStates = _settings.ExperimentalMonsterGauges && _mapMatchesBuild
+                && _buildConfirmed && _gameBuild == 421810
+                ? MonsterGaugeReader.Read(_monsterHp.LastTracked)
+                : [];
             _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
             _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);
@@ -595,6 +600,7 @@ public sealed class Plugin : IPlugin
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
             $"Part capture: {_hits.PartDiagnostics}\n" +
+            $"Monster gauges: {(_settings.ExperimentalMonsterGauges ? (_mapMatchesBuild && _buildConfirmed && _gameBuild == 421810 ? $"experimental local ({_gaugeStates.Length} monsters)" : "unsupported build") : "off")}\n" +
             $"Recorder: {_recorder.HitCount} hits ({_recorder.HitCoverage}), weapon {_recorder.LocalWeapon ?? "-"}\n" +
             $"Hunter entities: {_party.Diagnostics()}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
@@ -672,7 +678,8 @@ public sealed class Plugin : IPlugin
             _inQuest || _showResults || _training,
             _training ? TrainingHint : null,
             _training ? _trial : null,
-            _inQuest ? _carts : null);
+            _inQuest ? _carts : null,
+            _inQuest ? _gaugeStates : null);
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------
@@ -1026,6 +1033,7 @@ public sealed class Plugin : IPlugin
         _pollAccumulator = 0;
         _questTimer.Restart();
         _monsterHp.Reset();
+        _gaugeStates = [];
         _hits.Reset();
         _hits.RecordHits = true;
         _recorder.Reset();

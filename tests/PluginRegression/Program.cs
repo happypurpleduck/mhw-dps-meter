@@ -54,6 +54,47 @@ Equal(4000, hp.Poll(), "real despawn banks damage");
 other.Hp = 7000;
 Equal(5000, hp.Poll(), "damage after despawn remains cumulative");
 
+// Gauge metadata preserves collision-slot order and separates flinch cycles from HP.
+Equal<int?>(2, MonsterParts.FromNormalSlot(0, 0), "Anjanath normal slot zero is head");
+Equal<int?>(5, MonsterParts.NextBreakThreshold(0, 2, 0), "Anjanath head next break at five cycles");
+Equal<int?>(5, MonsterParts.NextBreakThreshold(0, 2, 4), "Anjanath head still next at four");
+Equal<int?>(null, MonsterParts.NextBreakThreshold(0, 2, 5), "Anjanath head threshold exhausted");
+
+// Simulated protected reads validate layout interpretation, NOT in-game offsets.
+SafeMemory.Values.Clear();
+nint gaugeMonster = 0x20000, partController = 0x30000, ailmentPtr = 0x40000;
+SafeMemory.Values[gaugeMonster + 0x1C0F0] = 90f;
+SafeMemory.Values[gaugeMonster + 0x1C0F4] = 150f;
+SafeMemory.Values[gaugeMonster + 0x1D058] = partController;
+SafeMemory.Values[partController + 0x40 + 0x0C] = 200f;
+SafeMemory.Values[partController + 0x40 + 0x10] = 100f;
+SafeMemory.Values[partController + 0x40 + 0x18] = 1;
+SafeMemory.Values[gaugeMonster + 0x1BC40] = ailmentPtr;
+SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)0;
+SafeMemory.Values[ailmentPtr + 0x148] = gaugeMonster;
+SafeMemory.Values[ailmentPtr + 0x148 + 0x10] = 7;
+SafeMemory.Values[ailmentPtr + 0x148 + 0x14] = 10f;
+SafeMemory.Values[ailmentPtr + 0x148 + 0x30] = 75f;
+SafeMemory.Values[ailmentPtr + 0x148 + 0x40] = 100f;
+SafeMemory.Values[ailmentPtr + 0x148 + 0x70] = 0f;
+SafeMemory.Values[ailmentPtr + 0x148 + 0x78] = 2;
+var gaugeInput = new MonsterState(gaugeMonster, (MonsterType)0, "Anjanath", 0, 1000, 800);
+var observed = MonsterGaugeReader.Read([gaugeInput]).Single();
+Equal(90f, observed.Stamina, "reads measured stamina");
+Equal(150f, observed.MaxStamina, "reads maximum stamina");
+Equal(2, observed.Parts[0].Part, "part meter normal slot maps to head");
+Equal(100f, observed.Parts[0].Remaining, "part flinch meter remains independent of HP");
+Equal<int?>(5, observed.Parts[0].NextBreakThreshold, "part cycle uses definition threshold");
+Equal(7, observed.Ailments[0].Id, "KO status id");
+Equal(75f, observed.Ailments[0].Buildup, "KO buildup");
+Equal(2, observed.Ailments[0].Procs, "KO proc count");
+SafeMemory.Values[gaugeMonster + 0x1C0F0] = -1f;
+SafeMemory.Values[partController + 0x40 + 0x10] = -5f;
+var invalidGauge = MonsterGaugeReader.Read([gaugeInput]).Single();
+Equal<float?>(null, invalidGauge.Stamina, "invalid stamina becomes unknown rather than zero");
+Equal(0, invalidGauge.Parts.Length, "invalid part gauge omitted, not clamped");
+SafeMemory.Values.Clear();
+
 PartyMemberSnapshot Member(int slot, string name, nint instance) => new()
 {
     Slot = slot, Name = name, Instance = instance, IsLocal = slot == 0
