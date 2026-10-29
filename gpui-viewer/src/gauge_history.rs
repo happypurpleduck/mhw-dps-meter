@@ -302,8 +302,14 @@ mod tests {
             .flatten().map(|(_, p)| p).collect::<Vec<_>>();
         let duration_values = gauge_segments(&samples, "m1", &duration).into_iter()
             .flatten().map(|(_, p)| p).collect::<Vec<_>>();
-        assert_eq!(buildup_values, vec![20.0, 60.0, 40.0]);
-        assert_eq!(duration_values, vec![50.0, 20.0]);
+        for (actual, expected) in buildup_values.iter().zip([20.0, 60.0, 40.0]) {
+            assert!((actual - expected).abs() < 0.001, "sampled percentage has f32 rounding");
+        }
+        for (actual, expected) in duration_values.iter().zip([50.0, 20.0]) {
+            assert!((actual - expected).abs() < 0.001, "sampled percentage has f32 rounding");
+        }
+        assert_eq!(buildup_values.len(), 3);
+        assert_eq!(duration_values.len(), 2);
         assert_eq!(gauge_segments(&samples, "m2", &duration), vec![vec![(0.0, 90.0)]]);
         let c = gauge_coverage(&samples, "m1", &duration);
         assert_eq!((c.observations, c.usable, c.missing_metric), (3, 2, 1));
