@@ -14,6 +14,7 @@ export function GaugeHistory(props: { log: FightLog }) {
   const activeMetric = () => options().find(o => o.key === requestedMetric()) ?? options()[0]
   const points = createMemo(() => gaugeHistoryPoints(props.log.gaugeSamples, monster() ?? '', activeMetric()?.key ?? ''))
   const last = () => points().at(-1)
+  const hasTrend = () => points().some((p, i) => i > 0 && points()[i - 1]?.segment === p.segment)
 
   return (
     <section class="card bg-base-200">
@@ -38,7 +39,7 @@ export function GaugeHistory(props: { log: FightLog }) {
               Percent of sampled maximum; {activeMetric()?.label}. Each missing reading or capture-clock discontinuity breaks the line.
               {last() ? ` Last observed: ${last()!.value.toFixed(1)}% at ${last()!.t.toFixed(1)}s.` : ''}
             </div>
-            <Show when={points().length > 1} fallback={<p class="text-sm text-base-content/60">Only one usable observation. A trend requires at least two samples.</p>}>
+            <Show when={hasTrend()} fallback={<p class="text-sm text-base-content/60">Only isolated observations. A trend requires two consecutive valid samples.</p>}>
               <Chart definition={gaugeHistoryChart(points(), activeMetric()?.label ?? 'Gauge')} height={250} ariaLabel="Observed local monster gauge history" />
             </Show>
             <Show when={props.log.gaugeSamplesDropped > 0 || props.log.gaugeClockDiscontinuities > 0}>

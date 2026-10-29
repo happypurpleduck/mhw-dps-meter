@@ -111,7 +111,16 @@ mod tests {
         ]"#).unwrap();
         assert_eq!(available_metrics(&samples, "m1").iter().map(GaugeMetric::key).collect::<Vec<_>>(), vec!["stamina", "ailment:7"]);
         let lines = gauge_segments(&samples, "m1", &GaugeMetric::Stamina);
-        assert_eq!(lines, vec![vec![(0.0, 80.0)], vec![(4.0, 60.0)], vec![(14.0, 50.0)], vec![(15.0, 40.0), (16.0, 30.0)]]);
+        let expected = [vec![(0.0, 80.0)], vec![(4.0, 60.0)], vec![(14.0, 50.0)],
+            vec![(15.0, 40.0), (16.0, 30.0)]];
+        assert_eq!(lines.len(), expected.len(), "missing state and clock adjustments split the timeline");
+        for (actual, expected) in lines.iter().zip(expected.iter()) {
+            assert_eq!(actual.len(), expected.len());
+            for (&(t, pct), &(expected_t, expected_pct)) in actual.iter().zip(expected.iter()) {
+                assert_eq!(t, expected_t);
+                assert!((pct - expected_pct).abs() < 0.001, "f32 percentages are approximate");
+            }
+        }
         assert_eq!(gauge_segments(&samples, "m2", &GaugeMetric::Stamina), vec![vec![(2.0, 40.0)]]);
         assert_eq!(gauge_segments(&samples, "m1", &GaugeMetric::Ailment(7, "KO".into())), vec![vec![(0.0, 20.0)]]);
         assert!(gauge_segments(&samples, "m1", &GaugeMetric::Part(2, "Head".into())).is_empty());
