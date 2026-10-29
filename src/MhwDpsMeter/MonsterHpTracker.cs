@@ -18,7 +18,7 @@ internal readonly record struct MonsterState(
 internal sealed class MonsterHpTracker
 {
     private readonly Dictionary<nint, int> _live = [];
-    private readonly Dictionary<nint, string> _names = [];
+    private readonly Dictionary<nint, (MonsterType Type, int Variant, string Name)> _names = [];
     private int _completed;
 
     /// <summary>Instances of tracked (large) monsters seen on the last poll.</summary>
@@ -124,7 +124,8 @@ internal sealed class MonsterHpTracker
             if (instance == 0 || max is < 800f or > 50_000_000f || float.IsNaN(max) || float.IsNaN(hp))
                 return false;
 
-            state = new MonsterState(instance, type, NameOf(monster, instance, type), (int)monster.Variant, max, hp);
+            var variant = (int)monster.Variant;
+            state = new MonsterState(instance, type, NameOf(monster, instance, type, variant), variant, max, hp);
             return true;
         }
         catch
@@ -134,11 +135,13 @@ internal sealed class MonsterHpTracker
     }
 
     /// <summary>Monster names are read once per instance; the string marshal is not free.</summary>
-    private string NameOf(Monster monster, nint instance, MonsterType type)
+    private string NameOf(Monster monster, nint instance, MonsterType type, int variant)
     {
-        if (_names.TryGetValue(instance, out var name))
-            return name;
+        if (_names.TryGetValue(instance, out var cached)
+            && cached.Type == type && cached.Variant == variant)
+            return cached.Name;
 
+        string? name;
         try
         {
             name = monster.Name;
@@ -150,7 +153,7 @@ internal sealed class MonsterHpTracker
 
         if (GameNames.IsPlaceholder(name))
             name = GameNames.Monster((int)type);
-        _names[instance] = name;
+        _names[instance] = (type, variant, name);
         return name;
     }
 

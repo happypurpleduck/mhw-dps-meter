@@ -87,6 +87,12 @@ function Header(props: { log: FightLog }) {
           )}
         </Show>
       </div>
+      <Show when={props.log.gaugeClockDiscontinuities > 0}>
+        <p class="text-sm text-warning">
+          Experimental gauge timeline adjusted across {props.log.gaugeClockDiscontinuities} hunt-clock changes.
+          Gauge sample t preserves capture order; rawHuntT shows the original quest clock and may not align with hit times.
+        </p>
+      </Show>
       <Show when={props.log.gaugeSamplesDropped > 0}>
         <p class="text-sm text-warning">
           Experimental monster gauge history is incomplete: {props.log.gaugeSamplesDropped} observation intervals

@@ -33,11 +33,16 @@ export interface FightLog {
   gaugeSamples: FightLogGaugeSample[]
   /** Due observation intervals omitted after the gauge recording limit. */
   gaugeSamplesDropped: number
+  /** Clock discontinuities: gauge sample t is capture-normalized, rawHuntT preserves quest timer. */
+  gaugeClockDiscontinuities: number
   events: FightLogEvent[]
 }
 
 export interface FightLogGaugeSample {
+  /** Nondecreasing time in capture order, corrected after hunt-clock discontinuities. */
   t: number
+  rawHuntT?: number | null
+  clockAdjusted?: boolean
   monster: string
   source: string
   stamina: number | null

@@ -295,11 +295,17 @@ public sealed class Plugin : IPlugin
                 && _buildConfirmed && _gameBuild == 421810;
             // The same integration seam is exercised with a null party snapshot
             // in PluginRegression. Always observe monsters before the early return.
+            // Native monster enumeration and hit-target bookkeeping are independent
+            // of fragile party-table decoding. The latter may throw.
+            var fallbackDamage = _monsterHp.Poll();
+            _lastFallbackDamage = fallbackDamage;
+            _hits.UpdateMonsters(_monsterHp.LiveInstances);
             var snapshot = HuntGaugeObservation.CaptureBeforePartyGuard(
-                ReadPartyWithFallbacks(), _elapsedSeconds,
+                () => ReadPartyWithFallbacks(fallbackDamage), _elapsedSeconds,
                 Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency,
-                enabled, _monsterHp.LastPollComplete, _monsterHp.LastTracked,
-                _gaugePoller, _recorder, MonsterGaugeReader.Read);
+                _timerSource, enabled, _monsterHp.LastPollComplete, _monsterHp.LastTracked,
+                _gaugePoller, _recorder, MonsterGaugeReader.Read,
+                ex => Log.Warn($"MhwDpsMeter: party read failed; gauges kept ({ex.GetType().Name}: {ex.Message})"));
             _gaugeStates = _gaugePoller.Current;
 
             if (snapshot is null)
@@ -361,11 +367,16 @@ public sealed class Plugin : IPlugin
     /// monster HP lost) over it. Returns null when nothing new could be read and the
     /// previous snapshot should stay on screen.
     /// </summary>
-    private PartySnapshot? ReadPartyWithFallbacks()
+    private PartySnapshot? ReadPartyWithFallbacks(int? existingMonsterDamage = null)
     {
-        var fallbackDamage = _monsterHp.Poll();
-        _hits.UpdateMonsters(_monsterHp.LiveInstances);
-        _lastFallbackDamage = fallbackDamage;
+        // EndHunt uses the original combined path. PollHunt can provide its
+        // already-observed monsters so party decode exceptions are isolated.
+        var fallbackDamage = existingMonsterDamage ?? _monsterHp.Poll();
+        if (!existingMonsterDamage.HasValue)
+        {
+            _hits.UpdateMonsters(_monsterHp.LiveInstances);
+            _lastFallbackDamage = fallbackDamage;
+        }
 
         if (!_reader!.TryRead(out var snapshot, fallbackDamage) || snapshot.Members.Length == 0)
         {

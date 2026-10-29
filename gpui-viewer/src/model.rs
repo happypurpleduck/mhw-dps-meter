@@ -64,6 +64,8 @@ pub struct FightLog {
     #[serde(default)]
     pub gauge_samples_dropped: usize,
     #[serde(default)]
+    pub gauge_clock_discontinuities: usize,
+    #[serde(default)]
     pub events: Vec<Event>,
 }
 
@@ -72,6 +74,10 @@ pub struct FightLog {
 #[serde(rename_all = "camelCase")]
 pub struct GaugeSample {
     pub t: f32,
+    #[serde(default)]
+    pub raw_hunt_t: Option<f32>,
+    #[serde(default)]
+    pub clock_adjusted: bool,
     pub monster: String,
     pub source: String,
     #[serde(default)]

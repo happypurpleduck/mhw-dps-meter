@@ -8,20 +8,34 @@ namespace MhwDpsMeter;
 internal static class HuntGaugeObservation
 {
     public static PartySnapshot? CaptureBeforePartyGuard(
-        PartySnapshot? partySnapshot, float huntElapsed, double monotonicSeconds,
-        bool enabled, bool monsterEnumerationComplete,
+        Func<PartySnapshot?> readParty, float huntElapsed, double monotonicSeconds,
+        string huntClockSource, bool enabled, bool monsterEnumerationComplete,
         IReadOnlyList<MonsterState> monsters, MonsterGaugePoller poller,
         HuntRecorder recorder,
-        Func<IReadOnlyList<MonsterState>, MonsterGaugeState[]> reader)
+        Func<IReadOnlyList<MonsterState>, MonsterGaugeState[]> reader,
+        Action<Exception>? partyReadFailure = null)
     {
+        PartySnapshot? snapshot;
+        try
+        {
+            snapshot = readParty();
+        }
+        catch (Exception ex)
+        {
+            partyReadFailure?.Invoke(ex);
+            snapshot = null;
+        }
+
+        // Even a throwing party-table read cannot skip the independent
+        // monster observation. The monster enumeration must have succeeded.
         if (monsterEnumerationComplete)
             recorder.ObserveMonsters(huntElapsed, monsters);
 
         var sampled = poller.Tick(monotonicSeconds, enabled, monsterEnumerationComplete,
             monsters, reader);
         if (sampled is { Length: > 0 })
-            recorder.ObserveGauges(huntElapsed, monotonicSeconds, sampled);
+            recorder.ObserveGauges(huntElapsed, monotonicSeconds, huntClockSource, sampled);
 
-        return partySnapshot;
+        return snapshot;
     }
 }

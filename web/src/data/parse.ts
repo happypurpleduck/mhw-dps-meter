@@ -42,6 +42,7 @@ export function normalizeLog(raw: unknown): FightLog {
     hits: Array.isArray(r.hits) ? (r.hits as FightLog['hits']) : [],
     gaugeSamples: Array.isArray(r.gaugeSamples) ? (r.gaugeSamples as FightLog['gaugeSamples']) : [],
     gaugeSamplesDropped: Math.max(0, num(r.gaugeSamplesDropped, 0)),
+    gaugeClockDiscontinuities: Math.max(0, num(r.gaugeClockDiscontinuities, 0)),
     events: Array.isArray(r.events) ? (r.events as FightLog['events']) : [],
   }
 }

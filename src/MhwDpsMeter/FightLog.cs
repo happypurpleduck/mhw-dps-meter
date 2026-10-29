@@ -94,6 +94,10 @@ internal sealed class FightLog
     [JsonPropertyName("gaugeSamplesDropped")]
     public int GaugeSamplesDropped { get; set; }
 
+    /// <summary>Clock-source changes or unexpected timer jumps during gauge recording.</summary>
+    [JsonPropertyName("gaugeClockDiscontinuities")]
+    public int GaugeClockDiscontinuities { get; set; }
+
     [JsonPropertyName("events")]
     public FightLogEvent[] Events { get; set; } = [];
 
@@ -104,8 +108,16 @@ internal sealed class FightLog
 /// <summary>Read-only local observation, independent of hit or buildup attribution.</summary>
 internal sealed class FightLogGaugeSample
 {
+    /// <summary>Nondecreasing capture timeline adjusted across quest clock jumps.</summary>
     [JsonPropertyName("t")]
     public float T { get; set; }
+
+    /// <summary>Raw observed quest time (may jump); never used for sorting history.</summary>
+    [JsonPropertyName("rawHuntT")]
+    public float? RawHuntT { get; set; }
+
+    [JsonPropertyName("clockAdjusted")]
+    public bool ClockAdjusted { get; set; }
 
     [JsonPropertyName("monster")]
     public string Monster { get; set; } = "";

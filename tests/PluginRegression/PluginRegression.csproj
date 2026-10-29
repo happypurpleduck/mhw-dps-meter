@@ -19,6 +19,8 @@
     <Compile Include="../../src/MhwDpsMeter/MonsterParts.cs" Link="MonsterParts.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugeReader.cs" Link="MonsterGaugeReader.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugePoller.cs" Link="MonsterGaugePoller.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGeneration.cs" Link="MonsterGeneration.cs" />
+    <Compile Include="../../src/MhwDpsMeter/GaugeCaptureTimeline.cs" Link="GaugeCaptureTimeline.cs" />
     <Compile Include="../../src/MhwDpsMeter/HuntGaugeObservation.cs" Link="HuntGaugeObservation.cs" />
     <Compile Include="../../src/MhwDpsMeter/DamageTracker.cs" Link="DamageTracker.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterPartResolver.cs" Link="MonsterPartResolver.cs" />

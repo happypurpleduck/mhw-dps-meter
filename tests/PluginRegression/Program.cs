@@ -179,36 +179,85 @@ var integrationRecorder = new HuntRecorder((_, _) => null);
 var integrationReadCalls = 0;
 MonsterGaugeState[] IntegrationReader(IReadOnlyList<MonsterState> _) { integrationReadCalls++; return [observed]; }
 var missingParty = HuntGaugeObservation.CaptureBeforePartyGuard(
-    null, 300f, 400.0, true, true, [gaugeInput],
+    () => null, 300f, 400.0, "quest", true, true, [gaugeInput],
     integrationPoller, integrationRecorder, IntegrationReader);
 Equal<PartySnapshot?>(null, missingParty, "party snapshot remains unavailable");
 Equal(1, integrationReadCalls, "integration reads monster gauges despite missing party data");
 Equal(1, integrationRecorder.GaugeSamples().Length, "integration records a gauge with no party snapshot");
 Equal(1, integrationRecorder.Monsters().Length, "integration still tracks the monster when party data fails");
 HuntGaugeObservation.CaptureBeforePartyGuard(
-    null, 10f, 401.1, true, true, [gaugeInput],
+    () => null, 10f, 401.1, "local", true, true, [gaugeInput],
     integrationPoller, integrationRecorder, IntegrationReader);
 Equal(2, integrationReadCalls, "integrated reader refreshes across backwards hunt clock jump");
 Equal(1, integrationRecorder.GaugeSamples().Length, "recorder waits for independent 2s interval");
 HuntGaugeObservation.CaptureBeforePartyGuard(
-    null, 10.2f, 402.2, true, true, [gaugeInput],
+    () => null, 10.2f, 402.2, "local", true, true, [gaugeInput],
     integrationPoller, integrationRecorder, IntegrationReader);
 Equal(2, integrationRecorder.GaugeSamples().Length,
     "monotonic recorder accepts new sample despite backwards hunt clock jump");
-Equal(10.2f, integrationRecorder.GaugeSamples()[0].T,
-    "hunt-relative timestamp is retained and snapshots are sorted on export");
+var clockJumpSamples = integrationRecorder.GaugeSamples();
+Equal(300f, clockJumpSamples[0].T, "earlier sample stays first in capture timeline");
+Equal(true, clockJumpSamples[1].T > clockJumpSamples[0].T,
+    "later observation remains later even when raw quest time moves backwards");
+Equal<float?>(10.2f, clockJumpSamples[1].RawHuntT,
+    "raw quest time is retained as separately identified source data");
+Equal(true, clockJumpSamples[1].ClockAdjusted, "adjusted timestamp marked as such");
+Equal(1, integrationRecorder.GaugeClockDiscontinuities, "clock source switch recorded once");
+
+// Production's exact integration seam also catches a throwing party read
+// instead of skipping healthy monster observation (unlike the old argument call).
+integrationPoller.Reset();
+integrationRecorder.Reset();
+var thrownPartyError = false;
+var afterThrow = HuntGaugeObservation.CaptureBeforePartyGuard(
+    () => throw new InvalidOperationException("party table detached"),
+    3f, 450.0, "local", true, true, [gaugeInput],
+    integrationPoller, integrationRecorder, IntegrationReader,
+    _ => thrownPartyError = true);
+Equal<PartySnapshot?>(null, afterThrow, "exceptional party acquisition safely yields no snapshot");
+Equal(true, thrownPartyError, "party exception is reported through error handler");
+Equal(1, integrationRecorder.GaugeSamples().Length,
+    "monster observation persists after throwing party acquisition");
+Equal(1, integrationRecorder.Monsters().Length,
+    "monster identity still registered after throwing party read");
+
+// Both a different type and a large HP reset at the same pointer invalidate
+// cached readings immediately, without waiting for a missing-pointer poll.
+gaugePoller.Reset();
+var older = gaugeInput with { Health = 800 };
+var replacement = older with { Type = (MonsterType)1, Name = "New spawn", Variant = 1 };
+gaugeReadCalls = 0;
+gaugePoller.Tick(500.0, true, true, [older], Sample);
+Equal(1, gaugePoller.Tick(500.1, true, true, [replacement], Sample)!.Length,
+    "same-pointer type/variant replacement refreshes immediately");
+Equal(2, gaugeReadCalls, "new generation bypasses 1s gauge throttle");
+Equal(true, MonsterGeneration.Changed(older, replacement), "changed identity is a new generation");
+var hurt = older with { Health = 100 };
+var respawn = hurt with { Health = 900 };
+gaugePoller.Reset();
+gaugePoller.Tick(600.0, true, true, [hurt], Sample);
+Equal(1, gaugePoller.Tick(600.1, true, true, [respawn], Sample)!.Length,
+    "same-pointer large HP reset also forces immediate refresh");
+Equal(true, MonsterGeneration.Changed(hurt, respawn), "HP reset identifies a possible respawn");
+var generationRecorder = new HuntRecorder((_, _) => null);
+generationRecorder.ObserveMonsters(0, [older]);
+generationRecorder.ObserveMonsters(1, [replacement]);
+Equal(2, generationRecorder.Monsters().Length, "type replacement receives a new fight monster ID");
+generationRecorder.ObserveMonsters(2, [hurt]);
+generationRecorder.ObserveMonsters(3, [respawn]);
+Equal(4, generationRecorder.Monsters().Length, "HP reset receives another fight monster ID");
 
 
 var gaugeRecorder = new HuntRecorder((_, _) => null);
 gaugeRecorder.ObserveMonsters(0, [gaugeInput]);
-gaugeRecorder.ObserveGauges(0, 0.0, [observed]);
-gaugeRecorder.ObserveGauges(1, 1.0, [observed]);
-gaugeRecorder.ObserveGauges(2.1f, 2.1, [observed]);
+gaugeRecorder.ObserveGauges(0, 0.0, "local", [observed]);
+gaugeRecorder.ObserveGauges(1, 1.0, "local", [observed]);
+gaugeRecorder.ObserveGauges(2.1f, 2.1, "local", [observed]);
 Equal(2, gaugeRecorder.GaugeSamples().Length, "two-second state capture cadence");
 Equal("local-unverified", gaugeRecorder.GaugeSamples()[0].Source, "never claims host authority");
 Equal("m1", gaugeRecorder.GaugeSamples()[0].Monster, "stable fight-local monster link");
 for (var sampleIndex = 2; sampleIndex < HuntRecorder.MaxGaugeSamples + 3; sampleIndex++)
-    gaugeRecorder.ObserveGauges(sampleIndex * 2.1f, sampleIndex * 2.1, [observed]);
+    gaugeRecorder.ObserveGauges(sampleIndex * 2.1f, sampleIndex * 2.1, "local", [observed]);
 Equal(HuntRecorder.MaxGaugeSamples, gaugeRecorder.GaugeSamples().Length,
     "bounded gauge samples never exceed global cap");
 Equal(3, gaugeRecorder.GaugeSamplesDropped,

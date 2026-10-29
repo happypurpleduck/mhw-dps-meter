@@ -40,6 +40,15 @@ impl ViewerApp {
         v_flex()
             .gap_4()
             .child(render_header(&log, cx))
+            .when(log.gauge_clock_discontinuities > 0, |this| this.child(
+                muted(
+                    format!(
+                        "Experimental gauge timeline adjusted across {} hunt-clock changes. Sample t preserves capture order; rawHuntT may not align with hit time.",
+                        log.gauge_clock_discontinuities
+                    ),
+                    cx,
+                )
+            ))
             .when(log.gauge_samples_dropped > 0, |this| this.child(
                 muted(
                     format!(

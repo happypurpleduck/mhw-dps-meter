@@ -19,6 +19,7 @@ internal sealed class HuntRecorder
     private readonly List<FightLogEvent> _events = [];
     private readonly List<FightLogGaugeSample> _gaugeSamples = [];
     private readonly Dictionary<string, double> _lastGaugeSampleTime = [];
+    private readonly GaugeCaptureTimeline _gaugeTimeline = new();
     public const int MaxGaugeSamples = 3600;
     private int _gaugeSamplesDropped;
     private const double GaugeSamplePeriod = 2.0;
@@ -57,6 +58,7 @@ internal sealed class HuntRecorder
             _events.Clear();
             _gaugeSamples.Clear();
             _lastGaugeSampleTime.Clear();
+            _gaugeTimeline.Reset();
             _gaugeSamplesDropped = 0;
             _monsters.Clear();
             _allMonsters.Clear();
@@ -78,9 +80,16 @@ internal sealed class HuntRecorder
                 var exists = _monsters.TryGetValue(state.Instance, out var entry);
                 // Same pointer, but HP jumped back up (after a death or a large heal-from-zero):
                 // the game re-used the instance for a new monster.
-                var respawned = exists && entry!.MaxHealth > 0
-                    && (entry.DiedT.HasValue || state.Health > entry.LastHealth + 0.25f * entry.MaxHealth)
-                    && state.Health > 0.5f * state.MaxHealth;
+                // A new monster can reuse the same pointer without disappearing.
+                // Compare identity as well as the large HP reset of a new spawn.
+                var respawned = exists && (
+                    (int)state.Type != entry!.Type
+                    || state.Variant != entry.Variant
+                    || !string.Equals(state.Name, entry.Name, StringComparison.Ordinal)
+                    || Math.Abs(state.MaxHealth - entry.MaxHealth) > 0.01f
+                    || (entry.MaxHealth > 0
+                        && (entry.DiedT.HasValue || state.Health > entry.LastHealth + 0.25f * entry.MaxHealth)
+                        && state.Health > 0.5f * state.MaxHealth));
                 if (!exists || respawned)
                 {
                     entry = new FightLogMonster
@@ -107,13 +116,14 @@ internal sealed class HuntRecorder
 
     /// <summary>Captures sparse locally observed state, not attribution to a hunter.
     /// Scheduling uses a process-monotonic timebase independent of the hunt timestamp.</summary>
-    public void ObserveGauges(float elapsed, double monotonicSeconds, IReadOnlyList<MonsterGaugeState> gauges)
+    public void ObserveGauges(float elapsed, double monotonicSeconds, string huntClockSource, IReadOnlyList<MonsterGaugeState> gauges)
     {
         if (gauges.Count == 0)
             return;
 
         lock (_gate)
         {
+            var capture = _gaugeTimeline.Advance(elapsed, monotonicSeconds, huntClockSource);
             foreach (var gauge in gauges)
             {
                 if (!_monsters.TryGetValue(gauge.Instance, out var monster))
@@ -134,7 +144,9 @@ internal sealed class HuntRecorder
                 }
                 _gaugeSamples.Add(new FightLogGaugeSample
                 {
-                    T = Math.Max(0, elapsed),
+                    T = capture.T,
+                    RawHuntT = Math.Max(0, elapsed),
+                    ClockAdjusted = capture.Adjusted,
                     Monster = monster.Id,
                     Source = "local-unverified",
                     Stamina = gauge.Stamina,
@@ -146,6 +158,11 @@ internal sealed class HuntRecorder
         }
     }
 
+    public int GaugeClockDiscontinuities
+    {
+        get { lock (_gate) return _gaugeTimeline.Discontinuities; }
+    }
+
     public int GaugeSamplesDropped
     {
         get { lock (_gate) return _gaugeSamplesDropped; }
@@ -154,7 +171,7 @@ internal sealed class HuntRecorder
     public FightLogGaugeSample[] GaugeSamples()
     {
         lock (_gate)
-            return _gaugeSamples.OrderBy(sample => sample.T).ToArray();
+            return _gaugeSamples.ToArray(); // capture order, never re-sort on raw quest time
     }
 
     /// <summary>Records join/leave events when the roster changes between polls.</summary>

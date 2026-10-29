@@ -145,6 +145,7 @@ internal sealed class FightLogStore
             Hits = recorder.Hits(),
             GaugeSamples = recorder.GaugeSamples(),
             GaugeSamplesDropped = recorder.GaugeSamplesDropped,
+            GaugeClockDiscontinuities = recorder.GaugeClockDiscontinuities,
             Events = recorder.Events()
         };
 

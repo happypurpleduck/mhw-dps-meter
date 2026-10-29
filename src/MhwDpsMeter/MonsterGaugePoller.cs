@@ -11,11 +11,13 @@ internal sealed class MonsterGaugePoller
     public const double RefreshIntervalSeconds = 1.0;
 
     private double _nextRefreshAt;
+    private readonly Dictionary<nint, MonsterState> _seen = [];
     public MonsterGaugeState[] Current { get; private set; } = [];
 
     public void Reset()
     {
         Current = [];
+        _seen.Clear();
         _nextRefreshAt = 0;
     }
 
@@ -33,10 +35,20 @@ internal sealed class MonsterGaugePoller
             return null;
         }
 
-        // A despawn/failed monster list must not leave that monster on screen
-        // for the rest of the interval. New monsters are observed next tick.
-        if (Current.Any(g => !monsters.Any(m => m.Instance == g.Instance)))
-            Reset();
+        // Keep snapshots generation-bound, not just pointer-bound: the engine
+        // reuses entity addresses, sometimes without a frame where they vanish.
+        // Detect a new type, variant, identity, max HP or a large HP reset.
+        var replaced = _seen.Count != monsters.Count
+            || monsters.Any(m => !_seen.TryGetValue(m.Instance, out var previous)
+                || MonsterGeneration.Changed(previous, m));
+        if (replaced)
+        {
+            Current = [];
+            _nextRefreshAt = 0; // immediate read for the replacement generation
+        }
+        _seen.Clear();
+        foreach (var monster in monsters)
+            _seen[monster.Instance] = monster;
 
         if (monotonicSeconds < _nextRefreshAt)
             return null;
