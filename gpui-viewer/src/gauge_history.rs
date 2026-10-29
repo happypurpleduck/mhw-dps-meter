@@ -408,7 +408,7 @@ mod tests {
             include_str!("../../tests/fixtures/gauge-counter-i32-parity.json")
         ).expect("valid hunt with intentionally malformed optional gauge fields");
         let samples = &log.gauge_samples;
-        assert_eq!(samples.len(), 7);
+        assert_eq!(samples.len(), 13);
         assert_eq!(samples[0].parts.iter().map(|p| p.part).collect::<Vec<_>>(), vec![2, 3]);
         assert_eq!(samples[0].ailments.iter().map(|a| a.id).collect::<Vec<_>>(), vec![7, 8]);
         assert_eq!(samples[0].parts[0].completed_flinches, None);
@@ -444,6 +444,29 @@ mod tests {
             .collect::<Vec<_>>(), vec![
             ("ailment:7".into(), 2147483646, 2147483647, 1),
             ("part:2".into(), 2147483646, 2147483647, 1),
+        ]);
+
+        // Raw shared JSON uses 1.0, 2e0, and 3e0. GPUI accepts their
+        // integral values just as JS JSON.parse does, but rejects 3.5.
+        let integral_float_samples: Vec<_> = samples.iter().filter(|s| s.monster == "m3").collect();
+        assert_eq!(integral_float_samples.len(), 6);
+        assert_eq!(integral_float_samples[0].parts[0].part, 2);
+        assert_eq!(integral_float_samples[0].parts[0].completed_flinches, Some(1));
+        assert_eq!(integral_float_samples[0].parts[0].next_break_threshold, Some(3));
+        assert_eq!(integral_float_samples[0].ailments[0].id, 7);
+        assert_eq!(integral_float_samples[0].ailments[0].procs, Some(1));
+        assert_eq!(integral_float_samples[1].parts[0].completed_flinches, Some(2));
+        assert_eq!(integral_float_samples[2].ailments[0].procs, Some(3));
+        assert_eq!(integral_float_samples[3].parts[0].completed_flinches, None);
+        assert_eq!(integral_float_samples[3].ailments[0].procs, None);
+        assert_eq!(observed_counter_timeline(samples, "m3").iter()
+            .map(|e| (e.metric.key(), e.interval.start_t, e.interval.end_t, e.interval.increase))
+            .collect::<Vec<_>>(), vec![
+            ("ailment:7".into(), 8., 10., 1),
+            ("part:2".into(), 8., 10., 1),
+            ("ailment:7".into(), 2., 4., 1),
+            ("part:2".into(), 2., 4., 1),
+            ("ailment:7".into(), 0., 2., 1),
         ]);
     }
 

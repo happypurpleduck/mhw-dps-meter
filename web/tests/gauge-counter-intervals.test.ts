@@ -163,7 +163,7 @@ describe('observed local gauge counter changes (not exact proc or break events)'
     const input = JSON.parse(readFileSync(
       new URL('../../tests/fixtures/gauge-counter-i32-parity.json', import.meta.url), 'utf8'))
     const log = normalizeLog(input)
-    expect(log.gaugeSamples).toHaveLength(7)
+    expect(log.gaugeSamples).toHaveLength(13)
     const samples = log.gaugeSamples
     const a0 = samples[0]!
     expect(a0.parts.map(p => p.part)).toEqual([2, 3])
@@ -201,6 +201,28 @@ describe('observed local gauge counter changes (not exact proc or break events)'
         ['ailment:7', 2147483646, 2147483647, 1],
         ['part:2', 2147483646, 2147483647, 1],
       ])
+
+    // Both parsers accept JSON floating representations *only* when their
+    // mathematical values are integral and fit signed i32. These raw JSON
+    // 1.0 / 2e0 tokens lose their lexical form after JS JSON.parse.
+    const integralFloatSamples = samples.filter(s => s.monster === 'm3')
+    expect(integralFloatSamples).toHaveLength(6)
+    expect(integralFloatSamples[0]?.parts[0]).toMatchObject({
+      part: 2, completedFlinches: 1, nextBreakThreshold: 3,
+    })
+    expect(integralFloatSamples[0]?.ailments[0]).toMatchObject({ id: 7, procs: 1 })
+    expect(integralFloatSamples[1]?.parts[0]?.completedFlinches).toBe(2)
+    expect(integralFloatSamples[2]?.ailments[0]?.procs).toBe(3)
+    expect(integralFloatSamples[3]?.parts[0]?.completedFlinches).toBeNull()
+    expect(integralFloatSamples[3]?.ailments[0]?.procs).toBeNull()
+    expect(observedCounterTimeline(samples, 'm3')
+      .map(e => [e.key, e.startT, e.endT, e.increase])).toEqual([
+      ['ailment:7', 8, 10, 1],
+      ['part:2', 8, 10, 1],
+      ['ailment:7', 2, 4, 1],
+      ['part:2', 2, 4, 1],
+      ['ailment:7', 0, 2, 1],
+    ])
   })
 
 })

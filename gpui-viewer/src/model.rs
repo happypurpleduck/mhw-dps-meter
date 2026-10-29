@@ -144,7 +144,20 @@ fn gauge_number(value: Option<&serde_json::Value>) -> Option<f32> {
 }
 
 fn gauge_integer(value: Option<&serde_json::Value>) -> Option<i32> {
-    i32::try_from(value?.as_i64()?).ok()
+    let value = value?;
+    // JS JSON.parse cannot distinguish 1, 1.0, and 1e0. Accept finite
+    // mathematically integral float representations too, but preserve the
+    // signed i32 bounds shared by the web viewer. Never round a fraction.
+    if let Some(integer) = value.as_i64() {
+        return i32::try_from(integer).ok();
+    }
+    let number = value.as_f64()?;
+    if !number.is_finite() || number.fract() != 0.0
+        || number < f64::from(i32::MIN) || number > f64::from(i32::MAX)
+    {
+        return None;
+    }
+    Some(number as i32)
 }
 
 fn decode_gauge_sample(value: &serde_json::Value) -> Option<GaugeSample> {
