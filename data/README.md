@@ -24,3 +24,9 @@ when reading the current ID fails; it cannot supply text absent from the game.
 The plugin writes improved stage and fallback monster labels to new logs. Both
 viewers also repair missing/raw stage labels when displaying old logs, while
 preserving recorded localized/custom stage names. They do not rewrite log files.
+
+## Monster part-gauge definition metadata
+
+The shared `monster-parts.json` entries include `breakThresholds` (ordered integer flinch-cycle counts) and `tenderizeIds` (game tenderize region ids), in addition to canonical part ids/names/severable flags. These are derived from [HunterPie's World MonsterData.xml](https://github.com/HunterPie/HunterPie/blob/main/HunterPie/Game/World/Data/MonsterData.xml) (Apache-2.0, HunterPie contributors). There are 72 mapped monsters / 653 mapped entries in the current upstream-derived dataset.
+
+Threshold counts are *not* HP damage or raw per-hit part buildup. Gauge structs are a separate runtime measurement and must be checked per supported game build. The source XML's definition order is retained; normal collision slot order skips severable entries. Unmapped or unavailable runtime gauges must remain unknown, not zero.
