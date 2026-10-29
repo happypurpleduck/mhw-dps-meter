@@ -121,9 +121,9 @@ internal static class MonsterGaugeReader
             // scan remains conservative until live list-layout verification in #17.
             if (!SafeMemory.TryReadProtected<nint>(monster + AilmentsOffset + i * 8, out var ptr))
                 continue;
-            if (ptr <= 1)
+            if (ptr == 0 || ptr == 1)
                 break;
-            if (!SafeMemory.LooksLikeUserPointer(ptr))
+            if (ptr < 0 || !SafeMemory.LooksLikeUserPointer(ptr))
                 continue;
 
             var address = ptr + AilmentValueOffset;

@@ -161,15 +161,17 @@ internal sealed class MonsterHpTracker
 
             var instance = monster.Instance;
             var max = monster.MaxHealth;
-            // Readable low-max-HP entities are not large monsters, even
-            // if their type enum isn't on the explicit exclusion list.
-            if (float.IsFinite(max) && max is >= 0f and < 800f)
+            // Only a strictly positive, readable small HP pool positively
+            // identifies an untracked entity. Zero/negative values can be
+            // transient native reads; do not retire the previous large monster.
+            if (float.IsFinite(max) && max is > 0f and < 800f)
             {
                 confirmedUntracked = true;
                 return false;
             }
             var hp = monster.Health;
-            if (instance == 0 || max is > 50_000_000f || !float.IsFinite(max) || !float.IsFinite(hp))
+            if (instance == 0 || max <= 0f || max > 50_000_000f
+                || !float.IsFinite(max) || !float.IsFinite(hp))
                 return false;
 
             var variant = (int)monster.Variant;

@@ -89,6 +89,39 @@ Equal("m1", untrackedRecorder.SingleLiveMonsterId(),
     "transient unreadable type retains m1");
 trackedFixture.FailTypeRead = false;
 
+// A temporarily uninitialized or corrupt native max HP is not proof of
+// pointer reuse. Both zero and negative must preserve the old damage,
+// known pointer, recorder ID and enumeration-complete signal.
+trackedFixture.MaxHealth = 0;
+Monster.ReadAll = () => [trackedFixture];
+Equal(100, untrackedHp.Poll(), "zero max HP preserves previously counted damage");
+Equal(true, untrackedHp.LastPollComplete, "zero max HP is an invalid state, not a torn list");
+Equal(true, untrackedHp.LiveInstances.Contains(oldTrackedPointer),
+    "zero max HP preserves the known large-monster pointer");
+untrackedRecorder.ObserveMonsters(1.1f, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal("m1", untrackedRecorder.SingleLiveMonsterId(),
+    "zero max HP cannot retire the live m1");
+Equal(1, untrackedRecorder.Monsters().Length, "zero max HP cannot duplicate historical monster");
+
+trackedFixture.MaxHealth = -100;
+Equal(100, untrackedHp.Poll(), "negative max HP must not throw or bank damage");
+Equal(true, untrackedHp.LastPollComplete, "negative max HP cannot tear enumeration via Math.Clamp");
+Equal(true, untrackedHp.LiveInstances.Contains(oldTrackedPointer),
+    "negative max HP preserves the known large-monster pointer");
+untrackedRecorder.ObserveMonsters(1.2f, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal("m1", untrackedRecorder.SingleLiveMonsterId(),
+    "negative max HP cannot retire the live m1");
+Equal(1, untrackedRecorder.Monsters().Length, "negative max HP cannot duplicate historical monster");
+
+trackedFixture.MaxHealth = 1000;
+Equal(100, untrackedHp.Poll(), "recovered max HP does not double count old damage");
+Equal(true, untrackedHp.LastPollComplete, "recovered max HP produces a complete list");
+untrackedRecorder.ObserveMonsters(1.3f, untrackedHp.LastTracked, untrackedHp.LiveInstances);
+Equal("m1", untrackedRecorder.SingleLiveMonsterId(),
+    "recovered max HP retains the original monster generation");
+Equal(1, untrackedRecorder.Monsters().Length,
+    "transient max HP corruption does not create another mN");
+
 Monster.ReadAll = () => [untrackedFixture];
 Equal(100, untrackedHp.Poll(), "excluded replacement banks previous large-monster damage");
 Equal(false, untrackedHp.LiveInstances.Contains(oldTrackedPointer),
@@ -226,6 +259,12 @@ Equal(2, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
 SafeMemory.Values.Remove(corruptAilment + 0x148);
 Equal(2, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
     "unreadable middle owner does not hide later ailment");
+SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)(-1);
+var negativePointerAilments = MonsterGaugeReader.Read([gaugeInput]).Single().Ailments;
+Equal(2, negativePointerAilments.Length,
+    "negative invalid middle pointer is skipped instead of ending the scan");
+Equal("Poison", negativePointerAilments[1].Name,
+    "later valid poison meter survives corrupt signed pointer");
 SafeMemory.Values[gaugeMonster + 0x1BC48] = (nint)0;
 Equal(1, MonsterGaugeReader.Read([gaugeInput]).Single().Ailments.Length,
     "real null terminator stops even when later pointer is non-null");
