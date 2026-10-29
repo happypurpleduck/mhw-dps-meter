@@ -14,7 +14,7 @@ The plugin adds a protected, read-only, bounded `MonsterGaugeReader` for **confi
 
 ## Explicitly deferred
 
-- Separate severable part memory region (`+0x1FC8`), tenderization-duration array (`+0x1C458`), enrage state, exact proc timing, per-hit buildup, host/guest authority detection, production widget polish, fight-log schema + both viewers.
+- Separate severable part memory region (`+0x1FC8`), tenderization-duration array (`+0x1C458`), enrage state, exact proc timing, per-hit buildup, host/guest authority detection, polished widgets, **historical gauges/proc charts and timeline UI in both viewers**. Draft schema-3 writing and parsing already exist, but neither viewer yet provides those visualizations.
 - Current collision hit damage continues to mean **HP damage by contact part**; it is not part buildup, KO, or ailment damage.
 - No game-memory writes, remote service, or new detours.
 
