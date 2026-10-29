@@ -241,6 +241,71 @@ Equal(7, observed.Ailments[0].Id, "KO status id");
 Equal(75f, observed.Ailments[0].Buildup, "KO buildup");
 Equal(2, observed.Ailments[0].Procs, "KO proc count");
 
+ // Rendering is a pure projection of cached data. No extra native reads or
+ // gameplay claims are permitted by switching between compact/detailed rows.
+ var secondGauge = observed with
+ {
+     Instance = gaugeMonster + 1, Name = "Second",
+     Stamina = null, MaxStamina = null, Parts = [], Ailments = []
+ };
+ var thirdGauge = observed with { Instance = gaugeMonster + 2, Name = "Third" };
+ var compactRows = MonsterGaugeOverlayRows.Build([observed, secondGauge, thirdGauge], false);
+ Equal(3, compactRows.Length, "compact view bounded at two monster rows plus overflow note");
+ Equal(true, compactRows[0].Heading && compactRows[0].Text.Contains("Anjanath | stamina 90/150"),
+     "compact heading uses existing cache and real stamina");
+ Equal(true, compactRows[0].Text.Contains("1 sampled status, 1 sampled part meters"),
+     "compact status and part counts are explicitly sampled evidence");
+ Equal(true, compactRows[1].Text.Contains("Second | stamina unavailable"),
+     "unavailable stamina is never rendered as zero");
+ Equal(true, compactRows[2].Text.Contains("+1 more sampled monster(s) not shown"),
+     "more than two monsters are acknowledged instead of silently discarded");
+ Equal(false, compactRows.Any(r => r.Text.Contains("buildup") || r.Text.Contains("flinch ")),
+     "compact mode hides detailed sampled status and part rows");
+ var expandedRows = MonsterGaugeOverlayRows.Build([observed], true);
+ Equal(3, expandedRows.Length, "detail view includes one heading and existing status/part rows");
+ Equal(true, expandedRows[1].Text.Contains("KO / Stun: buildup 75/100, sampled procs 2"),
+     "status labels distinguish sampled counters from exact proc events");
+ Equal(true, expandedRows[2].Text.Contains("Head: flinch 100/200 remaining, sampled cycle 1/5"),
+     "part display distinguishes remaining gauge from sampled cycle");
+ Equal(0, MonsterGaugeOverlayRows.Build([], true).Length,
+     "empty cache never becomes a fake monster observation");
+
+ // Real settings.json roundtrip, including a legacy file with no presentation
+ // field; the experimental capture gate must remain false by default.
+ var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));
+ Directory.CreateDirectory(overlaySettingsDir);
+ try
+ {
+     var defaultSettings = PluginSettings.Load(overlaySettingsDir);
+     Equal(false, defaultSettings.ExperimentalMonsterGauges,
+         "new installs still do not opt into native monster gauge reads");
+     Equal(false, defaultSettings.MonsterGaugeOverlayDetails,
+         "new installs get compact gauge rows");
+     File.WriteAllText(Path.Combine(overlaySettingsDir, PluginSettings.FileName),
+         """{"overlayVisible":false,"experimentalMonsterGauges":false,"trialDurationSeconds":45}""");
+     var legacySettings = PluginSettings.Load(overlaySettingsDir);
+     Equal(false, legacySettings.MonsterGaugeOverlayDetails,
+         "existing settings without a detail field stay compact");
+     Equal(false, legacySettings.ExperimentalMonsterGauges,
+         "legacy preferences do not gain native gauge access");
+     legacySettings.MonsterGaugeOverlayDetails = true;
+     legacySettings.Save();
+     var persisted = PluginSettings.Load(overlaySettingsDir);
+     Equal(true, persisted.MonsterGaugeOverlayDetails,
+         "the details preference survives settings.json reload");
+     Equal(false, persisted.ExperimentalMonsterGauges,
+         "presentation preference cannot enable native reads on reload");
+     Equal(false, persisted.OverlayVisible,
+         "existing overlay visibility survives gauge preference update");
+     Equal(45, persisted.TrialDurationSeconds,
+         "existing training duration survives gauge preference update");
+ }
+ finally
+ {
+     Directory.Delete(overlaySettingsDir, recursive: true);
+ }
+
+
 // An independently unreadable middle ailment is skipped without losing later data.
 nint corruptAilment = 0x50000, laterAilment = 0x60000;
 SafeMemory.Values[gaugeMonster + 0x1BC48] = corruptAilment;

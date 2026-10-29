@@ -27,6 +27,11 @@ internal sealed class PluginSettings
     [JsonPropertyName("experimentalMonsterGauges")]
     public bool ExperimentalMonsterGauges { get; set; } = false;
 
+    // Presentation only: changing this must never enable native gauge reads.
+    // Existing settings files inherit a compact summary by default.
+    [JsonPropertyName("monsterGaugeOverlayDetails")]
+    public bool MonsterGaugeOverlayDetails { get; set; } = false;
+
     [JsonPropertyName("trialDurationSeconds")]
     public int TrialDurationSeconds { get; set; } = TimeTrial.DefaultDurationSeconds;
 

@@ -22,6 +22,7 @@ internal sealed class Overlay
 
     public bool Visible { get; set; } = true;
     public float Opacity { get; set; } = 0.92f;
+    public bool ShowMonsterGaugeDetails { get; set; } = false;
 
     // ImGui's Text/TextDisabled/TextColored/TextWrapped treat the string as a printf format
     // with no arguments. Hunter names, quest names, file names and monster lists flow into
@@ -84,7 +85,7 @@ internal sealed class Overlay
 
         DrawPartyTable(snapshot, elapsedSeconds, carts);
         if (gauges is { Count: > 0 })
-            DrawGaugeSummary(gauges);
+            DrawGaugeSummary(gauges, ShowMonsterGaugeDetails);
 
         if (trial is { Active: true })
             DrawTrial(trial);
@@ -149,27 +150,16 @@ internal sealed class Overlay
         }
     }
 
-    private static void DrawGaugeSummary(IReadOnlyList<MonsterGaugeState> gauges)
+    private static void DrawGaugeSummary(IReadOnlyList<MonsterGaugeState> gauges, bool showDetails)
     {
         ImGui.Separator();
         Disabled("Experimental gauges: local observation only, NOT verified host state");
-        foreach (var gauge in gauges.Take(2))
+        foreach (var row in MonsterGaugeOverlayRows.Build(gauges, showDetails))
         {
-            ImGui.TextUnformatted(gauge.Name);
-            if (gauge.Stamina is float stamina && gauge.MaxStamina is float max)
-                Disabled($"  Stamina {stamina:0}/{max:0}");
-
-            foreach (var ailment in gauge.Ailments
-                         .Where(a => a.Buildup > 0 || a.Duration > 0)
-                         .OrderByDescending(a => a.Buildup / a.MaxBuildup)
-                         .Take(3))
-                Disabled($"  {ailment.Name}: {ailment.Buildup:0}/{ailment.MaxBuildup:0}, procs {ailment.Procs}");
-
-            foreach (var part in gauge.Parts
-                         .Where(p => p.NextBreakThreshold is not null)
-                         .OrderBy(p => p.Remaining / p.Max)
-                         .Take(2))
-                Disabled($"  {part.Name}: flinch {part.Remaining:0}/{part.Max:0} remaining, cycle {part.CompletedFlinches}/{part.NextBreakThreshold}");
+            if (row.Heading)
+                ImGui.TextUnformatted(row.Text);
+            else
+                Disabled(row.Text);
         }
     }
 
@@ -252,6 +242,17 @@ internal sealed class Overlay
             settings.Save();
         }
         Disabled("Unverified local memory readings; not authoritative on multiplayer guests.");
+        if (experimental)
+        {
+            var details = ShowMonsterGaugeDetails;
+            if (ImGui.Checkbox("Detailed sampled gauge rows", ref details))
+            {
+                ShowMonsterGaugeDetails = details;
+                settings.MonsterGaugeOverlayDetails = details;
+                settings.Save();
+            }
+            Disabled("Compact by default; details change rendering only, not the native poll rate.");
+        }
 
         var visible = Visible;
         if (ImGui.Checkbox("Show overlay", ref visible))

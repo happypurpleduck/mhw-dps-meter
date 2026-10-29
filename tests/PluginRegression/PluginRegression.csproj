@@ -18,6 +18,8 @@
     <Compile Include="../../src/MhwDpsMeter/GameNames.cs" Link="GameNames.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterParts.cs" Link="MonsterParts.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugeReader.cs" Link="MonsterGaugeReader.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayRows.cs" Link="MonsterGaugeOverlayRows.cs" />
+    <Compile Include="../../src/MhwDpsMeter/PluginSettings.cs" Link="PluginSettings.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugePoller.cs" Link="MonsterGaugePoller.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGeneration.cs" Link="MonsterGeneration.cs" />
     <Compile Include="../../src/MhwDpsMeter/GaugeCaptureTimeline.cs" Link="GaugeCaptureTimeline.cs" />

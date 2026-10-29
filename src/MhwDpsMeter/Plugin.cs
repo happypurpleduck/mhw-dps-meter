@@ -139,6 +139,7 @@ public sealed class Plugin : IPlugin
         _settings = PluginSettings.Load(pluginDir);
         _overlay.Visible = _settings.OverlayVisible;
         _overlay.Opacity = _settings.OverlayOpacity;
+        _overlay.ShowMonsterGaugeDetails = _settings.MonsterGaugeOverlayDetails;
         _reader = new PartyDamageReader(_map, _moduleBase);
         _carts = new CartTracker(_map, _moduleBase);
         _logs = new FightLogStore(pluginDir);
