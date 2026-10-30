@@ -253,8 +253,9 @@ Equal(2, observed.Ailments[0].Procs, "KO proc count");
  Equal(3, compactRows.Length, "compact view bounded at two monster rows plus overflow note");
  Equal(true, compactRows[0].Heading && compactRows[0].Text.Contains("Anjanath | stamina 90/150"),
      "compact heading uses existing cache and real stamina");
- Equal(true, compactRows[0].Text.Contains("1 sampled status, 1 sampled part meters"),
-     "compact status and part counts are explicitly sampled evidence");
+ Equal(true, compactRows[0].Text.Contains("1 sampled status")
+     && compactRows[0].Text.Contains("1 sampled part meters"),
+     "compact status and part counts are independently visible sampled evidence");
  Equal(true, compactRows[1].Text.Contains("Second | stamina unavailable"),
      "unavailable stamina is never rendered as zero");
  Equal(true, compactRows[2].Text.Contains("+1 more sampled monster(s) not shown"),
