@@ -297,19 +297,21 @@ internal sealed class Overlay
             ImGui.TextUnformatted("Sampled monster to display (manual, not active target)");
             if (ImGui.SmallButton("Automatic: first two##gauge_monster_auto"))
                 _gaugeMonsterSelection.Clear();
-            for (var i = 0; i < Math.Min(selectableGauges.Count,
-                         MonsterGaugeOverlaySelection.MaxMenuChoices); i++)
+            // The control IDs must not follow list positions: the monster
+            // roster may reorder between mouse-down and mouse-up.
+            var menu = MonsterGaugeOverlayMenuChoices.Build(
+                selectableGauges, selectionEpoch, _gaugeMonsterSelection);
+            foreach (var choice in menu.Choices)
             {
-                var gauge = selectableGauges[i];
-                ImGui.PushID(i);
-                if (ImGui.SmallButton("Show"))
-                    _gaugeMonsterSelection.Select(gauge, selectionEpoch, selectableGauges);
+                ImGui.PushID(choice.ControlId);
+                if (ImGui.SmallButton(choice.Selected ? "Selected##pick" : "Show##pick"))
+                    _gaugeMonsterSelection.Select(choice.Sample, selectionEpoch, selectableGauges);
                 ImGui.SameLine();
-                ImGui.TextUnformatted(gauge.Name);
+                ImGui.TextUnformatted(choice.Label);
                 ImGui.PopID();
             }
-            if (selectableGauges.Count > MonsterGaugeOverlaySelection.MaxMenuChoices)
-                Disabled($"  +{selectableGauges.Count - MonsterGaugeOverlaySelection.MaxMenuChoices} additional sampled monster(s) not selectable");
+            if (menu.MoreCount > 0)
+                Disabled($"  +{menu.MoreCount} additional sampled monster(s) not selectable");
             Disabled(_gaugeMonsterSelection.IsManual
                 ? "Manual selection: one current sampled monster; not a target lock."
                 : "Automatic: first two current sampled monsters.");

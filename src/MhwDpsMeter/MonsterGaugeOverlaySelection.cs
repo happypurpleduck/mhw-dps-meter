@@ -14,6 +14,10 @@ internal sealed class MonsterGaugeOverlaySelection
 
     public bool IsManual => _selectedInstance.HasValue;
 
+    public bool Matches(MonsterGaugeState sample) =>
+        _selectedInstance == sample.Instance
+        && string.Equals(_selectedName, sample.Name, StringComparison.Ordinal);
+
     public void Clear()
     {
         _selectedInstance = null;

@@ -412,6 +412,79 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(false, monsterChoice.IsManual,
      "hunt-start and automatic-mode reset clears manual selection");
 
+
+ // Exercise the same production menu model used by F9: ImGui control IDs
+ // follow sampled identity + generation rather than the transient row index.
+ var uiChoice = new MonsterGaugeOverlaySelection();
+ var sameNameA = secondGauge with { Name = "Twin" };
+ var sameNameB = thirdGauge with { Name = "Twin" };
+ var uiRoster = new[] { observed, sameNameA, sameNameB };
+ uiChoice.Observe(30, uiRoster);
+ var uiBefore = MonsterGaugeOverlayMenuChoices.Build(uiRoster, 30, uiChoice);
+ var uiAfter = MonsterGaugeOverlayMenuChoices.Build(
+     [sameNameB, observed, sameNameA], 30, uiChoice);
+ Equal(3, uiBefore.Choices.Length, "each current unique sampled monster has an F9 control");
+ var aBefore = uiBefore.Choices.Single(c => c.Sample.Instance == sameNameA.Instance);
+ var aAfter = uiAfter.Choices.Single(c => c.Sample.Instance == sameNameA.Instance);
+ var bBefore = uiBefore.Choices.Single(c => c.Sample.Instance == sameNameB.Instance);
+ var bAfter = uiAfter.Choices.Single(c => c.Sample.Instance == sameNameB.Instance);
+ Equal(aBefore.ControlId, aAfter.ControlId,
+     "mouse-down identity stays attached to the same sampled monster across roster reorder");
+ Equal(bBefore.ControlId, bAfter.ControlId,
+     "other same-name monster also retains its own control identity after reorder");
+ Equal(false, aBefore.ControlId == bBefore.ControlId,
+     "same-name monsters never share an ImGui control identity");
+ Equal("Twin (sample #1)", aBefore.Label,
+     "lowest instance receives a nonpersistent duplicate-name marker");
+ Equal("Twin (sample #2)", bBefore.Label,
+     "other same-name instance is clearly distinguished");
+ Equal(aBefore.Label, aAfter.Label,
+     "duplicate-name marker is independent of roster position");
+ Equal(bBefore.Label, bAfter.Label,
+     "other duplicate-name marker is also position-independent");
+ Equal(false, uiBefore.Choices.Any(c => c.Selected),
+     "automatic selection displays no misleading selected-row state");
+ Equal(true, uiChoice.Select(sameNameB, 30, uiRoster),
+     "manual selection chooses an exact currently cached monster");
+ var uiSelected = MonsterGaugeOverlayMenuChoices.Build(
+     [sameNameB, observed, sameNameA], 30, uiChoice);
+ Equal(1, uiSelected.Choices.Count(c => c.Selected),
+     "F9 reflects exactly one manually selected control");
+ Equal(true, uiSelected.Choices.Single(c => c.Selected).Sample.Instance == sameNameB.Instance,
+     "selected-row feedback follows the sampled monster rather than its position");
+ Equal(bBefore.ControlId,
+     uiSelected.Choices.Single(c => c.Selected).ControlId,
+     "selected label state never changes the underlying ImGui button ID");
+ var uiNextEpoch = MonsterGaugeOverlayMenuChoices.Build(uiRoster, 31, uiChoice);
+ Equal(false, aBefore.ControlId == uiNextEpoch.Choices.Single(
+     c => c.Sample.Instance == sameNameA.Instance).ControlId,
+     "pointer reuse across generations cannot inherit a previous active button ID");
+ var renamedGauge = sameNameA with { Name = "Renamed" };
+ var uiRenamed = MonsterGaugeOverlayMenuChoices.Build(
+     [observed, renamedGauge, sameNameB], 30, uiChoice);
+ Equal(false, aBefore.ControlId == uiRenamed.Choices.Single(
+     c => c.Sample.Instance == renamedGauge.Instance).ControlId,
+     "same pointer with changed name also has a distinct control ID");
+ var duplicateRecord = MonsterGaugeOverlayMenuChoices.Build(
+     [sameNameA, sameNameA, sameNameB], 30, uiChoice);
+ Equal(2, duplicateRecord.Choices.Length,
+     "duplicate cached identity never creates duplicate ImGui button IDs");
+ Equal(0, duplicateRecord.MoreCount,
+     "duplicate records do not invent menu overflow");
+ var menuOverflowRoster = Enumerable.Range(0, MonsterGaugeOverlaySelection.MaxMenuChoices + 2)
+     .Select(i => observed with { Instance = gaugeMonster + i + 100, Name = $"Sample {i}" })
+     .ToArray();
+ var boundedMenu = MonsterGaugeOverlayMenuChoices.Build(menuOverflowRoster, 30, uiChoice);
+ Equal(MonsterGaugeOverlaySelection.MaxMenuChoices, boundedMenu.Choices.Length,
+     "F9 menu choice count remains bounded to eight");
+ Equal(2, boundedMenu.MoreCount,
+     "additional distinct monsters are acknowledged");
+ Equal(boundedMenu.Choices.Length, boundedMenu.Choices.Select(c => c.ControlId).Distinct().Count(),
+     "all rendered ImGui controls have unique stable identities");
+ uiChoice.Observe(31, uiRoster);
+ Equal(false, MonsterGaugeOverlayMenuChoices.Build(uiRoster, 31, uiChoice)
+     .Choices.Any(c => c.Selected), "generation change clears selected-row feedback");
+
  // The production poller resets the manual display token on roster changes,
  // even if the same address/name appears after an observed HP generation reset.
  var selectionPoller = new MonsterGaugePoller();
