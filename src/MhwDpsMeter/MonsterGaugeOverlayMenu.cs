@@ -28,25 +28,35 @@ internal static class MonsterGaugeOverlayMenuChoices
             .ToArray();
         var shown = unique.Take(MonsterGaugeOverlaySelection.MaxMenuChoices).ToArray();
         var choices = new MonsterGaugeOverlayMenuChoice[shown.Length];
+        // Segment each Unicode label once rather than once per collision check.
+        // The F9 selector is bounded to eight visible choices.
+        var displayNames = shown.Select(g => MonsterGaugeOverlayLabels.Display(g.Name))
+            .ToArray();
 
         for (var i = 0; i < shown.Length; i++)
         {
             var gauge = shown[i];
-            var displayName = MonsterGaugeOverlayLabels.Display(gauge.Name);
-            // Distinct (instance, full name) records may shorten to the
-            // same visible label, including two names at the same pointer.
-            // Rank complete identities, not just distinct addresses.
-            var matchingChoices = shown
-                .Where(other => string.Equals(
-                    MonsterGaugeOverlayLabels.Display(other.Name),
-                    displayName, StringComparison.Ordinal))
-                .OrderBy(other => other.Instance.ToInt64())
-                .ThenBy(other => other.Name, StringComparer.Ordinal)
-                .ToArray();
-            var ordinal = Array.FindIndex(matchingChoices, other =>
-                other.Instance == gauge.Instance
-                && string.Equals(other.Name, gauge.Name, StringComparison.Ordinal)) + 1;
-            var label = matchingChoices.Length > 1
+            var displayName = displayNames[i];
+            // Collisions are ranked by complete (instance, full name)
+            // identity; this includes two different names at one pointer.
+            // Compare preformatted labels, avoiding repeated grapheme scans
+            // and a sorted matching-choices allocation for each row.
+            var collisionCount = 0;
+            var ordinal = 1;
+            for (var j = 0; j < shown.Length; j++)
+            {
+                if (!string.Equals(displayNames[j], displayName, StringComparison.Ordinal))
+                    continue;
+
+                collisionCount++;
+                var instanceOrder = shown[j].Instance.ToInt64()
+                    .CompareTo(gauge.Instance.ToInt64());
+                if (instanceOrder < 0
+                    || (instanceOrder == 0
+                        && string.CompareOrdinal(shown[j].Name, gauge.Name) < 0))
+                    ordinal++;
+            }
+            var label = collisionCount > 1
                 ? $"{displayName} (sample #{ordinal})"
                 : displayName;
 

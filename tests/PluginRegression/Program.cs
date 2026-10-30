@@ -394,6 +394,40 @@ Equal(2, observed.Ailments[0].Procs, "KO proc count");
      new MonsterGaugeOverlaySelection());
  Equal(2, duplicateFullNames.Choices.Length,
      "truly duplicate full identities remain deduplicated before collision ranking");
+ // Three-way collisions preserve pointer-then-full-name ranking,
+ // even for two different names at one sampled pointer.
+ var tripleA = longA with { Instance = gaugeMonster + 65 };
+ var tripleB = longB with { Instance = tripleA.Instance };
+ var tripleC = longA with { Instance = gaugeMonster + 66 };
+ var tripleMenu = MonsterGaugeOverlayMenuChoices.Build(
+     [tripleC, tripleB, tripleA, tripleA], 63, new MonsterGaugeOverlaySelection());
+ Equal(3, tripleMenu.Choices.Length,
+     "duplicate full identities are removed before three-way collision ranking");
+ Equal(longPrefix + "… (sample #1)",
+     tripleMenu.Choices.Single(c => c.Sample.Instance == tripleA.Instance
+         && c.Sample.Name == tripleA.Name).Label,
+     "first same-pointer name receives stable first ordinal");
+ Equal(longPrefix + "… (sample #2)",
+     tripleMenu.Choices.Single(c => c.Sample.Instance == tripleB.Instance
+         && c.Sample.Name == tripleB.Name).Label,
+     "second same-pointer name receives stable second ordinal");
+ Equal(longPrefix + "… (sample #3)",
+     tripleMenu.Choices.Single(c => c.Sample.Instance == tripleC.Instance
+         && c.Sample.Name == tripleC.Name).Label,
+     "later pointer receives stable third ordinal");
+ var tripleReordered = MonsterGaugeOverlayMenuChoices.Build(
+     [tripleA, tripleB, tripleC], 63, new MonsterGaugeOverlaySelection());
+ foreach (var choice in tripleMenu.Choices)
+ {
+     var counterpart = tripleReordered.Choices.Single(c =>
+         c.Sample.Instance == choice.Sample.Instance && c.Sample.Name == choice.Sample.Name);
+     Equal(choice.Label, counterpart.Label,
+         "three-way collision markers are stable after reorder");
+     Equal(choice.ControlId, counterpart.ControlId,
+         "full-identity control ID remains stable after reorder");
+ }
+ Equal(3, tripleMenu.Choices.Select(c => c.ControlId).Distinct().Count(),
+     "every three-way collision keeps a unique ImGui control ID");
 // A proc count is a sampled counter even after buildup and duration return to
 // zero. It must remain visible in detailed mode, including when more than three
 // active statuses compete for the bounded row limit.
