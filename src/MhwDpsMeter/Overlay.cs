@@ -240,7 +240,8 @@ internal sealed class Overlay
         Action? onToggleTrial,
         IReadOnlyList<MonsterGaugeState>? gauges = null,
         long selectionEpoch = 0,
-        MonsterGaugeOverlayAvailability gaugeAvailability = default)
+        MonsterGaugeOverlayAvailability gaugeAvailability = default,
+        Action? onCapturePreferenceChanged = null)
     {
         Wrapped(diagnostics);
         if (ImGui.Button("Dump diagnostics (F6)"))
@@ -258,10 +259,18 @@ internal sealed class Overlay
         {
             settings.ExperimentalMonsterGauges = experimental;
             settings.Save();
+            // Clear old cached observations in the same UI frame. A quick
+            // off/on click must not reveal samples from the old capture gate.
+            onCapturePreferenceChanged?.Invoke();
         }
         // Re-evaluate after the checkbox click so the F9 feedback reflects
         // this frame's preference instead of the preceding render state.
-        var displayAvailability = gaugeAvailability with { CaptureEnabled = experimental };
+        var displayAvailability = gaugeAvailability with
+        {
+            CaptureEnabled = experimental,
+            CachedMonsterCount = experimental != gaugeAvailability.CaptureEnabled
+                ? 0 : gaugeAvailability.CachedMonsterCount
+        };
         Disabled($"Gauge availability: {displayAvailability.StatusText}");
         Disabled("Unverified local memory readings; not authoritative on multiplayer guests.");
         if (experimental)

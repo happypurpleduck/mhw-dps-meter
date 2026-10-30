@@ -584,9 +584,12 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      && availabilitySampled.StatusText.Contains("NOT verified host state"),
      "F9 provenance is explicit even with two sampled monsters");
 
- var toggledOn = availabilityOff with { CaptureEnabled = true };
- Equal(MonsterGaugeAvailabilityKind.LocalUnverified, toggledOn.Kind,
-     "status recomputes immediately when F9 experimental preference is switched on");
+ // On an F9 gate transition, the plugin clears old cached observations
+ // immediately. The current frame's status must also treat pre-toggle
+ // samples as unavailable rather than showing them as newly measured.
+ var toggledOn = availabilityOff with { CaptureEnabled = true, CachedMonsterCount = 0 };
+ Equal(MonsterGaugeAvailabilityKind.NoCurrentSamples, toggledOn.Kind,
+     "enabling capture does not report samples from the preceding disabled state");
  Equal(MonsterGaugeAvailabilityKind.Disabled,
      (availabilitySampled with { CaptureEnabled = false }).Kind,
      "status recomputes immediately when F9 experimental capture is switched off");

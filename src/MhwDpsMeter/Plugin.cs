@@ -604,7 +604,17 @@ public sealed class Plugin : IPlugin
             _training ? ToggleTrial : null,
             _inQuest ? _gaugeStates : null,
             _gaugePoller.SelectionEpoch,
-            CurrentGaugeAvailability());
+            CurrentGaugeAvailability(),
+            ResetGaugeCaptureForToggle);
+    }
+
+    // F9 capture gate transitions must invalidate cached observations
+    // immediately, not wait for the next party/monster poll.
+    private void ResetGaugeCaptureForToggle()
+    {
+        _gaugePoller.Reset();
+        _gaugeStates = [];
+        _overlay.ResetGaugeMonsterSelection();
     }
 
     private MonsterGaugeOverlayAvailability CurrentGaugeAvailability() =>
