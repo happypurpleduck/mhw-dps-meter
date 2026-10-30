@@ -14,8 +14,14 @@ internal sealed class MonsterGaugePoller
     private readonly Dictionary<nint, MonsterState> _seen = [];
     public MonsterGaugeState[] Current { get; private set; } = [];
 
+    // Changes when a sampled roster is replaced or invalidated. A transient
+    // manual UI selection must not survive an entity generation or hunt change.
+    public long SelectionEpoch { get; private set; }
+
     public void Reset()
     {
+        if (_seen.Count > 0 || Current.Length > 0)
+            SelectionEpoch++;
         Current = [];
         _seen.Clear();
         _nextRefreshAt = 0;
@@ -44,6 +50,7 @@ internal sealed class MonsterGaugePoller
                 || MonsterGeneration.Changed(previous, m));
         if (replaced)
         {
+            SelectionEpoch++;
             Current = [];
             _nextRefreshAt = 0; // immediate read for the replacement generation
         }

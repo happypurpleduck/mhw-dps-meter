@@ -601,7 +601,9 @@ public sealed class Plugin : IPlugin
             _training ? ResetTraining : null,
             _settings,
             _training ? _trial : null,
-            _training ? ToggleTrial : null);
+            _training ? ToggleTrial : null,
+            _inQuest ? _gaugeStates : null,
+            _gaugePoller.SelectionEpoch);
     }
 
     private string BuildDiagnosticsText()
@@ -705,7 +707,8 @@ public sealed class Plugin : IPlugin
             _training ? TrainingHint : null,
             _training ? _trial : null,
             _inQuest ? _carts : null,
-            _inQuest ? _gaugeStates : null);
+            _inQuest ? _gaugeStates : null,
+            _gaugePoller.SelectionEpoch);
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------
@@ -1061,6 +1064,7 @@ public sealed class Plugin : IPlugin
         _monsterHp.Reset();
         _gaugePoller.Reset();
         _gaugeStates = [];
+        _overlay.ResetGaugeMonsterSelection();
         _hits.Reset();
         _hits.RecordHits = true;
         _recorder.Reset();

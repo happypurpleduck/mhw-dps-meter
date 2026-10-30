@@ -24,6 +24,9 @@ internal sealed class Overlay
     public float Opacity { get; set; } = 0.92f;
     public bool ShowMonsterGaugeDetails { get; set; } = false;
     public MonsterGaugeOverlayCategories GaugeCategories { get; set; } = MonsterGaugeOverlayCategories.All;
+    private readonly MonsterGaugeOverlaySelection _gaugeMonsterSelection = new();
+
+    public void ResetGaugeMonsterSelection() => _gaugeMonsterSelection.Clear();
 
     // ImGui's Text/TextDisabled/TextColored/TextWrapped treat the string as a printf format
     // with no arguments. Hunter names, quest names, file names and monster lists flow into
@@ -49,7 +52,7 @@ internal sealed class Overlay
         ImGui.PopTextWrapPos();
     }
 
-    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null)
+    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null, long selectionEpoch = 0)
     {
         if (!Visible || !inQuest)
             return;
@@ -85,8 +88,10 @@ internal sealed class Overlay
         }
 
         DrawPartyTable(snapshot, elapsedSeconds, carts);
+        _gaugeMonsterSelection.Observe(selectionEpoch, gauges);
         if (gauges is { Count: > 0 })
-            DrawGaugeSummary(gauges, ShowMonsterGaugeDetails, GaugeCategories);
+            DrawGaugeSummary(_gaugeMonsterSelection.Visible(gauges),
+                ShowMonsterGaugeDetails, GaugeCategories);
 
         if (trial is { Active: true })
             DrawTrial(trial);
@@ -224,7 +229,9 @@ internal sealed class Overlay
         Action? onResetTraining,
         PluginSettings settings,
         TimeTrial? trial,
-        Action? onToggleTrial)
+        Action? onToggleTrial,
+        IReadOnlyList<MonsterGaugeState>? gauges = null,
+        long selectionEpoch = 0)
     {
         Wrapped(diagnostics);
         if (ImGui.Button("Dump diagnostics (F6)"))
@@ -278,6 +285,34 @@ internal sealed class Overlay
                 settings.Save();
             }
             Disabled("Category switches hide cached rows only; recording is unchanged.");
+        }
+
+        // The selector is a per-hunt *manual display preference* over already
+        // sampled monsters, not the game's active/targeted monster identity.
+        var selectableGauges = experimental ? gauges : null;
+        _gaugeMonsterSelection.Observe(selectionEpoch, selectableGauges);
+        if (experimental && selectableGauges is { Count: > 1 })
+        {
+            ImGui.Separator();
+            ImGui.TextUnformatted("Sampled monster to display (manual, not active target)");
+            if (ImGui.SmallButton("Automatic: first two##gauge_monster_auto"))
+                _gaugeMonsterSelection.Clear();
+            for (var i = 0; i < Math.Min(selectableGauges.Count,
+                         MonsterGaugeOverlaySelection.MaxMenuChoices); i++)
+            {
+                var gauge = selectableGauges[i];
+                ImGui.PushID(i);
+                if (ImGui.SmallButton("Show"))
+                    _gaugeMonsterSelection.Select(gauge, selectionEpoch, selectableGauges);
+                ImGui.SameLine();
+                ImGui.TextUnformatted(gauge.Name);
+                ImGui.PopID();
+            }
+            if (selectableGauges.Count > MonsterGaugeOverlaySelection.MaxMenuChoices)
+                Disabled($"  +{selectableGauges.Count - MonsterGaugeOverlaySelection.MaxMenuChoices} additional sampled monster(s) not selectable");
+            Disabled(_gaugeMonsterSelection.IsManual
+                ? "Manual selection: one current sampled monster; not a target lock."
+                : "Automatic: first two current sampled monsters.");
         }
 
         var visible = Visible;

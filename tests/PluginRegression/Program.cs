@@ -367,6 +367,71 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(0, MonsterGaugeOverlayRows.Build([], false, partsOnly).Length,
      "empty samples remain empty for any category selection");
 
+
+ // Manual gauge selection is strictly over the cached roster and never
+ // treated as a native active-target signal. A generation change or a missing
+ // selected monster clears the override even if a pointer is reused.
+ var monsterChoice = new MonsterGaugeOverlaySelection();
+ var firstRoster = new[] { observed, secondGauge, thirdGauge };
+ monsterChoice.Observe(10, firstRoster);
+ Equal(false, monsterChoice.IsManual, "selector defaults to automatic first-two mode");
+ Equal(3, monsterChoice.Visible(firstRoster).Count,
+     "automatic selection preserves all cached monsters for existing two-row/overflow logic");
+ Equal(true, monsterChoice.Select(secondGauge, 10, firstRoster),
+     "manual selection accepts a currently sampled monster");
+ Equal(true, monsterChoice.IsManual, "manual sampled monster choice is active");
+ Equal(1, monsterChoice.Visible(firstRoster).Count,
+     "manual mode filters overlay to a single cached monster");
+ Equal("Second", monsterChoice.Visible(firstRoster)[0].Name,
+     "manual selection presents the chosen monster");
+ var reorderedRoster = new[] { thirdGauge, observed, secondGauge };
+ monsterChoice.Observe(10, reorderedRoster);
+ Equal("Second", monsterChoice.Visible(reorderedRoster)[0].Name,
+     "roster reorder cannot silently switch the selected monster");
+ var duplicateName = thirdGauge with { Name = "Second" };
+ monsterChoice.Observe(10, [duplicateName, secondGauge]);
+ Equal((nint)(gaugeMonster + 1), monsterChoice.Visible([duplicateName, secondGauge])[0].Instance,
+     "same-name monsters are disambiguated by current entity instance");
+ monsterChoice.Observe(10, [observed, thirdGauge]);
+ Equal(false, monsterChoice.IsManual,
+     "despawn removes the stale manual selection and falls back to automatic");
+ Equal(false, monsterChoice.Select(secondGauge, 10, [observed, thirdGauge]),
+     "selection rejects an entity absent from the current cached roster");
+ Equal(true, monsterChoice.Select(secondGauge, 10, firstRoster),
+     "manual selection can be re-established on current roster");
+ monsterChoice.Observe(11, firstRoster);
+ Equal(false, monsterChoice.IsManual,
+     "generation change clears even a reused pointer and identical name");
+ Equal(true, monsterChoice.Select(secondGauge, 11, firstRoster),
+     "new generation can be selected manually after an explicit action");
+ monsterChoice.Observe(11, []);
+ Equal(false, monsterChoice.IsManual, "empty/unreadable roster clears manual selection");
+ Equal(8, MonsterGaugeOverlaySelection.MaxMenuChoices, "F9 sampled choice list is bounded");
+ monsterChoice.Select(secondGauge, 12, firstRoster);
+ monsterChoice.Clear();
+ Equal(false, monsterChoice.IsManual,
+     "hunt-start and automatic-mode reset clears manual selection");
+
+ // The production poller resets the manual display token on roster changes,
+ // even if the same address/name appears after an observed HP generation reset.
+ var selectionPoller = new MonsterGaugePoller();
+ MonsterGaugeState[] SelectionRead(IReadOnlyList<MonsterState> _) => [observed];
+ selectionPoller.Tick(700, true, true, [gaugeInput], SelectionRead);
+ var stableEpoch = selectionPoller.SelectionEpoch;
+ selectionPoller.Tick(700.1, true, true, [gaugeInput], SelectionRead);
+ Equal(stableEpoch, selectionPoller.SelectionEpoch,
+     "stable sampled roster leaves manual UI token unchanged");
+ var nextGeneration = gaugeInput with { Health = 250 };
+ selectionPoller.Tick(700.2, true, true, [nextGeneration], SelectionRead);
+ Equal(stableEpoch + 1, selectionPoller.SelectionEpoch,
+     "large HP generation reset invalidates manual selection token");
+ selectionPoller.Tick(700.3, false, true, [nextGeneration], SelectionRead);
+ Equal(stableEpoch + 2, selectionPoller.SelectionEpoch,
+     "disabled native capture invalidates existing manual selection token");
+ selectionPoller.Tick(700.4, false, true, [nextGeneration], SelectionRead);
+ Equal(stableEpoch + 2, selectionPoller.SelectionEpoch,
+     "repeated disabled polls do not churn selection token");
+
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.
  var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));
