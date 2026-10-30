@@ -416,12 +416,13 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  // even if the same address/name appears after an observed HP generation reset.
  var selectionPoller = new MonsterGaugePoller();
  MonsterGaugeState[] SelectionRead(IReadOnlyList<MonsterState> _) => [observed];
- selectionPoller.Tick(700, true, true, [gaugeInput], SelectionRead);
+ var lowHealthGeneration = gaugeInput with { Health = 200 };
+ selectionPoller.Tick(700, true, true, [lowHealthGeneration], SelectionRead);
  var stableEpoch = selectionPoller.SelectionEpoch;
- selectionPoller.Tick(700.1, true, true, [gaugeInput], SelectionRead);
+ selectionPoller.Tick(700.1, true, true, [lowHealthGeneration], SelectionRead);
  Equal(stableEpoch, selectionPoller.SelectionEpoch,
      "stable sampled roster leaves manual UI token unchanged");
- var nextGeneration = gaugeInput with { Health = 250 };
+ var nextGeneration = gaugeInput with { Health = 900 };
  selectionPoller.Tick(700.2, true, true, [nextGeneration], SelectionRead);
  Equal(stableEpoch + 1, selectionPoller.SelectionEpoch,
      "large HP generation reset invalidates manual selection token");
