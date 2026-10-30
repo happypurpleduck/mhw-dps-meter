@@ -625,7 +625,7 @@ public sealed class Plugin : IPlugin
             _gaugePoller.SampleAgeSeconds(
                 Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency));
 
-    private string BuildDiagnosticsText()
+    private MonsterGaugeOverlayDiagnostics BuildDiagnosticsText()
     {
         var slotLines = "";
         if (_reader?.LastSlots is { Length: > 0 } slots)
@@ -638,7 +638,7 @@ public sealed class Plugin : IPlugin
             }
         }
 
-        return
+        var beforeGauge =
             $"Plugin build: {BuildStamp}\n" +
             $"Status: {_status}\n" +
             $"Game build: {_gameBuild}  map: {Path.GetFileName(_map?.SourceFile ?? "none")}{(_mapMatchesBuild ? "" : "  (MISMATCH)")}\n" +
@@ -646,8 +646,8 @@ public sealed class Plugin : IPlugin
             $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
-            $"Part capture: {_hits.PartDiagnostics}\n" +
-            $"Monster gauges: {CurrentGaugeAvailability().StatusText}\n" +
+            $"Part capture: {_hits.PartDiagnostics}\n";
+        var afterGauge =
             $"Recorder: {_recorder.HitCount} hits ({_recorder.HitCoverage}), weapon {_recorder.LocalWeapon ?? "-"}\n" +
             $"Hunter entities: {_party.Diagnostics()}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
@@ -663,6 +663,7 @@ public sealed class Plugin : IPlugin
             $"Live debug: {_liveDebug?.LatestPath ?? "n/a"}\n" +
             $"Module: 0x{_moduleBase:X}\n" +
             "F6 = force debug dump, F7 = reset training damage, F8 = time trial, F9 = this menu, F10 = toggle overlay";
+        return new MonsterGaugeOverlayDiagnostics(beforeGauge, afterGauge);
     }
 
     private void WriteLiveDebug(bool force)

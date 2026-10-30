@@ -234,7 +234,7 @@ internal sealed class Overlay
 
     public void DrawSettings(
         FightLogStore? logs,
-        string diagnostics,
+        MonsterGaugeOverlayDiagnostics diagnostics,
         Action onDumpDiagnostics,
         Action? onResetTraining,
         PluginSettings settings,
@@ -246,8 +246,8 @@ internal sealed class Overlay
         Action? onCapturePreferenceChanged = null)
     {
         // Process F9 capture changes before rendering the verbose gauge line.
-        // BuildDiagnosticsText was evaluated before this ImGui callback, so
-        // its gauge row needs to reflect the post-toggle availability below.
+        // The caller gives us structured before/after text; the gauge row is
+        // composed once with post-toggle availability, not searched/replaced.
         var experimental = settings.ExperimentalMonsterGauges;
         if (ImGui.Checkbox("Experimental monster gauges (421810)", ref experimental))
         {
@@ -267,8 +267,7 @@ internal sealed class Overlay
             SampleAgeSeconds = experimental != gaugeAvailability.CaptureEnabled
                 ? null : gaugeAvailability.SampleAgeSeconds
         };
-        Wrapped(MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
-            diagnostics, displayAvailability));
+        Wrapped(diagnostics.Render(displayAvailability));
         if (ImGui.Button("Dump diagnostics (F6)"))
             onDumpDiagnostics();
 

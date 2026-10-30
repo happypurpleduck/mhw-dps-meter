@@ -738,63 +738,55 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      "zero cached monsters are missing, not stale samples");
 
 
- // The live F9 menu processes its experimental checkbox before rendering
- // diagnostics. The production aligner reconciles ONLY the gauge-status row
- // generated before the click with the post-toggle availability, ensuring
- // the verbose row and dedicated availability line agree in the same frame.
- var preClickDiagnostics =
-     "Plugin build: regression\n" +
-     "Status: unchanged\n" +
-     $"Monster gauges: {availabilityOff.StatusText}\n" +
-     "Recorder: unchanged\n";
+ // F9 receives structured diagnostics: only this owned boundary inserts
+ // the live gauge state after processing the capture checkbox. A multiline
+ // free-form field with the exact same prefix cannot spoof the owned row.
+ var diagnostics = new MonsterGaugeOverlayDiagnostics(
+     "Plugin build: regression\nStatus: unchanged\nPart capture: unchanged\n",
+     "Recorder: unchanged\n");
  var enabledNoSamples = availabilityOff with
  {
      CaptureEnabled = true, CachedMonsterCount = 0, SampleAgeSeconds = null
  };
- var afterEnableDiagnostics = MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
-     preClickDiagnostics, enabledNoSamples);
- Equal(true, afterEnableDiagnostics.Contains(
-     $"Monster gauges: {enabledNoSamples.StatusText}\n"),
-     "same-frame F9 enable updates verbose diagnostics to no-current-samples");
- Equal(false, afterEnableDiagnostics.Contains(
-     $"Monster gauges: {availabilityOff.StatusText}"),
-     "same-frame enable does not retain the pre-click off status");
- Equal(true, afterEnableDiagnostics.StartsWith(
-     "Plugin build: regression\nStatus: unchanged\n"),
-     "diagnostic build/status lines are unchanged by gauge-line alignment");
- Equal(true, afterEnableDiagnostics.EndsWith("Recorder: unchanged\n"),
-     "recorder and trailing diagnostics remain untouched");
+ var afterEnableDiagnostics = diagnostics.Render(enabledNoSamples);
+ Equal("Plugin build: regression\nStatus: unchanged\nPart capture: unchanged\n" +
+     $"Monster gauges: {enabledNoSamples.StatusText}\n" +
+     "Recorder: unchanged\n", afterEnableDiagnostics,
+     "same-frame F9 enable structurally renders only the post-toggle no-data state");
 
- var beforeDisableDiagnostics =
-     "Plugin build: regression\n" +
-     $"Monster gauges: {availabilitySampled.StatusText}\n" +
-     "Recorder: unchanged\n";
- var disabledSameFrame = availabilitySampled with { CaptureEnabled = false };
- var afterDisableDiagnostics = MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
-     beforeDisableDiagnostics, disabledSameFrame);
+ var afterDisableDiagnostics = diagnostics.Render(
+     availabilitySampled with { CaptureEnabled = false });
  Equal(true, afterDisableDiagnostics.Contains(
-     $"Monster gauges: {disabledSameFrame.StatusText}\n"),
-     "same-frame F9 disable updates verbose diagnostics to off");
-
- var staleDiagnostics = MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
-     beforeDisableDiagnostics, freshnessLate);
- Equal(true, staleDiagnostics.Contains(
+     $"Monster gauges: {availabilityOff.StatusText}\n"),
+     "same-frame F9 disable structurally renders the off state");
+ Equal(true, diagnostics.Render(freshnessLate).Contains(
      $"Monster gauges: {freshnessLate.StatusText}\n"),
-     "stale age status aligns with the same-frame dedicated availability line");
- Equal(preClickDiagnostics,
-     MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
-         preClickDiagnostics, availabilityOff),
-     "unchanged availability preserves the existing complete diagnostics");
- var unrecognizedDiagnostics = "Status: Monster gauges: embedded text\nRecorder: unchanged";
- Equal(unrecognizedDiagnostics,
-     MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
-         unrecognizedDiagnostics, enabledNoSamples),
-     "diagnostic mention within another field is never replaced");
- var finalLine = "Status: unchanged\nMonster gauges: previously off";
- Equal("Status: unchanged\nMonster gauges: " + enabledNoSamples.StatusText,
-     MonsterGaugeOverlayDiagnostics.AlignGaugeLine(finalLine, enabledNoSamples),
-     "gauge row at end of diagnostics is aligned without requiring a final newline");
+     "stale age status is consistently rendered by the structured formatter");
+ Equal(true, diagnostics.Render(availabilitySampled).Contains(
+     $"Monster gauges: {availabilitySampled.StatusText}\n"),
+     "local-unverified state is consistent with dedicated F9 status");
 
+ var spoofedDiagnostics = new MonsterGaugeOverlayDiagnostics(
+     "Status: first line\nMonster gauges: spoofed local observation\n" +
+     "Part capture: unchanged\n",
+     "Recorder: unchanged\nMonster gauges: spoofed trailing observation\n");
+ var spoofedRendered = spoofedDiagnostics.Render(enabledNoSamples);
+ Equal("Status: first line\nMonster gauges: spoofed local observation\n" +
+     "Part capture: unchanged\n" +
+     $"Monster gauges: {enabledNoSamples.StatusText}\n" +
+     "Recorder: unchanged\nMonster gauges: spoofed trailing observation\n",
+     spoofedRendered,
+     "untrusted preceding/trailing exact-prefix rows remain untouched and never replace the owned row");
+ Equal(true, spoofedDiagnostics.Render(availabilityOff).Contains(
+     $"Part capture: unchanged\nMonster gauges: {availabilityOff.StatusText}\nRecorder:"),
+     "rendering off updates only the controlled gauge position even with exact-prefix collisions");
+ Equal("Monster gauges: " + enabledNoSamples.StatusText + "\n",
+     new MonsterGaugeOverlayDiagnostics("", "").Render(enabledNoSamples),
+     "empty diagnostic sections still compose the owned gauge row without a marker");
+ Equal("End\nMonster gauges: " + availabilityOff.StatusText + "\nSuffix without newline",
+     new MonsterGaugeOverlayDiagnostics("End\n", "Suffix without newline").Render(availabilityOff),
+     "non-terminated trailing diagnostics are preserved exactly");
+ 
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.
  var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));
