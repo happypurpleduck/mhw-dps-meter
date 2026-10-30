@@ -11,6 +11,7 @@ internal sealed class MonsterGaugePoller
     public const double RefreshIntervalSeconds = 1.0;
 
     private double _nextRefreshAt;
+    private double? _sampledAt;
     private readonly Dictionary<nint, MonsterState> _seen = [];
     public MonsterGaugeState[] Current { get; private set; } = [];
 
@@ -18,11 +19,24 @@ internal sealed class MonsterGaugePoller
     // manual UI selection must not survive an entity generation or hunt change.
     public long SelectionEpoch { get; private set; }
 
+    // Used only for presentation. Null means there is no valid time evidence
+    // that these cached readings are recent. Same clock as Tick().
+    public double? SampleAgeSeconds(double monotonicNow)
+    {
+        if (Current.Length == 0 || _sampledAt is not double sampledAt
+            || !double.IsFinite(monotonicNow))
+            return null;
+
+        var age = monotonicNow - sampledAt;
+        return double.IsFinite(age) && age >= 0 ? age : null;
+    }
+
     public void Reset()
     {
         if (_seen.Count > 0 || Current.Length > 0)
             SelectionEpoch++;
         Current = [];
+        _sampledAt = null;
         _seen.Clear();
         _nextRefreshAt = 0;
     }
@@ -52,6 +66,7 @@ internal sealed class MonsterGaugePoller
         {
             SelectionEpoch++;
             Current = [];
+            _sampledAt = null;
             _nextRefreshAt = 0; // immediate read for the replacement generation
         }
         _seen.Clear();
@@ -65,11 +80,14 @@ internal sealed class MonsterGaugePoller
         try
         {
             Current = reader(monsters);
+            _sampledAt = Current.Length > 0 && double.IsFinite(monotonicSeconds)
+                ? monotonicSeconds : null;
             return Current;
         }
         catch
         {
             Current = [];
+            _sampledAt = null;
             return null;
         }
     }

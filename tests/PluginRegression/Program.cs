@@ -573,7 +573,7 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      && availabilityEmpty.StatusText.Contains("not a zero"),
      "empty status explicitly rejects fabricated zero");
 
- var availabilitySampled = new MonsterGaugeOverlayAvailability(true, true, true, 2);
+ var availabilitySampled = new MonsterGaugeOverlayAvailability(true, true, true, 2, 0.5);
  Equal(MonsterGaugeAvailabilityKind.LocalUnverified, availabilitySampled.Kind,
      "sampled data never graduates to verified-host classification");
  Equal(true, availabilitySampled.MayRenderGauges,
@@ -596,6 +596,86 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(MonsterGaugeAvailabilityKind.NoCurrentSamples,
      (availabilitySampled with { CachedMonsterCount = -1 }).Kind,
      "invalid negative cache count never fabricates a sample");
+
+
+ // Source-only, process-monotonic freshness tracking for cached readings.
+ // Renderer may be invoked even when the 100 ms update loop is blocked.
+ var freshnessPoller = new MonsterGaugePoller();
+ var freshnessReads = 0;
+ MonsterGaugeState[] ReadForFreshness(IReadOnlyList<MonsterState> _)
+ {
+     freshnessReads++;
+     return [observed];
+ }
+ Equal(null, freshnessPoller.SampleAgeSeconds(810),
+     "new poller has no sample-age evidence");
+ freshnessPoller.Tick(810, true, true, [gaugeInput], ReadForFreshness);
+ Equal(1, freshnessReads, "initial freshness sample uses one existing poller read");
+ Equal(0d, freshnessPoller.SampleAgeSeconds(810),
+     "first successful reading gets a monotonic timestamp");
+ freshnessPoller.Tick(810.4, true, true, [gaugeInput], ReadForFreshness);
+ Equal(1, freshnessReads, "skipped subsecond tick never adds a native read");
+ Equal(true, Math.Abs(freshnessPoller.SampleAgeSeconds(811.3)!.Value - 1.3) < 0.0001,
+     "skipped poll does not refresh age of the same cached reading");
+ Equal(null, freshnessPoller.SampleAgeSeconds(809),
+     "clock rollback never makes old samples appear fresh");
+ Equal(null, freshnessPoller.SampleAgeSeconds(double.NaN),
+     "non-finite monotonic time cannot prove freshness");
+ var ageBeforeReacquire = freshnessPoller.SampleAgeSeconds(813);
+ Equal(MonsterGaugeAvailabilityKind.StaleSamples,
+     new MonsterGaugeOverlayAvailability(true, true, true,
+         freshnessPoller.Current.Length, ageBeforeReacquire).Kind,
+     "rendering after stalled updates hides old sampled values");
+ freshnessPoller.Tick(813, true, true, [gaugeInput], ReadForFreshness);
+ Equal(2, freshnessReads, "next normal tick reacquires without changing cadence");
+ Equal(0d, freshnessPoller.SampleAgeSeconds(813),
+     "successful re-read restores a zero-age timestamp");
+ freshnessPoller.Tick(814.2, true, true, [gaugeInput], _ => []);
+ Equal(null, freshnessPoller.SampleAgeSeconds(814.2),
+     "successful empty capture has no sampled timestamp");
+ freshnessPoller.Tick(815.3, true, true, [gaugeInput], ReadForFreshness);
+ Equal(0d, freshnessPoller.SampleAgeSeconds(815.3),
+     "fresh reading after empty capture starts a new age");
+ freshnessPoller.Tick(815.4, false, true, [gaugeInput], ReadForFreshness);
+ Equal(null, freshnessPoller.SampleAgeSeconds(815.4),
+     "disabled capture clears the timestamp and cached rows");
+
+ var freshnessNow = new MonsterGaugeOverlayAvailability(true, true, true, 1, 2.5);
+ Equal(MonsterGaugeAvailabilityKind.LocalUnverified, freshnessNow.Kind,
+     "exact conservative 2.5-second boundary is still displayable, not verified");
+ var freshnessLate = freshnessNow with { SampleAgeSeconds = 2.5001 };
+ Equal(MonsterGaugeAvailabilityKind.StaleSamples, freshnessLate.Kind,
+     "values older than the bound are stale instead of locally current");
+ Equal(false, freshnessLate.MayRenderGauges,
+     "stale cached values are not rendered");
+ Equal(true, freshnessLate.ShowStaleHudHint,
+     "stale cached values have an explicit in-hunt HUD warning");
+ Equal(false, freshnessLate.ShowEmptyHudHint,
+     "stale cache is not falsely classified as an empty enumeration");
+ Equal(true, freshnessLate.StatusText.Contains("Stale")
+     && freshnessLate.StatusText.Contains("hidden"),
+     "F9 and diagnostics explain that stale values are suppressed");
+ Equal(MonsterGaugeAvailabilityKind.StaleSamples,
+     (freshnessNow with { SampleAgeSeconds = null }).Kind,
+     "unknown sample age cannot establish a current observation");
+ Equal(MonsterGaugeAvailabilityKind.StaleSamples,
+     (freshnessNow with { SampleAgeSeconds = -0.01 }).Kind,
+     "negative age cannot establish a current observation");
+ Equal(MonsterGaugeAvailabilityKind.StaleSamples,
+     (freshnessNow with { SampleAgeSeconds = double.PositiveInfinity }).Kind,
+     "infinite sample age cannot establish a current observation");
+ Equal(MonsterGaugeAvailabilityKind.Disabled,
+     (freshnessLate with { CaptureEnabled = false }).Kind,
+     "disabled-capture precedence still overrides stale cache");
+ Equal(MonsterGaugeAvailabilityKind.UnsupportedBuild,
+     (freshnessLate with { BuildReady = false }).Kind,
+     "unsupported-build precedence still overrides stale cache");
+ Equal(MonsterGaugeAvailabilityKind.OutsideQuest,
+     (freshnessLate with { InQuest = false }).Kind,
+     "outside-quest precedence still overrides stale cache");
+ Equal(MonsterGaugeAvailabilityKind.NoCurrentSamples,
+     (freshnessLate with { CachedMonsterCount = 0 }).Kind,
+     "zero cached monsters are missing, not stale samples");
 
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.

@@ -95,10 +95,12 @@ internal sealed class Overlay
         if (gaugeAvailability.MayRenderGauges && gauges is { Count: > 0 })
             DrawGaugeSummary(_gaugeMonsterSelection.Visible(gauges),
                 ShowMonsterGaugeDetails, GaugeCategories);
-        else if (gaugeAvailability.ShowEmptyHudHint)
+        else if (gaugeAvailability.ShowEmptyHudHint || gaugeAvailability.ShowStaleHudHint)
         {
             ImGui.Separator();
-            Disabled("Experimental gauges: no current samples (local, unverified)");
+            Disabled(gaugeAvailability.ShowStaleHudHint
+                ? "Experimental gauges: cached sample stale (local, unverified)"
+                : "Experimental gauges: no current samples (local, unverified)");
         }
 
         if (trial is { Active: true })
@@ -269,7 +271,9 @@ internal sealed class Overlay
         {
             CaptureEnabled = experimental,
             CachedMonsterCount = experimental != gaugeAvailability.CaptureEnabled
-                ? 0 : gaugeAvailability.CachedMonsterCount
+                ? 0 : gaugeAvailability.CachedMonsterCount,
+            SampleAgeSeconds = experimental != gaugeAvailability.CaptureEnabled
+                ? null : gaugeAvailability.SampleAgeSeconds
         };
         Disabled($"Gauge availability: {displayAvailability.StatusText}");
         Disabled("Unverified local memory readings; not authoritative on multiplayer guests.");

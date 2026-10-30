@@ -621,7 +621,9 @@ public sealed class Plugin : IPlugin
         new(_settings.ExperimentalMonsterGauges,
             _mapMatchesBuild && _buildConfirmed && _gameBuild == 421810,
             _inQuest,
-            _gaugeStates.Length);
+            _gaugeStates.Length,
+            _gaugePoller.SampleAgeSeconds(
+                Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency));
 
     private string BuildDiagnosticsText()
     {
