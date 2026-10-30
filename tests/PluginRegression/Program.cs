@@ -307,6 +307,47 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
     "compact mode remains a single sampled-summary row regardless of proc counters");
 
 
+
+ // Independent F9 category preferences filter cached rows but never affect
+ // the experimental native capture switch or the bounded display limits.
+ var statusOnly = new MonsterGaugeOverlayCategories(false, true, false);
+ var statusCompact = MonsterGaugeOverlayRows.Build([observed], false, statusOnly);
+ Equal(1, statusCompact.Length, "status-only selection remains a compact one-row summary");
+ Equal(true, statusCompact[0].Text.Contains("1 sampled status"),
+     "selected status count remains visible");
+ Equal(false, statusCompact[0].Text.Contains("stamina") || statusCompact[0].Text.Contains("part meters"),
+     "disabled stamina and part categories cannot leak into compact summary");
+ var statusExpanded = MonsterGaugeOverlayRows.Build([observed], true, statusOnly);
+ Equal(2, statusExpanded.Length, "status-only details contain no part row");
+ Equal(true, statusExpanded[1].Text.Contains("sampled procs"),
+     "status-only details retain proc evidence");
+
+ var partsOnly = new MonsterGaugeOverlayCategories(false, false, true);
+ var partsExpanded = MonsterGaugeOverlayRows.Build([observed], true, partsOnly);
+ Equal(2, partsExpanded.Length, "parts-only details contain no ailment row");
+ Equal(true, partsExpanded[1].Text.Contains("sampled cycle"),
+     "parts-only view retains part remaining/cycle semantics");
+
+ var staminaOnly = new MonsterGaugeOverlayCategories(true, false, false);
+ var staminaExpanded = MonsterGaugeOverlayRows.Build([observed], true, staminaOnly);
+ Equal(1, staminaExpanded.Length, "stamina-only display never includes status/part details");
+ Equal(true, staminaExpanded[0].Text.Contains("stamina 90/150"),
+     "stamina-only cached reading still displayed");
+
+ var noneSelected = MonsterGaugeOverlayRows.Build(
+     [observed, secondGauge, thirdGauge], true, new MonsterGaugeOverlayCategories(false, false, false));
+ Equal(3, noneSelected.Length, "all-disabled selection stays bounded and includes overflow note");
+ Equal(true, noneSelected[0].Text.Contains("no sampled gauge categories selected"),
+     "all-disabled selection is explicit rather than implying zero gauge readings");
+ Equal(false, noneSelected[0].Text.Contains("stamina") ||
+     noneSelected[0].Text.Contains("sampled status") ||
+     noneSelected[0].Text.Contains("part meters"),
+     "disabled categories never appear as fabricated measurements");
+ Equal(true, noneSelected[2].Text.Contains("+1 more"),
+     "monster overflow remains visible regardless of category preferences");
+ Equal(0, MonsterGaugeOverlayRows.Build([], false, partsOnly).Length,
+     "empty samples remain empty for any category selection");
+
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.
  var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));
@@ -318,6 +359,9 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
          "new installs still do not opt into native monster gauge reads");
      Equal(false, defaultSettings.MonsterGaugeOverlayDetails,
          "new installs get compact gauge rows");
+     Equal(true, defaultSettings.MonsterGaugeShowStamina, "new installs show sampled stamina");
+     Equal(true, defaultSettings.MonsterGaugeShowAilments, "new installs show sampled ailments");
+     Equal(true, defaultSettings.MonsterGaugeShowParts, "new installs show sampled normal parts");
      File.WriteAllText(Path.Combine(overlaySettingsDir, PluginSettings.FileName),
          """{"overlayVisible":false,"experimentalMonsterGauges":false,"trialDurationSeconds":45}""");
      var legacySettings = PluginSettings.Load(overlaySettingsDir);
@@ -325,6 +369,12 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
          "existing settings without a detail field stay compact");
      Equal(false, legacySettings.ExperimentalMonsterGauges,
          "legacy preferences do not gain native gauge access");
+     Equal(true, legacySettings.MonsterGaugeShowStamina, "legacy preferences show stamina");
+     Equal(true, legacySettings.MonsterGaugeShowAilments, "legacy preferences show ailments");
+     Equal(true, legacySettings.MonsterGaugeShowParts, "legacy preferences show parts");
+     legacySettings.MonsterGaugeShowStamina = false;
+     legacySettings.MonsterGaugeShowAilments = true;
+     legacySettings.MonsterGaugeShowParts = false;
      legacySettings.MonsterGaugeOverlayDetails = true;
      legacySettings.Save();
      var persisted = PluginSettings.Load(overlaySettingsDir);
@@ -332,6 +382,15 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
          "the details preference survives settings.json reload");
      Equal(false, persisted.ExperimentalMonsterGauges,
          "presentation preference cannot enable native reads on reload");
+     Equal(false, persisted.MonsterGaugeShowStamina, "stamina preference survives reload");
+     Equal(true, persisted.MonsterGaugeShowAilments, "ailment preference survives reload");
+     Equal(false, persisted.MonsterGaugeShowParts, "part preference survives reload");
+     persisted.MonsterGaugeShowAilments = false;
+     persisted.Save();
+     var allHidden = PluginSettings.Load(overlaySettingsDir);
+     Equal(false, allHidden.MonsterGaugeShowStamina || allHidden.MonsterGaugeShowAilments
+         || allHidden.MonsterGaugeShowParts, "all-disabled visibility preferences persist without enabling capture");
+     Equal(false, allHidden.ExperimentalMonsterGauges, "all-disabled display does not change capture state");
      Equal(false, persisted.OverlayVisible,
          "existing overlay visibility survives gauge preference update");
      Equal(45, persisted.TrialDurationSeconds,

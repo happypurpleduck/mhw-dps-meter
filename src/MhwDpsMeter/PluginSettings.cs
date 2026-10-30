@@ -32,6 +32,17 @@ internal sealed class PluginSettings
     [JsonPropertyName("monsterGaugeOverlayDetails")]
     public bool MonsterGaugeOverlayDetails { get; set; } = false;
 
+    // Presentation-only categories. Older settings default to showing all
+    // cached categories; these never control native polling or log capture.
+    [JsonPropertyName("monsterGaugeShowStamina")]
+    public bool MonsterGaugeShowStamina { get; set; } = true;
+
+    [JsonPropertyName("monsterGaugeShowAilments")]
+    public bool MonsterGaugeShowAilments { get; set; } = true;
+
+    [JsonPropertyName("monsterGaugeShowParts")]
+    public bool MonsterGaugeShowParts { get; set; } = true;
+
     [JsonPropertyName("trialDurationSeconds")]
     public int TrialDurationSeconds { get; set; } = TimeTrial.DefaultDurationSeconds;
 

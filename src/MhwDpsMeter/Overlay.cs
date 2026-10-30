@@ -23,6 +23,7 @@ internal sealed class Overlay
     public bool Visible { get; set; } = true;
     public float Opacity { get; set; } = 0.92f;
     public bool ShowMonsterGaugeDetails { get; set; } = false;
+    public MonsterGaugeOverlayCategories GaugeCategories { get; set; } = MonsterGaugeOverlayCategories.All;
 
     // ImGui's Text/TextDisabled/TextColored/TextWrapped treat the string as a printf format
     // with no arguments. Hunter names, quest names, file names and monster lists flow into
@@ -85,7 +86,7 @@ internal sealed class Overlay
 
         DrawPartyTable(snapshot, elapsedSeconds, carts);
         if (gauges is { Count: > 0 })
-            DrawGaugeSummary(gauges, ShowMonsterGaugeDetails);
+            DrawGaugeSummary(gauges, ShowMonsterGaugeDetails, GaugeCategories);
 
         if (trial is { Active: true })
             DrawTrial(trial);
@@ -150,11 +151,12 @@ internal sealed class Overlay
         }
     }
 
-    private static void DrawGaugeSummary(IReadOnlyList<MonsterGaugeState> gauges, bool showDetails)
+    private static void DrawGaugeSummary(
+        IReadOnlyList<MonsterGaugeState> gauges, bool showDetails, MonsterGaugeOverlayCategories categories)
     {
         ImGui.Separator();
         Disabled("Experimental gauges: local observation only, NOT verified host state");
-        foreach (var row in MonsterGaugeOverlayRows.Build(gauges, showDetails))
+        foreach (var row in MonsterGaugeOverlayRows.Build(gauges, showDetails, categories))
         {
             if (row.Heading)
                 ImGui.TextUnformatted(row.Text);
@@ -252,6 +254,30 @@ internal sealed class Overlay
                 settings.Save();
             }
             Disabled("Compact by default; details change rendering only, not the native poll rate.");
+
+            var categories = GaugeCategories;
+            var showStamina = categories.Stamina;
+            if (ImGui.Checkbox("Show sampled stamina", ref showStamina))
+            {
+                GaugeCategories = categories = categories with { Stamina = showStamina };
+                settings.MonsterGaugeShowStamina = showStamina;
+                settings.Save();
+            }
+            var showAilments = categories.Ailments;
+            if (ImGui.Checkbox("Show sampled ailments", ref showAilments))
+            {
+                GaugeCategories = categories = categories with { Ailments = showAilments };
+                settings.MonsterGaugeShowAilments = showAilments;
+                settings.Save();
+            }
+            var showParts = categories.Parts;
+            if (ImGui.Checkbox("Show sampled normal parts", ref showParts))
+            {
+                GaugeCategories = categories with { Parts = showParts };
+                settings.MonsterGaugeShowParts = showParts;
+                settings.Save();
+            }
+            Disabled("Category switches hide cached rows only; recording is unchanged.");
         }
 
         var visible = Visible;
