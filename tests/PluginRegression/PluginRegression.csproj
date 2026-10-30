@@ -21,6 +21,7 @@
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayRows.cs" Link="MonsterGaugeOverlayRows.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlaySelection.cs" Link="MonsterGaugeOverlaySelection.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayAvailability.cs" Link="MonsterGaugeOverlayAvailability.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayDiagnostics.cs" Link="MonsterGaugeOverlayDiagnostics.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayMenu.cs" Link="MonsterGaugeOverlayMenu.cs" />
     <Compile Include="../../src/MhwDpsMeter/PluginSettings.cs" Link="PluginSettings.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterGaugePoller.cs" Link="MonsterGaugePoller.cs" />

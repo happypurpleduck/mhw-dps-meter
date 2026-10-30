@@ -245,17 +245,9 @@ internal sealed class Overlay
         MonsterGaugeOverlayAvailability gaugeAvailability = default,
         Action? onCapturePreferenceChanged = null)
     {
-        Wrapped(diagnostics);
-        if (ImGui.Button("Dump diagnostics (F6)"))
-            onDumpDiagnostics();
-
-        if (onResetTraining is not null)
-        {
-            ImGui.SameLine();
-            if (ImGui.Button("Reset training damage (F7)"))
-                onResetTraining();
-        }
-
+        // Process F9 capture changes before rendering the verbose gauge line.
+        // BuildDiagnosticsText was evaluated before this ImGui callback, so
+        // its gauge row needs to reflect the post-toggle availability below.
         var experimental = settings.ExperimentalMonsterGauges;
         if (ImGui.Checkbox("Experimental monster gauges (421810)", ref experimental))
         {
@@ -275,6 +267,18 @@ internal sealed class Overlay
             SampleAgeSeconds = experimental != gaugeAvailability.CaptureEnabled
                 ? null : gaugeAvailability.SampleAgeSeconds
         };
+        Wrapped(MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
+            diagnostics, displayAvailability));
+        if (ImGui.Button("Dump diagnostics (F6)"))
+            onDumpDiagnostics();
+
+        if (onResetTraining is not null)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Reset training damage (F7)"))
+                onResetTraining();
+        }
+
         Disabled($"Gauge availability: {displayAvailability.StatusText}");
         Disabled("Unverified local memory readings; not authoritative on multiplayer guests.");
         if (experimental)
