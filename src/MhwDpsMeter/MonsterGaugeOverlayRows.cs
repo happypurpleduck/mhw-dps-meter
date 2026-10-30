@@ -29,7 +29,7 @@ internal static class MonsterGaugeOverlayRows
         {
             // Do not claim that unselected categories are zero or absent.
             // Compact rows contain only requested cached fields.
-            var summary = new List<string> { gauge.Name };
+            var summary = new List<string> { MonsterGaugeOverlayLabels.Display(gauge.Name) };
             if (categories.Stamina)
             {
                 var stamina = gauge.Stamina is float current && gauge.MaxStamina is float max
@@ -64,7 +64,7 @@ internal static class MonsterGaugeOverlayRows
                 .Take(MaxDetailAilments))
                 {
                     rows.Add(new MonsterGaugeOverlayRow(
-                        $"  {ailment.Name}: buildup {ailment.Buildup:0}/{ailment.MaxBuildup:0}, sampled procs {ailment.Procs}"));
+                        $"  {MonsterGaugeOverlayLabels.Display(ailment.Name)}: buildup {ailment.Buildup:0}/{ailment.MaxBuildup:0}, sampled procs {ailment.Procs}"));
                 }
             }
 
@@ -78,7 +78,7 @@ internal static class MonsterGaugeOverlayRows
                 .Take(MaxDetailParts))
                 {
                     rows.Add(new MonsterGaugeOverlayRow(
-                        $"  {part.Name}: flinch {part.Remaining:0}/{part.Max:0} remaining, sampled cycle {part.CompletedFlinches}/{part.NextBreakThreshold}"));
+                        $"  {MonsterGaugeOverlayLabels.Display(part.Name)}: flinch {part.Remaining:0}/{part.Max:0} remaining, sampled cycle {part.CompletedFlinches}/{part.NextBreakThreshold}"));
                 }
             }
         }

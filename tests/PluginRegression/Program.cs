@@ -271,6 +271,61 @@ Equal(2, observed.Ailments[0].Procs, "KO proc count");
  Equal(0, MonsterGaugeOverlayRows.Build([], true).Length,
      "empty cache never becomes a fake monster observation");
 
+
+ // Long labels affect only the presentation, not game-sampled identity.
+ var longPrefix = new string('X', MonsterGaugeOverlayLabels.MaxNameTextElements);
+ var longNameA = longPrefix + " original monster one";
+ var longNameB = longPrefix + " original monster two";
+ var longA = observed with { Instance = gaugeMonster + 31, Name = longNameA };
+ var longB = observed with { Instance = gaugeMonster + 32, Name = longNameB };
+ Equal(longPrefix + "…", MonsterGaugeOverlayLabels.Display(longNameA),
+     "long monster name is truncated at grapheme boundary");
+ var longRows = MonsterGaugeOverlayRows.Build([longA], false);
+ Equal(true, longRows[0].Text.StartsWith(longPrefix + "… | stamina"),
+     "compact HUD uses bounded text without hiding other sampled readings");
+ Equal(longNameA, longA.Name,
+     "sample retains the original full name, not its shortened label");
+ var longChoice = new MonsterGaugeOverlaySelection();
+ var longRoster = new[] { longB, longA };
+ var longMenu = MonsterGaugeOverlayMenuChoices.Build(longRoster, 42, longChoice);
+ Equal(2, longMenu.Choices.Length, "both full-name monsters remain selectable");
+ Equal(longPrefix + "… (sample #1)",
+     longMenu.Choices.Single(x => x.Sample.Instance == longA.Instance).Label,
+     "truncated name collision gets deterministic first marker");
+ Equal(longPrefix + "… (sample #2)",
+     longMenu.Choices.Single(x => x.Sample.Instance == longB.Instance).Label,
+     "second full-name identity gets a separate visible marker");
+ Equal(2, longMenu.Choices.Select(x => x.ControlId).Distinct().Count(),
+     "full original identities keep stable and distinct F9 control IDs");
+ Equal(true, longChoice.Select(longB, 42, longRoster),
+     "manual selection continues to use original sample identity");
+ Equal(longB.Instance, longChoice.Visible(longRoster)[0].Instance,
+     "chosen truncated label still points to intended full-identity monster");
+ longChoice.Observe(42, [longA]);
+ Equal(false, longChoice.IsManual,
+     "a coincidentally matching shortened label cannot retain a missing selected monster");
+ Equal("A B C", MonsterGaugeOverlayLabels.Display("  A \n\tB  C  "),
+     "names cannot inject extra HUD rows with newlines or tabs");
+ Equal("Unknown sampled monster", MonsterGaugeOverlayLabels.Display(" \n\t "),
+     "blank sampled monster names receive neutral fallback");
+ var grapheme = "A\u0301";
+ Equal(string.Concat(Enumerable.Repeat(grapheme, 32)) + "…",
+     MonsterGaugeOverlayLabels.Display(string.Concat(Enumerable.Repeat(grapheme, 36))),
+     "combining accents stay joined at Unicode grapheme boundary");
+ Equal(string.Concat(Enumerable.Repeat("👾", 32)) + "…",
+     MonsterGaugeOverlayLabels.Display(string.Concat(Enumerable.Repeat("👾", 40))),
+     "supplementary plane emoji are not split mid-surrogate");
+ Equal("Short name", MonsterGaugeOverlayLabels.Display("Short name"),
+     "short labels keep their original appearance");
+ var longDetail = MonsterGaugeOverlayRows.Build([observed with {
+     Ailments = [observed.Ailments[0] with { Name = longNameA }],
+     Parts = [observed.Parts[0] with { Name = longNameB }]
+ }], true);
+ Equal(true, longDetail[1].Text.StartsWith("  " + longPrefix + "…: buildup"),
+     "status detail labels also remain bounded");
+ Equal(true, longDetail[2].Text.StartsWith("  " + longPrefix + "…: flinch"),
+     "part detail labels remain bounded without erasing cycle information");
+
 // A proc count is a sampled counter even after buildup and duration return to
 // zero. It must remain visible in detailed mode, including when more than three
 // active statuses compete for the bounded row limit.
