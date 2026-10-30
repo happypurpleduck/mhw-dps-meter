@@ -743,10 +743,10 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  // generated before the click with the post-toggle availability, ensuring
  // the verbose row and dedicated availability line agree in the same frame.
  var preClickDiagnostics =
-     "Plugin build: regression\\n" +
-     "Status: unchanged\\n" +
-     $"Monster gauges: {availabilityOff.StatusText}\\n" +
-     "Recorder: unchanged\\n";
+     "Plugin build: regression\n" +
+     "Status: unchanged\n" +
+     $"Monster gauges: {availabilityOff.StatusText}\n" +
+     "Recorder: unchanged\n";
  var enabledNoSamples = availabilityOff with
  {
      CaptureEnabled = true, CachedMonsterCount = 0, SampleAgeSeconds = null
@@ -754,44 +754,44 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  var afterEnableDiagnostics = MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
      preClickDiagnostics, enabledNoSamples);
  Equal(true, afterEnableDiagnostics.Contains(
-     $"Monster gauges: {enabledNoSamples.StatusText}\\n"),
+     $"Monster gauges: {enabledNoSamples.StatusText}\n"),
      "same-frame F9 enable updates verbose diagnostics to no-current-samples");
  Equal(false, afterEnableDiagnostics.Contains(
      $"Monster gauges: {availabilityOff.StatusText}"),
      "same-frame enable does not retain the pre-click off status");
  Equal(true, afterEnableDiagnostics.StartsWith(
-     "Plugin build: regression\\nStatus: unchanged\\n"),
+     "Plugin build: regression\nStatus: unchanged\n"),
      "diagnostic build/status lines are unchanged by gauge-line alignment");
- Equal(true, afterEnableDiagnostics.EndsWith("Recorder: unchanged\\n"),
+ Equal(true, afterEnableDiagnostics.EndsWith("Recorder: unchanged\n"),
      "recorder and trailing diagnostics remain untouched");
 
  var beforeDisableDiagnostics =
-     "Plugin build: regression\\n" +
-     $"Monster gauges: {availabilitySampled.StatusText}\\n" +
-     "Recorder: unchanged\\n";
+     "Plugin build: regression\n" +
+     $"Monster gauges: {availabilitySampled.StatusText}\n" +
+     "Recorder: unchanged\n";
  var disabledSameFrame = availabilitySampled with { CaptureEnabled = false };
  var afterDisableDiagnostics = MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
      beforeDisableDiagnostics, disabledSameFrame);
  Equal(true, afterDisableDiagnostics.Contains(
-     $"Monster gauges: {disabledSameFrame.StatusText}\\n"),
+     $"Monster gauges: {disabledSameFrame.StatusText}\n"),
      "same-frame F9 disable updates verbose diagnostics to off");
 
  var staleDiagnostics = MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
      beforeDisableDiagnostics, freshnessLate);
  Equal(true, staleDiagnostics.Contains(
-     $"Monster gauges: {freshnessLate.StatusText}\\n"),
+     $"Monster gauges: {freshnessLate.StatusText}\n"),
      "stale age status aligns with the same-frame dedicated availability line");
  Equal(preClickDiagnostics,
      MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
          preClickDiagnostics, availabilityOff),
      "unchanged availability preserves the existing complete diagnostics");
- var unrecognizedDiagnostics = "Status: Monster gauges: embedded text\\nRecorder: unchanged";
+ var unrecognizedDiagnostics = "Status: Monster gauges: embedded text\nRecorder: unchanged";
  Equal(unrecognizedDiagnostics,
      MonsterGaugeOverlayDiagnostics.AlignGaugeLine(
          unrecognizedDiagnostics, enabledNoSamples),
      "diagnostic mention within another field is never replaced");
- var finalLine = "Status: unchanged\\nMonster gauges: previously off";
- Equal("Status: unchanged\\nMonster gauges: " + enabledNoSamples.StatusText,
+ var finalLine = "Status: unchanged\nMonster gauges: previously off";
+ Equal("Status: unchanged\nMonster gauges: " + enabledNoSamples.StatusText,
      MonsterGaugeOverlayDiagnostics.AlignGaugeLine(finalLine, enabledNoSamples),
      "gauge row at end of diagnostics is aligned without requiring a final newline");
 
