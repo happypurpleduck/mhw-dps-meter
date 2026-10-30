@@ -33,18 +33,20 @@ internal static class MonsterGaugeOverlayMenuChoices
         {
             var gauge = shown[i];
             var displayName = MonsterGaugeOverlayLabels.Display(gauge.Name);
-            // Distinct full names may truncate to the same visible name.
-            // Give visible collisions stable instance-ordered suffixes.
-            var sameNameInstances = shown
+            // Distinct (instance, full name) records may shorten to the
+            // same visible label, including two names at the same pointer.
+            // Rank complete identities, not just distinct addresses.
+            var matchingChoices = shown
                 .Where(other => string.Equals(
                     MonsterGaugeOverlayLabels.Display(other.Name),
                     displayName, StringComparison.Ordinal))
-                .Select(other => other.Instance.ToInt64())
-                .Distinct()
-                .OrderBy(instance => instance)
+                .OrderBy(other => other.Instance.ToInt64())
+                .ThenBy(other => other.Name, StringComparer.Ordinal)
                 .ToArray();
-            var ordinal = Array.IndexOf(sameNameInstances, gauge.Instance.ToInt64()) + 1;
-            var label = sameNameInstances.Length > 1
+            var ordinal = Array.FindIndex(matchingChoices, other =>
+                other.Instance == gauge.Instance
+                && string.Equals(other.Name, gauge.Name, StringComparison.Ordinal)) + 1;
+            var label = matchingChoices.Length > 1
                 ? $"{displayName} (sample #{ordinal})"
                 : displayName;
 

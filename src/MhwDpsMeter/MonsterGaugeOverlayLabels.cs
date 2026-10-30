@@ -30,14 +30,20 @@ internal static class MonsterGaugeOverlayLabels
                 continue;
             }
 
-            if (count == MaxNameTextElements)
-                return result.ToString() + "…";
-
+            // Normalized separators occupy the same grapheme budget as
+            // non-whitespace text. Otherwise many short words could bypass
+            // the 32-element limit after whitespace normalization.
             if (pendingSpace)
             {
+                if (count == MaxNameTextElements)
+                    return result.ToString() + "…";
                 result.Append(' ');
                 pendingSpace = false;
+                count++;
             }
+            if (count == MaxNameTextElements)
+                return result.ToString().TrimEnd(' ') + "…";
+
             result.Append(element);
             count++;
         }

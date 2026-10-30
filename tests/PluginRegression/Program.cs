@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using MhwDpsMeter;
 using SharpPluginLoader.Core.Actions;
 using SharpPluginLoader.Core.Entities;
@@ -326,6 +327,73 @@ Equal(2, observed.Ailments[0].Procs, "KO proc count");
  Equal(true, longDetail[2].Text.StartsWith("  " + longPrefix + "…: flinch"),
      "part detail labels remain bounded without erasing cycle information");
 
+
+ // Normalized spaces count toward the same 32-grapheme HUD budget.
+ var sixteenWords = string.Join(" ", Enumerable.Repeat("A", 16));
+ var seventeenWords = string.Join(" ", Enumerable.Repeat("A", 17));
+ Equal(31, StringInfo.ParseCombiningCharacters(sixteenWords).Length,
+     "sixteen one-letter words contain fifteen visible separator graphemes");
+ Equal(sixteenWords, MonsterGaugeOverlayLabels.Display(sixteenWords),
+     "31 visible graphemes remain untruncated");
+ Equal(33, StringInfo.ParseCombiningCharacters(seventeenWords).Length,
+     "the next one-letter word exceeds the 32-grapheme budget");
+ Equal(sixteenWords + "…", MonsterGaugeOverlayLabels.Display(seventeenWords),
+     "the next normalized space and letter trigger truncation, not 33+ visible graphemes");
+ var thirtyTwoElements = "AA " + string.Join(" ", Enumerable.Repeat("B", 15));
+ Equal(32, StringInfo.ParseCombiningCharacters(thirtyTwoElements).Length,
+     "the exact 32-element boundary counts letters and spaces together");
+ Equal(thirtyTwoElements, MonsterGaugeOverlayLabels.Display(thirtyTwoElements),
+     "exact 32-element normalized output fits without an ellipsis");
+ Equal(thirtyTwoElements + "…",
+     MonsterGaugeOverlayLabels.Display(thirtyTwoElements + " C"),
+     "overflow immediately after an exact-boundary word produces ellipsis");
+ var spaceAtBoundary = new string('X', 31) + " final";
+ Equal(new string('X', 31) + "…",
+     MonsterGaugeOverlayLabels.Display(spaceAtBoundary),
+     "a separator consuming the last slot never creates a trailing space before ellipsis");
+ Equal(true, StringInfo.ParseCombiningCharacters(
+     MonsterGaugeOverlayLabels.Display(string.Join(" ", Enumerable.Repeat("A", 32)))).Length
+     <= MonsterGaugeOverlayLabels.MaxNameTextElements + 1,
+     "space-heavy display labels remain bounded to budget plus optional ellipsis");
+
+ // Different full identities can share an instance and a truncated label;
+ // do not collapse collision markers by pointer alone.
+ var sameInstanceA = longA with { Instance = gaugeMonster + 57 };
+ var sameInstanceB = longB with { Instance = sameInstanceA.Instance };
+ var sameInstanceRoster = new[] { sameInstanceB, sameInstanceA };
+ var sameInstanceMenu = MonsterGaugeOverlayMenuChoices.Build(
+     sameInstanceRoster, 61, new MonsterGaugeOverlaySelection());
+ Equal(2, sameInstanceMenu.Choices.Length,
+     "same-instance different-full-name samples remain separate F9 choices");
+ Equal(longPrefix + "… (sample #1)",
+     sameInstanceMenu.Choices.Single(x => x.Sample.Name == longNameA).Label,
+     "same-instance first full-name identity receives a unique visible suffix");
+ Equal(longPrefix + "… (sample #2)",
+     sameInstanceMenu.Choices.Single(x => x.Sample.Name == longNameB).Label,
+     "same-instance second full-name identity receives its own suffix");
+ Equal(2, sameInstanceMenu.Choices.Select(x => x.ControlId).Distinct().Count(),
+     "same-pointer different names preserve distinct stable ImGui identities");
+ var sameInstanceReordered = MonsterGaugeOverlayMenuChoices.Build(
+     [sameInstanceA, sameInstanceB], 61, new MonsterGaugeOverlaySelection());
+ Equal(sameInstanceMenu.Choices.Single(x => x.Sample.Name == longNameA).Label,
+     sameInstanceReordered.Choices.Single(x => x.Sample.Name == longNameA).Label,
+     "same-instance label ordinals do not depend on enumeration order");
+ Equal(sameInstanceMenu.Choices.Single(x => x.Sample.Name == longNameB).Label,
+     sameInstanceReordered.Choices.Single(x => x.Sample.Name == longNameB).Label,
+     "second colliding same-instance label remains stable on reorder");
+ var sameInstanceChoice = new MonsterGaugeOverlaySelection();
+ Equal(true, sameInstanceChoice.Select(sameInstanceB, 61, sameInstanceRoster),
+     "same-pointer menu can select the correct original full name");
+ Equal(longNameB, sameInstanceChoice.Visible(sameInstanceRoster)[0].Name,
+     "manual selection resolves same-pointer label collisions by full name");
+ sameInstanceChoice.Observe(61, [sameInstanceA]);
+ Equal(false, sameInstanceChoice.IsManual,
+     "same-pointer renamed monster invalidates manual selection");
+ var duplicateFullNames = MonsterGaugeOverlayMenuChoices.Build(
+     [sameInstanceA, sameInstanceA, sameInstanceB], 61,
+     new MonsterGaugeOverlaySelection());
+ Equal(2, duplicateFullNames.Choices.Length,
+     "truly duplicate full identities remain deduplicated before collision ranking");
 // A proc count is a sampled counter even after buildup and duration return to
 // zero. It must remain visible in detailed mode, including when more than three
 // active statuses compete for the bounded row limit.
