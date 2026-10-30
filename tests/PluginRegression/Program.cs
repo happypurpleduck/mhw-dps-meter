@@ -324,12 +324,20 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      "status-only details retain proc evidence");
 
  var partsOnly = new MonsterGaugeOverlayCategories(false, false, true);
+ var partsCompact = MonsterGaugeOverlayRows.Build([observed], false, partsOnly);
+ Equal(1, partsCompact.Length, "parts-only compact presentation remains one heading");
+ Equal("Anjanath | 1 sampled part meters", partsCompact[0].Text,
+     "parts-only heading includes sampled part count without hidden stamina or ailments");
  var partsExpanded = MonsterGaugeOverlayRows.Build([observed], true, partsOnly);
  Equal(2, partsExpanded.Length, "parts-only details contain no ailment row");
  Equal(true, partsExpanded[1].Text.Contains("sampled cycle"),
      "parts-only view retains part remaining/cycle semantics");
 
  var staminaOnly = new MonsterGaugeOverlayCategories(true, false, false);
+ var staminaCompact = MonsterGaugeOverlayRows.Build([observed], false, staminaOnly);
+ Equal(1, staminaCompact.Length, "stamina-only compact presentation remains one heading");
+ Equal("Anjanath | stamina 90/150", staminaCompact[0].Text,
+     "stamina-only heading includes measured stamina without hidden ailment or part counts");
  var staminaExpanded = MonsterGaugeOverlayRows.Build([observed], true, staminaOnly);
  Equal(1, staminaExpanded.Length, "stamina-only display never includes status/part details");
  Equal(true, staminaExpanded[0].Text.Contains("stamina 90/150"),
@@ -346,6 +354,16 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      "disabled categories never appear as fabricated measurements");
  Equal(true, noneSelected[2].Text.Contains("+1 more"),
      "monster overflow remains visible regardless of category preferences");
+ var noneCompact = MonsterGaugeOverlayRows.Build(
+     [observed, secondGauge, thirdGauge], false,
+     new MonsterGaugeOverlayCategories(false, false, false));
+ Equal(3, noneCompact.Length, "all-hidden compact mode stays bounded with overflow");
+ Equal("Anjanath | no sampled gauge categories selected", noneCompact[0].Text,
+     "all-hidden compact heading explicitly explains the selection without false readings");
+ Equal("Second | no sampled gauge categories selected", noneCompact[1].Text,
+     "second compact heading likewise omits hidden stamina/status/part readings");
+ Equal(true, noneCompact[2].Text.Contains("+1 more"),
+     "all-hidden compact mode retains monster overflow notice");
  Equal(0, MonsterGaugeOverlayRows.Build([], false, partsOnly).Length,
      "empty samples remain empty for any category selection");
 
