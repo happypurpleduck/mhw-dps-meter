@@ -304,7 +304,7 @@ internal sealed class Overlay
             foreach (var choice in menu.Choices)
             {
                 ImGui.PushID(choice.ControlId);
-                if (ImGui.SmallButton(choice.Selected ? "Selected##pick" : "Show##pick"))
+                if (ImGui.SmallButton(choice.ButtonLabel))
                     _gaugeMonsterSelection.Select(choice.Sample, selectionEpoch, selectableGauges);
                 ImGui.SameLine();
                 ImGui.TextUnformatted(choice.Label);

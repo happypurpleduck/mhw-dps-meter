@@ -4,7 +4,13 @@ namespace MhwDpsMeter;
 /// labels. UI IDs track cached entity identity plus the poller generation,
 /// never the row index, even when samples reorder mid-click.</summary>
 internal readonly record struct MonsterGaugeOverlayMenuChoice(
-    MonsterGaugeState Sample, string ControlId, string Label, bool Selected);
+    MonsterGaugeState Sample, string ControlId, string Label, bool Selected)
+{
+    // Dear ImGui hashes the full label after ## but only the suffix after
+    // ###. Keep the full widget identity stable when visible text changes.
+    // F9 calls SmallButton(ButtonLabel) inside PushID(ControlId).
+    public string ButtonLabel => Selected ? "Selected###pick" : "Show###pick";
+}
 
 internal readonly record struct MonsterGaugeOverlayMenu(
     MonsterGaugeOverlayMenuChoice[] Choices, int MoreCount);

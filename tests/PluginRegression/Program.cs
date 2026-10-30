@@ -454,7 +454,34 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      "selected-row feedback follows the sampled monster rather than its position");
  Equal(bBefore.ControlId,
      uiSelected.Choices.Single(c => c.Selected).ControlId,
-     "selected label state never changes the underlying ImGui button ID");
+     "selected label state never changes the parent ImGui ID");
+
+ // Check the actual button-label string passed from the production menu
+ // model into SmallButton, not just the PushID(ControlId) parent scope.
+ // Dear ImGui hashes the suffix after ### (unlike ##, which also hashes
+ // the visible label); the final scoped identity must survive selection.
+ static string ComposedImGuiButtonIdentity(MonsterGaugeOverlayMenuChoice choice)
+ {
+     var label = choice.ButtonLabel;
+     var marker = label.IndexOf("###", StringComparison.Ordinal);
+     if (marker < 0)
+         throw new Exception("F9 menu button must use Dear ImGui's ### ID separator");
+     return choice.ControlId + "/" + label[(marker + 3)..];
+ }
+ Equal("Show###pick", bBefore.ButtonLabel,
+     "unselected button uses the stable ###pick widget ID suffix");
+ var bSelected = uiSelected.Choices.Single(c => c.Selected);
+ Equal("Selected###pick", bSelected.ButtonLabel,
+     "selected button changes only the visible label before ###");
+ Equal(ComposedImGuiButtonIdentity(bBefore),
+     ComposedImGuiButtonIdentity(bSelected),
+     "full composed F9 widget identity remains stable when selected label changes");
+ Equal(ComposedImGuiButtonIdentity(bBefore),
+     ComposedImGuiButtonIdentity(bAfter),
+     "full composed F9 widget identity remains stable across roster reordering");
+ Equal(false, ComposedImGuiButtonIdentity(aBefore) ==
+     ComposedImGuiButtonIdentity(bBefore),
+     "two same-name monsters still have distinct full composed button identities");
  var uiNextEpoch = MonsterGaugeOverlayMenuChoices.Build(uiRoster, 31, uiChoice);
  Equal(false, aBefore.ControlId == uiNextEpoch.Choices.Single(
      c => c.Sample.Instance == sameNameA.Instance).ControlId,
