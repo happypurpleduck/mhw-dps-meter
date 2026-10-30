@@ -61,7 +61,9 @@ This only constrains how long a cached reading may appear current when update ca
 
 ### F9 same-frame verbose diagnostics consistency (source-only #20 follow-up)
 
-The F9 experimental checkbox is now processed **before** the verbose diagnostics block is rendered. Since the plugin's diagnostic string was assembled before the ImGui callback, a pure production formatter replaces **only** the owned `Monster gauges:` row with the **post-toggle** `MonsterGaugeOverlayAvailability.StatusText`; the dedicated `Gauge availability:` line and verbose row now agree on the same frame, including capture off/on and an empty cache after reset. The build, party, recorder and other diagnostic fields remain unchanged. Source-only regression covers enable/disable, stale status, exact row replacement, unchanged other rows and an absent line. No new native sampling, polling, recorder/HP/DPS effects, or stronger host-authority claims. Actual F9 render ordering and usability still require #17 in-game validation.
+The F9 experimental capture checkbox is processed **before** verbose diagnostics are displayed, so the controlled `Monster gauges:` status and the dedicated `Gauge availability:` line reflect the **same post-toggle availability**, including capture off/on, an empty reset cache, and stale samples. The initial implementation in #48 replaced an existing text row, but **#49 supersedes that mechanism**: `Plugin.BuildDiagnosticsText()` now supplies typed before/after sections and the F9 renderer **inserts** the owned gauge-status row at their fixed boundary. It does not search for or rewrite an existing line, and does not depend on that line being present in input text.
+
+All other diagnostic fields retain their content and order; regression checks cover both the same-frame status invariant and safe composition when other fields contain an identical-looking label. No native sampling, poll/recording, HP/DPS or authority changes are involved. Actual F9 render ordering and usability remain subject to #17 live-game validation.
 
 ### Structural F9 gauge-diagnostics composition (source-only #20 follow-up)
 
