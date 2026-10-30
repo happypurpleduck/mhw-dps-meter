@@ -512,6 +512,59 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(false, MonsterGaugeOverlayMenuChoices.Build(uiRoster, 31, uiChoice)
      .Choices.Any(c => c.Selected), "generation change clears selected-row feedback");
 
+
+ // A stale *age* is only a display mask, not evidence that the selected
+ // monster despawned. Test the same availability-aware selection path used
+ // by both the regular HUD and F9.
+ var staleSelection = new MonsterGaugeOverlaySelection();
+ var selectedRoster = new[] { observed, secondGauge, thirdGauge };
+ var freshRoster = new MonsterGaugeOverlayAvailability(true, true, true, 3, 0.3);
+ var staleRoster = freshRoster with { SampleAgeSeconds = 3.1 };
+ staleSelection.ObserveAvailability(80, selectedRoster, freshRoster);
+ Equal(true, staleSelection.Select(thirdGauge, 80, selectedRoster),
+     "manual user selection may target the third sampled monster");
+ Equal((nint)thirdGauge.Instance, staleSelection.Visible(selectedRoster)[0].Instance,
+     "chosen third sampled monster is displayed before a sampling gap");
+ staleSelection.ObserveAvailability(80, null, staleRoster);
+ staleSelection.ObserveAvailability(80, selectedRoster, staleRoster);
+ Equal(true, staleSelection.IsManual,
+     "both HUD and F9 stale frames retain pending manual monster choice");
+ Equal(false, staleRoster.MayRenderGauges,
+     "stale data and pending selection cannot make cached gauge values visible");
+ staleSelection.ObserveAvailability(80,
+     [secondGauge, thirdGauge, observed], freshRoster);
+ Equal(true, staleSelection.IsManual,
+     "successful fresh same-generation sample restores manual selection");
+ Equal((nint)thirdGauge.Instance, staleSelection.Visible(
+     [secondGauge, thirdGauge, observed])[0].Instance,
+     "fresh roster reorder does not return selected third monster to automatic first-two");
+
+ staleSelection.ObserveAvailability(80, selectedRoster, staleRoster);
+ staleSelection.ObserveAvailability(80, [observed, secondGauge],
+     freshRoster with { CachedMonsterCount = 2 });
+ Equal(false, staleSelection.IsManual,
+     "fresh observation missing selected monster clears the pending choice");
+ Equal(2, staleSelection.Visible([observed, secondGauge]).Count,
+     "missing selected monster falls back to automatic selection");
+
+ Equal(true, staleSelection.Select(thirdGauge, 80, selectedRoster),
+     "selection can be restored for generation-invalidation regression");
+ staleSelection.ObserveAvailability(81, selectedRoster, staleRoster);
+ Equal(false, staleSelection.IsManual,
+     "epoch change during stale interval clears even an identical reused instance");
+ Equal(true, staleSelection.Select(thirdGauge, 81, selectedRoster),
+     "explicit manual choice can resume on the newly observed generation");
+ staleSelection.ObserveAvailability(81, null,
+     freshRoster with { CaptureEnabled = false });
+ Equal(false, staleSelection.IsManual,
+     "disabled capture still immediately clears stale manual preference");
+ Equal(true, staleSelection.Select(thirdGauge, 81, selectedRoster),
+     "selection can resume for empty-roster regression");
+ staleSelection.ObserveAvailability(81, [],
+     freshRoster with { CachedMonsterCount = 0 });
+ Equal(false, staleSelection.IsManual,
+     "fresh empty enumeration remains a real invalidation of manual choice");
+
  // The production poller resets the manual display token on roster changes,
  // even if the same address/name appears after an observed HP generation reset.
  var selectionPoller = new MonsterGaugePoller();

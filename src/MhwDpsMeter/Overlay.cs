@@ -90,8 +90,8 @@ internal sealed class Overlay
         DrawPartyTable(snapshot, elapsedSeconds, carts);
         // An F9 capture-off click must suppress old cached readings on this
         // very frame, even before the next 100 ms native poll clears them.
-        _gaugeMonsterSelection.Observe(selectionEpoch,
-            gaugeAvailability.MayRenderGauges ? gauges : null);
+        _gaugeMonsterSelection.ObserveAvailability(selectionEpoch,
+            gauges, gaugeAvailability);
         if (gaugeAvailability.MayRenderGauges && gauges is { Count: > 0 })
             DrawGaugeSummary(_gaugeMonsterSelection.Visible(gauges),
                 ShowMonsterGaugeDetails, GaugeCategories);
@@ -316,7 +316,8 @@ internal sealed class Overlay
         // The selector is a per-hunt *manual display preference* over already
         // sampled monsters, not the game's active/targeted monster identity.
         var selectableGauges = displayAvailability.MayRenderGauges ? gauges : null;
-        _gaugeMonsterSelection.Observe(selectionEpoch, selectableGauges);
+        _gaugeMonsterSelection.ObserveAvailability(selectionEpoch,
+            gauges, displayAvailability);
         if (experimental && selectableGauges is { Count: > 1 })
         {
             ImGui.Separator();

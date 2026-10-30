@@ -24,13 +24,34 @@ internal sealed class MonsterGaugeOverlaySelection
         _selectedName = null;
     }
 
+    private void ObserveEpoch(long epoch)
+    {
+        if (_epoch == epoch)
+            return;
+        _epoch = epoch;
+        Clear();
+    }
+
+    /// <summary>Apply the same display gate used by both F9 and the HUD.
+    /// Age-only staleness hides rows but must not act like an empty roster:
+    /// the next fresh sample may still contain the same selected monster.
+    /// A changed generation clears the choice even while readings are stale.
+    /// All other unavailable states invalidate the manual choice.</summary>
+    public void ObserveAvailability(long epoch, IReadOnlyList<MonsterGaugeState>? gauges,
+        MonsterGaugeOverlayAvailability availability)
+    {
+        if (availability.ShowStaleHudHint)
+        {
+            ObserveEpoch(epoch);
+            return;
+        }
+
+        Observe(epoch, availability.MayRenderGauges ? gauges : null);
+    }
+
     public void Observe(long epoch, IReadOnlyList<MonsterGaugeState>? gauges)
     {
-        if (_epoch != epoch)
-        {
-            _epoch = epoch;
-            Clear();
-        }
+        ObserveEpoch(epoch);
 
         // An unreadable/empty roster must never retain a stale manual target.
         if (_selectedInstance is nint instance
