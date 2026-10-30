@@ -52,7 +52,7 @@ internal sealed class Overlay
         ImGui.PopTextWrapPos();
     }
 
-    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null, long selectionEpoch = 0)
+    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null, long selectionEpoch = 0, MonsterGaugeOverlayAvailability gaugeAvailability = default)
     {
         if (!Visible || !inQuest)
             return;
@@ -88,10 +88,18 @@ internal sealed class Overlay
         }
 
         DrawPartyTable(snapshot, elapsedSeconds, carts);
-        _gaugeMonsterSelection.Observe(selectionEpoch, gauges);
-        if (gauges is { Count: > 0 })
+        // An F9 capture-off click must suppress old cached readings on this
+        // very frame, even before the next 100 ms native poll clears them.
+        _gaugeMonsterSelection.Observe(selectionEpoch,
+            gaugeAvailability.MayRenderGauges ? gauges : null);
+        if (gaugeAvailability.MayRenderGauges && gauges is { Count: > 0 })
             DrawGaugeSummary(_gaugeMonsterSelection.Visible(gauges),
                 ShowMonsterGaugeDetails, GaugeCategories);
+        else if (gaugeAvailability.ShowEmptyHudHint)
+        {
+            ImGui.Separator();
+            Disabled("Experimental gauges: no current samples (local, unverified)");
+        }
 
         if (trial is { Active: true })
             DrawTrial(trial);
@@ -231,7 +239,8 @@ internal sealed class Overlay
         TimeTrial? trial,
         Action? onToggleTrial,
         IReadOnlyList<MonsterGaugeState>? gauges = null,
-        long selectionEpoch = 0)
+        long selectionEpoch = 0,
+        MonsterGaugeOverlayAvailability gaugeAvailability = default)
     {
         Wrapped(diagnostics);
         if (ImGui.Button("Dump diagnostics (F6)"))
@@ -250,6 +259,10 @@ internal sealed class Overlay
             settings.ExperimentalMonsterGauges = experimental;
             settings.Save();
         }
+        // Re-evaluate after the checkbox click so the F9 feedback reflects
+        // this frame's preference instead of the preceding render state.
+        var displayAvailability = gaugeAvailability with { CaptureEnabled = experimental };
+        Disabled($"Gauge availability: {displayAvailability.StatusText}");
         Disabled("Unverified local memory readings; not authoritative on multiplayer guests.");
         if (experimental)
         {
@@ -289,7 +302,7 @@ internal sealed class Overlay
 
         // The selector is a per-hunt *manual display preference* over already
         // sampled monsters, not the game's active/targeted monster identity.
-        var selectableGauges = experimental ? gauges : null;
+        var selectableGauges = displayAvailability.MayRenderGauges ? gauges : null;
         _gaugeMonsterSelection.Observe(selectionEpoch, selectableGauges);
         if (experimental && selectableGauges is { Count: > 1 })
         {

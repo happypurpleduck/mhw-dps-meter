@@ -533,6 +533,67 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(stableEpoch + 2, selectionPoller.SelectionEpoch,
      "repeated disabled polls do not churn selection token");
 
+
+ // Availability/provenance is a pure display classification over the same
+ // existing capture gates and cache. It does not prove host authority, read
+ // anything natively or mistake no data for a measured zero.
+ var availabilityOff = new MonsterGaugeOverlayAvailability(false, true, true, 2);
+ Equal(MonsterGaugeAvailabilityKind.Disabled, availabilityOff.Kind,
+     "off has precedence even if a just-disabled cache still holds old samples");
+ Equal(false, availabilityOff.MayRenderGauges, "off suppresses stale cached HUD readings");
+ Equal(false, availabilityOff.ShowEmptyHudHint, "off does not clutter default HUD");
+ Equal(true, availabilityOff.StatusText.Contains("disabled"),
+     "F9 reports capture disabled explicitly");
+
+ var availabilityBlocked = new MonsterGaugeOverlayAvailability(true, false, true, 2);
+ Equal(MonsterGaugeAvailabilityKind.UnsupportedBuild, availabilityBlocked.Kind,
+     "unconfirmed or mismatched build cannot report cached readings as current");
+ Equal(false, availabilityBlocked.MayRenderGauges,
+     "build mismatch suppresses old cached HUD values");
+ Equal(true, availabilityBlocked.StatusText.Contains("421810")
+     && availabilityBlocked.StatusText.Contains("matching map"),
+     "F9 explains the hard build and map requirement");
+
+ var availabilityOutside = new MonsterGaugeOverlayAvailability(true, true, false, 2);
+ Equal(MonsterGaugeAvailabilityKind.OutsideQuest, availabilityOutside.Kind,
+     "old cached monster readings do not survive a quest boundary in the UI");
+ Equal(false, availabilityOutside.MayRenderGauges,
+     "no quest means no displayed current monster samples");
+ Equal(false, availabilityOutside.ShowEmptyHudHint,
+     "no quest does not add an in-hunt empty-sample hint");
+
+ var availabilityEmpty = new MonsterGaugeOverlayAvailability(true, true, true, 0);
+ Equal(MonsterGaugeAvailabilityKind.NoCurrentSamples, availabilityEmpty.Kind,
+     "empty sampled roster is reported as unknown rather than measured zero");
+ Equal(false, availabilityEmpty.MayRenderGauges,
+     "empty roster cannot show sampled monsters");
+ Equal(true, availabilityEmpty.ShowEmptyHudHint,
+     "enabled in-quest preview shows a concise no-current-samples HUD hint");
+ Equal(true, availabilityEmpty.StatusText.Contains("no current")
+     && availabilityEmpty.StatusText.Contains("not a zero"),
+     "empty status explicitly rejects fabricated zero");
+
+ var availabilitySampled = new MonsterGaugeOverlayAvailability(true, true, true, 2);
+ Equal(MonsterGaugeAvailabilityKind.LocalUnverified, availabilitySampled.Kind,
+     "sampled data never graduates to verified-host classification");
+ Equal(true, availabilitySampled.MayRenderGauges,
+     "only explicitly enabled and supported in-quest samples can be rendered");
+ Equal(false, availabilitySampled.ShowEmptyHudHint,
+     "populated cache does not emit no-data hint");
+ Equal(true, availabilitySampled.StatusText.Contains("Local-unverified")
+     && availabilitySampled.StatusText.Contains("NOT verified host state"),
+     "F9 provenance is explicit even with two sampled monsters");
+
+ var toggledOn = availabilityOff with { CaptureEnabled = true };
+ Equal(MonsterGaugeAvailabilityKind.LocalUnverified, toggledOn.Kind,
+     "status recomputes immediately when F9 experimental preference is switched on");
+ Equal(MonsterGaugeAvailabilityKind.Disabled,
+     (availabilitySampled with { CaptureEnabled = false }).Kind,
+     "status recomputes immediately when F9 experimental capture is switched off");
+ Equal(MonsterGaugeAvailabilityKind.NoCurrentSamples,
+     (availabilitySampled with { CachedMonsterCount = -1 }).Kind,
+     "invalid negative cache count never fabricates a sample");
+
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.
  var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));

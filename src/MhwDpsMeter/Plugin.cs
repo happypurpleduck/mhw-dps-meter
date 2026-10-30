@@ -603,8 +603,15 @@ public sealed class Plugin : IPlugin
             _training ? _trial : null,
             _training ? ToggleTrial : null,
             _inQuest ? _gaugeStates : null,
-            _gaugePoller.SelectionEpoch);
+            _gaugePoller.SelectionEpoch,
+            CurrentGaugeAvailability());
     }
+
+    private MonsterGaugeOverlayAvailability CurrentGaugeAvailability() =>
+        new(_settings.ExperimentalMonsterGauges,
+            _mapMatchesBuild && _buildConfirmed && _gameBuild == 421810,
+            _inQuest,
+            _gaugeStates.Length);
 
     private string BuildDiagnosticsText()
     {
@@ -628,7 +635,7 @@ public sealed class Plugin : IPlugin
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
             $"Part capture: {_hits.PartDiagnostics}\n" +
-            $"Monster gauges: {(_settings.ExperimentalMonsterGauges ? (_mapMatchesBuild && _buildConfirmed && _gameBuild == 421810 ? $"experimental local ({_gaugeStates.Length} monsters)" : "unsupported build") : "off")}\n" +
+            $"Monster gauges: {CurrentGaugeAvailability().StatusText}\n" +
             $"Recorder: {_recorder.HitCount} hits ({_recorder.HitCoverage}), weapon {_recorder.LocalWeapon ?? "-"}\n" +
             $"Hunter entities: {_party.Diagnostics()}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
@@ -708,7 +715,8 @@ public sealed class Plugin : IPlugin
             _training ? _trial : null,
             _inQuest ? _carts : null,
             _inQuest ? _gaugeStates : null,
-            _gaugePoller.SelectionEpoch);
+            _gaugePoller.SelectionEpoch,
+            CurrentGaugeAvailability());
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------
