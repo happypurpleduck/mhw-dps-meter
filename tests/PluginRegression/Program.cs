@@ -607,7 +607,7 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      freshnessReads++;
      return [observed];
  }
- Equal(null, freshnessPoller.SampleAgeSeconds(810),
+ Equal<double?>(null, freshnessPoller.SampleAgeSeconds(810),
      "new poller has no sample-age evidence");
  freshnessPoller.Tick(810, true, true, [gaugeInput], ReadForFreshness);
  Equal(1, freshnessReads, "initial freshness sample uses one existing poller read");
@@ -617,9 +617,9 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(1, freshnessReads, "skipped subsecond tick never adds a native read");
  Equal(true, Math.Abs(freshnessPoller.SampleAgeSeconds(811.3)!.Value - 1.3) < 0.0001,
      "skipped poll does not refresh age of the same cached reading");
- Equal(null, freshnessPoller.SampleAgeSeconds(809),
+ Equal<double?>(null, freshnessPoller.SampleAgeSeconds(809),
      "clock rollback never makes old samples appear fresh");
- Equal(null, freshnessPoller.SampleAgeSeconds(double.NaN),
+ Equal<double?>(null, freshnessPoller.SampleAgeSeconds(double.NaN),
      "non-finite monotonic time cannot prove freshness");
  var ageBeforeReacquire = freshnessPoller.SampleAgeSeconds(813);
  Equal(MonsterGaugeAvailabilityKind.StaleSamples,
@@ -631,14 +631,21 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal(0d, freshnessPoller.SampleAgeSeconds(813),
      "successful re-read restores a zero-age timestamp");
  freshnessPoller.Tick(814.2, true, true, [gaugeInput], _ => []);
- Equal(null, freshnessPoller.SampleAgeSeconds(814.2),
+ Equal<double?>(null, freshnessPoller.SampleAgeSeconds(814.2),
      "successful empty capture has no sampled timestamp");
  freshnessPoller.Tick(815.3, true, true, [gaugeInput], ReadForFreshness);
  Equal(0d, freshnessPoller.SampleAgeSeconds(815.3),
      "fresh reading after empty capture starts a new age");
  freshnessPoller.Tick(815.4, false, true, [gaugeInput], ReadForFreshness);
- Equal(null, freshnessPoller.SampleAgeSeconds(815.4),
+ Equal<double?>(null, freshnessPoller.SampleAgeSeconds(815.4),
      "disabled capture clears the timestamp and cached rows");
+ freshnessPoller.Tick(815.5, true, true, [gaugeInput], ReadForFreshness);
+ Equal(0d, freshnessPoller.SampleAgeSeconds(815.5),
+     "re-enabled capture starts with a new native observation");
+ freshnessPoller.Tick(816.6, true, true, [gaugeInput],
+     _ => throw new InvalidOperationException("synthetic read teardown"));
+ Equal<double?>(null, freshnessPoller.SampleAgeSeconds(816.6),
+     "reader failure invalidates sample age alongside cached observations");
 
  var freshnessNow = new MonsterGaugeOverlayAvailability(true, true, true, 1, 2.5);
  Equal(MonsterGaugeAvailabilityKind.LocalUnverified, freshnessNow.Kind,
