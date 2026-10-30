@@ -270,6 +270,43 @@ Equal(2, observed.Ailments[0].Procs, "KO proc count");
  Equal(0, MonsterGaugeOverlayRows.Build([], true).Length,
      "empty cache never becomes a fake monster observation");
 
+// A proc count is a sampled counter even after buildup and duration return to
+// zero. It must remain visible in detailed mode, including when more than three
+// active statuses compete for the bounded row limit.
+var counterOnlyAilment = observed.Ailments[0] with
+{
+    Id = 12, Name = "Counter only", Buildup = 0f, Duration = 0f, Procs = 4
+};
+var counterOnlyRows = MonsterGaugeOverlayRows.Build(
+    [observed with { Ailments = [counterOnlyAilment], Parts = [] }], true);
+Equal(2, counterOnlyRows.Length, "counter-only cached ailment remains an available detailed row");
+Equal(true, counterOnlyRows[1].Text.Contains("Counter only: buildup 0/100, sampled procs 4"),
+    "zero buildup and duration do not mask a nonzero recorded proc count");
+var busyGauge = observed with
+{
+    Parts = [],
+    Ailments =
+    [
+        observed.Ailments[0] with { Id = 21, Name = "Active A", Buildup = 95f, Duration = 0f, Procs = 0 },
+        observed.Ailments[0] with { Id = 22, Name = "Active B", Buildup = 80f, Duration = 0f, Procs = 0 },
+        observed.Ailments[0] with { Id = 23, Name = "Active C", Buildup = 60f, Duration = 0f, Procs = 0 },
+        counterOnlyAilment,
+    ]
+};
+var prioritizedRows = MonsterGaugeOverlayRows.Build([busyGauge], true);
+Equal(4, prioritizedRows.Length, "detailed gauge remains capped at three ailment rows");
+Equal(true, prioritizedRows[1].Text.Contains("Counter only: buildup 0/100, sampled procs 4"),
+    "counter-only observations receive priority when the three-row cap is full");
+Equal(true, prioritizedRows[2].Text.Contains("Active A: buildup 95/100"),
+    "highest active buildup is retained after the counter-only evidence");
+Equal(true, prioritizedRows[3].Text.Contains("Active B: buildup 80/100"),
+    "next active buildup follows in stable descending order");
+Equal(false, prioritizedRows.Any(r => r.Text.Contains("Active C")),
+    "lower-ranked active status does not overrun the bounded display");
+Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
+    "compact mode remains a single sampled-summary row regardless of proc counters");
+
+
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.
  var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));

@@ -29,8 +29,14 @@ internal static class MonsterGaugeOverlayRows
 
             foreach (var ailment in gauge.Ailments
                 .Where(a => a.MaxBuildup > 0f && float.IsFinite(a.Buildup)
-                    && float.IsFinite(a.MaxBuildup) && (a.Buildup > 0f || a.Duration > 0f))
-                .OrderByDescending(a => a.Buildup / a.MaxBuildup)
+                    && float.IsFinite(a.MaxBuildup)
+                    && (a.Buildup > 0f || a.Duration > 0f || a.Procs > 0))
+                // A positive recorded proc count is independent evidence even
+                // when buildup and duration have already returned to zero.
+                // Reserve space for such counter-only rows before selecting
+                // the highest active buildup percentages under the three-row cap.
+                .OrderByDescending(a => a.Procs > 0 && a.Buildup == 0f && a.Duration == 0f)
+                .ThenByDescending(a => a.Buildup / a.MaxBuildup)
                 .ThenBy(a => a.Id)
                 .Take(MaxDetailAilments))
             {
