@@ -1,6 +1,6 @@
 # Experimental monster gauges (first implementation slice)
 
-**Status:** draft, opt-in. This is *not* a proven host-authoritative reading and must not be enabled by default until verified against a running supported build. Phase tracking: #14. Attribution research: #15.
+**Status:** experimental, opt-in; integrated for a unified feature review. Live-game validation under #17 remains pending. This is *not* a proven host-authoritative reading and must not be enabled by default until verified against a running supported build. Phase tracking: #14. Attribution research: #15.
 
 ## Scope
 
