@@ -16,6 +16,106 @@ Equal("HeavyBowgun", GameNames.Weapon((WeaponType)12), "heavy bowgun game ID des
 Equal("LightBowgun", GameNames.Weapon((WeaponType)13), "light bowgun game ID despite old SPL enum");
 Equal<string?>(null, GameNames.Weapon((WeaponType)99), "invalid weapon stays unknown");
 
+// Live T04a evidence: idle at camp, working hook and readable zero awards,
+// but Kulu loses 5 HP to an unobserved actor. That loss is not hunter damage.
+var idleHunter = PartySnapshot.LocalOnly(0, "duck", (nint)0x6E9E0080);
+var idleProjection = HuntDamageMerger.Merge(idleHunter, [0, 0, 0, 0],
+    hookAvailable: true, fallbackLocalDamage: 5, readerSource: "party list", out var idleSource);
+Equal(0, idleProjection.TotalDamage,
+    "working zero-hit hook must not credit unrelated monster HP loss to idle hunter");
+Equal("live hits", idleSource,
+    "healthy zero-hit hook remains the selected local damage source");
+
+// An absent roster or a reader exception can inject the estimate before the
+// merger runs. Cover that production input as well as the normal named row.
+var b01ReaderFallback = PartySnapshot.LocalOnly(5, "duck", (nint)0x6E9E0080);
+var b01IdleFallback = HuntDamageMerger.Merge(b01ReaderFallback, [0, 0, 0, 0],
+    true, 5, "monster HP", out var b01FallbackSource);
+Equal(0, b01IdleFallback.TotalDamage,
+    "a reader-injected HP estimate cannot override a healthy hook's zero");
+Equal(0f, b01IdleFallback.WithRates(81).Members.Single().Dps,
+    "idle HP loss does not create phantom local DPS");
+Equal("live hits", b01FallbackSource,
+    "source follows the measured hook after removing a reader HP estimate");
+Equal(5, b01ReaderFallback.TotalDamage,
+    "damage projection does not mutate the reader snapshot");
+
+var b01Active = HuntDamageMerger.Merge(b01ReaderFallback, [1301, 0, 0, 0],
+    true, 1499, "monster HP", out var b01ActiveSource);
+Equal(1301, b01Active.TotalDamage,
+    "unrelated monster HP loss cannot inflate positive hooked damage while awards lag");
+Equal(1301, b01Active.SlotDamage[0], "measured local damage feeds cumulative slot samples");
+Equal("live hits", b01ActiveSource, "active hook damage is labeled as live hits");
+Equal(false, b01Active.HasAwardTable, "hook fallback is not promoted into award-table evidence");
+
+var b01NoHook = HuntDamageMerger.Merge(idleHunter, [0, 0, 0, 0],
+    false, 5, "none", out var b01NoHookSource);
+Equal(5, b01NoHook.TotalDamage,
+    "legacy solo HP estimate remains available when the hit hook is unavailable");
+Equal("monster HP", b01NoHookSource, "legacy HP estimate retains its distinct source label");
+
+var b01Local = idleHunter.Members.Single();
+var b01Award = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Local.With(damage: 1301)], hasAwardTable: true),
+    [1400, 0, 0, 0], true, 2000, "quest-award packed", out var b01AwardSource);
+Equal(1301, b01Award.TotalDamage,
+    "positive synchronized awards still win over hook and whole-monster HP totals");
+Equal(true, b01Award.HasAwardTable, "positive award-table provenance survives merging");
+Equal("quest-award packed", b01AwardSource, "positive award source label is preserved");
+
+// T08e captured a healthy table with local awards 0, teammate awards 48,
+// and a 450 hook total. Patching that zero produced 450 -> 49 when the
+// local award first became positive. Preserve one source across all slots.
+var b02Remote = new PartyMemberSnapshot { Slot = 1, Name = "Lexareds", Damage = 48 };
+var b02Early = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Local, b02Remote], hasAwardTable: true),
+    [450, 0, 0, 0], true, 450, "quest-award packed", out var b02EarlySource);
+Equal(0, b02Early.SlotDamage[0],
+    "T08e valid zero local award is not replaced with 450 from another source");
+Equal(48, b02Early.TotalDamage, "T08e party total contains only synchronized awards");
+Equal("quest-award packed", b02EarlySource, "zero local awards retain the actual award source");
+var b02BeforeLocalAward = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Local, b02Remote.With(damage: 993)], hasAwardTable: true),
+    [450, 0, 0, 0], true, 2000, "quest-award packed", out _);
+Equal(993, b02BeforeLocalAward.TotalDamage,
+    "T08e t=46 snapshot excludes the zero local slot's 450 hook total");
+var b02Later = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Local.With(damage: 49), b02Remote.With(damage: 993)], hasAwardTable: true),
+    [499, 0, 0, 0], true, 2000, "quest-award packed", out _);
+Equal(49, b02Later.SlotDamage[0], "T08e subsequent positive local award stays exact");
+Equal(true, b02Later.SlotDamage[0] >= b02Early.SlotDamage[0],
+    "T08e source projection does not create the captured 450-to-49 drop");
+
+var b01Remote = new PartyMemberSnapshot { Slot = 0, Name = "Other", Damage = 900 };
+var b01Guest = new PartyMemberSnapshot {
+    Slot = 2, Name = "duck", IsLocal = true, Instance = (nint)0x6E9E0080 };
+var b01MixedAward = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Remote, b01Guest], hasAwardTable: true),
+    [0, 0, 1301, 0], true, 9999, "quest-award packed", out var b01MixedSource);
+Equal(900, b01MixedAward.SlotDamage[0], "remote award damage is not rewritten by the local hook");
+Equal(0, b01MixedAward.SlotDamage[2], "positive award table preserves zero in the actual guest slot");
+Equal(900, b01MixedAward.TotalDamage, "party award totals do not mix in a zero slot's hooked damage");
+Equal("quest-award packed", b01MixedSource, "all award slots keep a consistent source label");
+
+var b01ZeroLocalAward = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Remote, b01Guest], hasAwardTable: true),
+    [0, 0, 0, 0], true, 9999, "quest-award packed", out _);
+Equal(0, b01ZeroLocalAward.SlotDamage[2],
+    "an idle local hunter stays at zero when teammates have positive awards");
+
+var b01GuestFallback = PartySnapshot.From(
+    [b01Remote.With(damage: 0), b01Guest.With(damage: 5)], hasAwardTable: false);
+var b01GuestHits = HuntDamageMerger.Merge(b01GuestFallback,
+    [0, 0, 1301, 0], true, 9999, "party list", out var b01GuestSource);
+Equal(1301, b01GuestHits.SlotDamage[2], "local hook damage stays in the actual nonzero guest slot");
+Equal(0, b01GuestHits.SlotDamage[0], "local hook fallback creates no remote damage");
+Equal("live hits", b01GuestSource, "guest local-hook source remains explicit");
+
+var b01NoHookParty = HuntDamageMerger.Merge(
+    PartySnapshot.From([b01Remote.With(damage: 0), b01Guest], hasAwardTable: false),
+    [0, 0, 0, 0], false, 9999, "party list", out _);
+Equal(0, b01NoHookParty.TotalDamage, "multiplayer without a hook never assigns monster HP loss to a hunter");
+
 Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
  // Guiding Lands stage 109 is an open-ended expedition, even when the
  // quest-id/state API does not expose a normal accepted quest.
@@ -2072,6 +2172,69 @@ try
         "real production writer starts gauge-only logs with one t=0 damage sample");
     Equal(0f, noHook.Samples[0].T, "initial damage sample timestamp is zero");
     Equal(4, store.Index.Count, "gauge-only no-hook entry added after two quest logs and three-hour sample log");
+
+    // The live B01 log stored HP-derived damage before the first hooked hit,
+    // then dropped from 99 to 10 when real awards arrived. Verify the fixed
+    // production projection through the actual writer and JSON roundtrip.
+    store.BeginHunt();
+    foreach (var (elapsed, hpLoss) in new[] { (80, 5), (676, 99) })
+    {
+        var estimatedRow = PartySnapshot.LocalOnly(hpLoss, "duck", (nint)0x6E9E0080);
+        var measuredRow = HuntDamageMerger.Merge(estimatedRow, [0, 0, 0, 0],
+            true, hpLoss, "monster HP", out _);
+        store.UpdateSamples(elapsed, measuredRow.SlotDamage);
+    }
+    var b01MeasuredAward = HuntDamageMerger.Merge(
+        PartySnapshot.From([b01Local.With(damage: 10)], hasAwardTable: true),
+        [10, 0, 0, 0], true, 99, "quest-award packed", out _);
+    store.UpdateSamples(680, b01MeasuredAward.SlotDamage);
+    var b01History = store.EndHunt(new FightLogHeader(
+        1154, "Literary Thief", "return", 101, "Ancient Forest",
+        t0.AddHours(4), 680, "local", 421810),
+        b01MeasuredAward.Members, new HuntRecorder((_, _) => null));
+    Equal(true, b01History is not null, "hook-projected ordinary damage history saves successfully");
+    using var b01HistoryJson = System.Text.Json.JsonDocument.Parse(
+        File.ReadAllText(Path.Combine(store.LogsDirectory, b01History!.FileName)));
+    var b01StoredPoints = b01HistoryJson.RootElement.GetProperty("samples")
+        .EnumerateArray().Select(sample => (
+            T: sample.GetProperty("t").GetSingle(),
+            Damage: sample.GetProperty("damage")[0].GetInt32())).ToArray();
+    Equal(true, b01StoredPoints.Where(point => point.T < 676.0489f)
+        .All(point => point.Damage == 0),
+        "persisted history has no HP-derived hunter damage before the first hooked hit");
+    Equal(true, b01StoredPoints.Zip(b01StoredPoints.Skip(1))
+        .All(pair => pair.Second.Damage >= pair.First.Damage),
+        "persisted cumulative damage never falls when real award totals arrive");
+    Equal(10, b01StoredPoints[^1].Damage,
+        "persisted history ends at the measured award total, excluding unrelated HP loss");
+
+    // Replay the T08e zero/positive award transition through the real writer.
+    // The raw hook total remains separate; no captured hit is rewritten.
+    store.BeginHunt();
+    store.UpdateSamples(24, b02Early.SlotDamage);
+    store.UpdateSamples(46, b02BeforeLocalAward.SlotDamage);
+    store.UpdateSamples(48, b02Later.SlotDamage);
+    var b02History = store.EndHunt(new FightLogHeader(
+        30002, "Quest 30002", "complete", 104, "Rotten Vale",
+        t0.AddHours(5), 48, "local", 421810),
+        b02Later.Members, new HuntRecorder((_, _) => null));
+    Equal(true, b02History is not null, "T08e award transition saves through production writer");
+    using var b02HistoryJson = System.Text.Json.JsonDocument.Parse(
+        File.ReadAllText(Path.Combine(store.LogsDirectory, b02History!.FileName)));
+    var b02StoredPoints = b02HistoryJson.RootElement.GetProperty("samples")
+        .EnumerateArray().Select(sample => (
+            T: sample.GetProperty("t").GetSingle(),
+            Local: sample.GetProperty("damage")[0].GetInt32(),
+            Remote: sample.GetProperty("damage")[1].GetInt32())).ToArray();
+    Equal(true, b02StoredPoints.Where(point => point.T < 48).All(point => point.Local == 0),
+        "T08e persisted zero-award local history has no injected 450 hook total");
+    Equal(true, b02StoredPoints.Zip(b02StoredPoints.Skip(1))
+        .All(pair => pair.Second.Local >= pair.First.Local),
+        "T08e persisted source transition avoids the captured local damage drop");
+    Equal(49, b02StoredPoints[^1].Local, "T08e final local history keeps the award total");
+    Equal(993, b02StoredPoints[^1].Remote, "T08e teammate history keeps its own award total");
+    Equal(2, b02HistoryJson.RootElement.GetProperty("players").GetArrayLength(),
+        "T08e writer preserves both player rows after source correction");
 }
 finally
 {

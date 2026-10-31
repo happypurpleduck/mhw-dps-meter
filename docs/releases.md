@@ -17,8 +17,10 @@ requests get downloadable build artifacts. Browser/WASM and the separate
 4. Review and merge that PR. The resulting `master` build must pass all checks
    before the workflow creates the tags and publishes GitHub releases.
 
-The first included changeset proposes plugin **0.4.1** and viewer **0.1.1**.
-Existing version numbers stay unchanged until the release PR is merged.
+The current release pairs plugin **0.6.2** with viewer **0.3.1**. See the
+[gameplay validation notes](release-validation-2026-10-31.md) for the ordinary
+quest smoke tests, source-only damage fixes and pending Guiding Lands test.
+Future product versions change when the corresponding release PR is merged.
 
 Version metadata lives in `src/MhwDpsMeter/package.json` and
 `gpui-viewer/package.json`. `npm run version-packages` runs Changesets, then

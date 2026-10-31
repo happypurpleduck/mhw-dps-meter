@@ -1,6 +1,6 @@
 # Experimental monster gauges (first implementation slice)
 
-**Status:** experimental, opt-in; integrated for a unified feature review. Live-game validation under #17 remains pending. This is *not* a proven host-authoritative reading and must not be enabled by default until verified against a running supported build. Phase tracking: #14. Attribution research: #15.
+**Status:** experimental, opt-in. Ordinary solo/hosted gameplay smoke testing on build 421810 is recorded in the [release validation notes](release-validation-2026-10-31.md); numerical gauge accuracy, guest authority and Guiding Lands gameplay remain unverified. Gauges stay off by default and are not proven host-authoritative readings. The detailed acceptance matrix under #17 remains incomplete. Phase tracking: #14. Attribution research: #15.
 
 ## Scope
 
