@@ -147,3 +147,7 @@ If a `damageScope:"local-only"` expedition captured monster gauges but **no hook
 ### Unknown damage coverage fails closed (source-only review correction)
 
 Both viewers now preserve unknown future `damageScope` values as opaque provenance rather than converting them to missing metadata and claiming complete party authority. Unknown coverage receives a warning, unavailable total/DPS/local contribution and no numeric party shares. Old logs without scope still follow the ordinary quest display, while `local-only` logs retain their explicit source limitations. Parser/model regressions exercise future values. UI and runtime source validation remain required under #17.
+
+### Index damage sorting and accessible text (source-only review correction)
+
+Web HuntList uses an optional numeric damage accessor and TanStack's `sortUndefined:'last'`, so unknown damage does not sort like measured zero in either direction. Rust GPUI sorts missing index damage last independently of order and uses the same model predicate for visible cells and `cell_text` (copy/accessibility), preventing a hidden raw numeric zero. Forward-compatible unknown coverage scopes also render as missing. Source tests cover zero, positive, gauge-only and unknown-scope entries; UI runtime evidence remains for #17.

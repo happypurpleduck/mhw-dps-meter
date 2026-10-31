@@ -351,6 +351,28 @@ pub struct IndexEntry {
 }
 
 impl IndexEntry {
+    pub fn has_known_damage(&self) -> bool {
+        self.damage_scope.is_none() ||
+            (self.damage_scope.as_deref() == Some("local-only") && !self.players.is_empty())
+    }
+
+    pub fn damage_text(&self) -> String {
+        if self.has_known_damage() { self.total_damage.to_string() } else { "—".into() }
+    }
+
+    /// Sort missing observations after measured numbers in both directions.
+    pub fn compare_damage(&self, other: &Self, descending: bool) -> std::cmp::Ordering {
+        match (self.has_known_damage(), other.has_known_damage()) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            (false, false) => std::cmp::Ordering::Equal,
+            (true, true) => {
+                let order = self.total_damage.cmp(&other.total_damage);
+                if descending { order.reverse() } else { order }
+            }
+        }
+    }
+
     /// Same derivation as `FightLogIndexEntry.From` in the plugin.
     pub fn from_log(log: &FightLog, file: impl Into<String>) -> Self {
         let mut monsters: Vec<String> = log.monsters.iter().map(|m| m.name.clone()).collect();
@@ -450,6 +472,7 @@ mod guiding_lands_scope_tests {
         let multi = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-multiplayer-gauge-only.json")).unwrap();
         assert!(multi.is_local_only());
         assert!(!multi.has_observed_local_damage());
+        assert_eq!(IndexEntry::from_log(&multi, "gauge-only.json").damage_text(), "—");
         assert_eq!(multi.quest_id, 0);
         assert!(multi.players.is_empty());
         assert!(multi.hits.is_empty());
@@ -459,6 +482,36 @@ mod guiding_lands_scope_tests {
         assert_eq!(multi.gauge_samples[1].monster, "m2");
         assert!(multi.gauge_samples.iter().all(|g| g.source == "local-unverified"));
         assert_eq!(IndexEntry::from_log(&multi, "gauge-only.json").total_damage, 0);
+    }
+
+    #[test]
+    fn unknown_damage_sorts_last_but_measured_zero_is_numeric() {
+        let entry = |damage: i64, scope: Option<&str>, has_player: bool| {
+            let mut value = serde_json::json!({
+                "file": "test.json",
+                "totalDamage": damage,
+                "players": if has_player { vec!["Local"] } else { vec![] }
+            });
+            if let Some(scope) = scope { value["damageScope"] = serde_json::json!(scope); }
+            serde_json::from_value::<IndexEntry>(value).unwrap()
+        };
+        let zero = entry(0, None, true);
+        let positive = entry(50, None, true);
+        let gauge_only = entry(0, Some("local-only"), false);
+        let unknown = entry(900, Some("future"), true);
+        assert_eq!(zero.damage_text(), "0");
+        assert_eq!(gauge_only.damage_text(), "—");
+        assert_eq!(unknown.damage_text(), "—");
+        assert_eq!(zero.compare_damage(&positive, false), std::cmp::Ordering::Less);
+        assert_eq!(zero.compare_damage(&positive, true), std::cmp::Ordering::Greater);
+        for descending in [false, true] {
+            assert_eq!(gauge_only.compare_damage(&zero, descending),
+                std::cmp::Ordering::Greater);
+            assert_eq!(unknown.compare_damage(&positive, descending),
+                std::cmp::Ordering::Greater);
+            assert_eq!(unknown.compare_damage(&gauge_only, descending),
+                std::cmp::Ordering::Equal);
+        }
     }
 
     #[test]
@@ -475,6 +528,8 @@ mod guiding_lands_scope_tests {
         assert!(future.has_unknown_damage_scope());
         assert!(!future.has_observed_local_damage());
         assert_eq!(IndexEntry::from_log(&future, "future.json").damage_scope.as_deref(), Some("host-verified"));
+        assert!(!IndexEntry::from_log(&future, "future.json").has_known_damage());
+        assert_eq!(IndexEntry::from_log(&future, "future.json").damage_text(), "—");
         assert!(old.damage_scope.is_none());
         assert!(IndexEntry::from_log(&old, "old.json").damage_scope.is_none());
     }

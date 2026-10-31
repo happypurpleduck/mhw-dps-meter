@@ -90,6 +90,11 @@ impl HuntListDelegate {
             let key = self.columns.get(col_ix).map(|c| c.key.to_string()).unwrap_or_default();
             rows.sort_by(|a, b| {
                 let (a, b) = (&entries[*a], &entries[*b]);
+                // Shared model comparator keeps missing damage after known
+                // values in either direction (and all unknowns equal).
+                if key == "damage" {
+                    return a.compare_damage(b, sort == ColumnSort::Descending);
+                }
                 let ord = match key.as_str() {
                     "hunt" => a.quest_name.cmp(&b.quest_name),
                     "result" => a.result.cmp(&b.result),
@@ -151,6 +156,8 @@ impl TableDelegate for HuntListDelegate {
                                         .cloned().collect::<Vec<_>>();
                                     if entry.damage_scope.as_deref() == Some("local-only") {
                                         names.push("local-only damage".to_string());
+                                    } else if entry.damage_scope.is_some() {
+                                        names.push("damage coverage unknown".to_string());
                                     }
                                     names.join(" · ")
                                 })
@@ -161,9 +168,8 @@ impl TableDelegate for HuntListDelegate {
             "result" => result_tag(&entry.result).into_any_element(),
             "time" => div().w_full().text_right().whitespace_nowrap().child(format_duration(entry.duration_seconds)).into_any_element(),
             "damage" => div().w_full().text_right().whitespace_nowrap()
-                .child(if entry.damage_scope.as_deref() == Some("local-only") && entry.players.is_empty() {
-                    "—".to_string()
-                } else { format_int(entry.total_damage) }).into_any_element(),
+                .child(if entry.has_known_damage() { format_int(entry.total_damage) }
+                    else { "—".to_string() }).into_any_element(),
             _ => div().into_any_element(),
         }
     }
@@ -177,7 +183,7 @@ impl TableDelegate for HuntListDelegate {
             "hunt" => entry.quest_name.clone(),
             "result" => entry.result.clone(),
             "time" => format!("{}", entry.duration_seconds),
-            "damage" => entry.total_damage.to_string(),
+            "damage" => entry.damage_text(),
             _ => String::new(),
         }
     }
@@ -195,3 +201,4 @@ pub fn result_tag(result: &str) -> Tag {
     .xsmall()
     .child(result.to_string())
 }
+

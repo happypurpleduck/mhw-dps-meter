@@ -1,3 +1,5 @@
+import { hasKnownIndexDamage } from '../src/data/parse'
+import type { IndexEntry } from '../src/schema/fightlog'
 import { describe, expect, it } from 'vitest'
 import { createRoot, createSignal, flush } from 'solid-js'
 import { createColumnHelper } from '@tanstack/table-core'
@@ -43,6 +45,37 @@ describe('createSolidTable (Solid 2 binding over table-core)', () => {
     flush()
     expect(t.sorting()).toEqual([{ id: 'damage', desc: true }])
     expect(t.rows()[0]!.original.name).toBe('d')
+    dispose()
+  })
+})
+
+describe('damage column unknown-versus-zero sort (same model as HuntList)', () => {
+  const col = createColumnHelper<Features, IndexEntry>()
+  const columns = [col.accessor((e) => hasKnownIndexDamage(e) ? e.totalDamage : undefined, {
+    id: 'totalDamage', sortFn: 'basic', sortUndefined: 'last',
+  })]
+  const make = (file: string, totalDamage: number, scope?: string, players: string[] = ['Local']): IndexEntry =>
+    ({ file, kind: 'quest', questId: 0, questName: file, result: 'leave', startedAt: '',
+       durationSeconds: 10, totalDamage, damageScope: scope, players, monsters: [] })
+
+  it('keeps missing and future-scope entries after numeric zero in both sort directions', () => {
+    const cases = [
+      make('unknown', 999, 'host-verified'),
+      make('zero', 0),
+      make('some', 50),
+      make('gauge-only', 0, 'local-only', []),
+    ]
+    const { table, dispose } = createRoot((dispose) => {
+      const table = createSolidTable<IndexEntry>({
+        data: () => cases, columns,
+        initialSorting: [{ id: 'totalDamage', desc: false }],
+      })
+      return { table, dispose }
+    })
+    expect(table.rows().map(r => r.original.file)).toEqual(['zero', 'some', 'unknown', 'gauge-only'])
+    table.setSorting([{ id: 'totalDamage', desc: true }])
+    flush()
+    expect(table.rows().map(r => r.original.file)).toEqual(['some', 'zero', 'unknown', 'gauge-only'])
     dispose()
   })
 })

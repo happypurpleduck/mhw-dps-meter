@@ -6,6 +6,11 @@ export const hasObservedLocalDamage = (log: FightLog): boolean =>
   log.damageScope === undefined ||
   (log.damageScope === 'local-only' && log.players.some(p => p.isLocal))
 
+/** Unknown and gauge-only damage must not be sorted as measured zero. */
+export const hasKnownIndexDamage = (entry: IndexEntry): boolean =>
+  entry.damageScope === undefined ||
+  (entry.damageScope === 'local-only' && entry.players.length > 0)
+
 /** Accepts schema-1 or schema-2 JSON and returns a fully populated FightLog. */
 export function normalizeLog(raw: unknown): FightLog {
   if (!raw || typeof raw !== 'object') throw new Error('fight log is not an object')
