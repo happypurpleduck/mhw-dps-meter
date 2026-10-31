@@ -110,3 +110,7 @@ These checks apply to stage 109 (The Guiding Lands), in addition to V01–V18. T
 | GL08 | Solo and multiplayer under Windows and Proton | real overlay position/legibility, FPS/frame-time and startup/teardown smoke; attach anonymized logs/screenshots |
 
 Keep all GL rows **NOT RUN** until real game testing. Source-level simulated model checks are not substitutes.
+
+### Guiding Lands stage lifecycle source regression (not in-game evidence)
+
+The production `SyncQuestState` path now uses the pure `GuidingLandsSession.Decide(stage, player, active)` policy before accessing any quest ID/state. Regression covers no-player load, first entry, repeated monster encounters, missing player pointer during camp travel, changed multiplayer player pointer, stage exit, one-time end and immediate re-entry, and training/non-Guiding stages. Repeated 109-stage updates do not restart a session or reset the capture clock; the first confirmed non-109 stage ends it. **Actual stage transitions during camp travel, loading, multiplayer joins and returns still require GL01–GL08 live evidence; these unit tests do not prove the game always reports stage 109 throughout transitions.**

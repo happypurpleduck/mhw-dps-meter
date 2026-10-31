@@ -27,6 +27,39 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
      "Guiding Lands waits for a valid local player before starting");
  Equal(true, GuidingLandsSession.CanStart(109, (nint)0xB0000),
      "local player presence permits expedition session capture");
+ // The actual stage-driven decision invoked by Plugin.SyncQuestState should
+ // survive monster churn and multiplayer joins even without quest state.
+ Equal(GuidingLandsTransition.None,
+     GuidingLandsSession.Decide(109, 0, false),
+     "GL loading stage with no player cannot start a phantom session");
+ Equal(GuidingLandsTransition.Begin,
+     GuidingLandsSession.Decide(109, (nint)0xB0000, false),
+     "GL enters once after player is available even if questId is zero");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(109, (nint)0xB0000, true),
+     "GL monster defeats and spawns do not restart expedition");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(109, 0, true),
+     "brief missing local hunter during GL travel does not end session");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(109, (nint)0xC0000, true),
+     "GL multiplayer membership/pointer changes do not restart session");
+ Equal(GuidingLandsTransition.Leave,
+     GuidingLandsSession.Decide(305, 0, true),
+     "leaving GL for Seliana ends current expedition");
+ Equal(GuidingLandsTransition.None,
+     GuidingLandsSession.Decide(305, 0, false),
+     "GL session cannot end twice after already leaving stage");
+ Equal(GuidingLandsTransition.Begin,
+     GuidingLandsSession.Decide(109, (nint)0xB0000, false),
+     "immediate GL reentry is not blocked by a quest-id cooldown");
+ Equal(GuidingLandsTransition.None,
+     GuidingLandsSession.Decide(504, (nint)0xB0000, false),
+     "training area never enters a GL expedition");
+ Equal(GuidingLandsTransition.Leave,
+     GuidingLandsSession.Decide(504, 0, true),
+     "leaving GL for any other stage ends active expedition");
+
  var glLocal = new PartyMemberSnapshot {
      Slot = 2, Name = "Local", Instance = (nint)0xB0000,
      IsLocal = true, Damage = 9000 };

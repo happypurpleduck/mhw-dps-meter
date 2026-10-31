@@ -1019,25 +1019,29 @@ public sealed class Plugin : IPlugin
         try { _stageId = (int)Area.CurrentStage; }
         catch { return; }
 
-        if (GuidingLandsSession.IsStage(_stageId))
+        // Make the entire Guiding Lands stage policy pure and testable.
+        // Never query the local hunter on ordinary quest stages.
+        var guidingDecision = GuidingLandsSession.Decide(_stageId,
+            GuidingLandsSession.IsStage(_stageId) ? LocalPlayerInstance() : 0,
+            _guidingLands);
+        if (guidingDecision == GuidingLandsTransition.Begin)
         {
-            // Wait for the player's actual in-area entity so loading screens
-            // cannot start a phantom session. Ignore transient missing player
-            // pointers after a session has already begun.
-            if (GuidingLandsSession.CanStart(_stageId, LocalPlayerInstance()))
-            {
-                if (_training)
-                    EndTraining();
-                if (_inQuest && !_guidingLands)
-                    EndHunt("leave");
-                BeginGuidingLands();
-            }
+            if (_training)
+                EndTraining();
+            if (_inQuest && !_guidingLands)
+                EndHunt("leave");
+            BeginGuidingLands();
             return;
         }
 
-        // Leaving the stage, rather than a quest objective completing,
-        // ends a Guiding Lands expedition session.
-        if (_guidingLands)
+        // Monster kills, guest joins and temporary missing player pointers
+        // do not end a stage-109 expedition. Never consult quest states here.
+        if (GuidingLandsSession.IsStage(_stageId))
+            return;
+
+        // A confirmed stage exit ends a Guiding Lands session once; normal
+        // quests then proceed through the original quest state handling.
+        if (guidingDecision == GuidingLandsTransition.Leave)
             EndHunt("leave");
 
         int questId;

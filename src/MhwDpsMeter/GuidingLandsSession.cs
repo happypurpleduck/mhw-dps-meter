@@ -1,5 +1,13 @@
 namespace MhwDpsMeter;
 
+internal enum GuidingLandsTransition
+{
+    None,
+    Begin,
+    Continue,
+    Leave
+}
+
 /// <summary>Read-only expedition policy. Stage 109 is The Guiding Lands;
 /// its open-ended hunt lacks quest-award damage totals. Only local hook
 /// readings may be attributed to a hunter, in solo or multiplayer.</summary>
@@ -34,6 +42,21 @@ internal static class GuidingLandsSession
 
     public static bool CanStart(int stage, nint mainPlayer) =>
         IsStage(stage) && mainPlayer != 0;
+
+    /// <summary>Stage-only transition policy. A long expedition has no
+    /// conventional quest completion state; monster/party transitions and
+    /// brief missing player pointers must not create duplicate sessions.</summary>
+    public static GuidingLandsTransition Decide(
+        int stage, nint mainPlayer, bool alreadyActive)
+    {
+        if (IsStage(stage))
+            return alreadyActive ? GuidingLandsTransition.Continue
+                : CanStart(stage, mainPlayer) ? GuidingLandsTransition.Begin
+                : GuidingLandsTransition.None;
+
+        return alreadyActive ? GuidingLandsTransition.Leave
+            : GuidingLandsTransition.None;
+    }
 
     /// <summary>Never reuse quest-award data, remote players' zeros or
     /// whole-monster HP loss as individual hunter damage in this area.
