@@ -1244,7 +1244,8 @@ public sealed class Plugin : IPlugin
                 _elapsedSeconds,
                 _timerSource,
                 _gameBuild,
-                wasGuidingLands ? null : ReadRewards()),
+                wasGuidingLands ? null : ReadRewards(),
+                LocalOnlyExpedition: wasGuidingLands),
             members,
             _recorder);
 

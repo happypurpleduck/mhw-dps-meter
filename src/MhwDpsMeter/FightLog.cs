@@ -27,6 +27,12 @@ internal sealed class FightLog
     [JsonPropertyName("gameBuild")]
     public int GameBuild { get; set; }
 
+    /// <summary>Optional coverage boundary. Local-only observations never
+    /// imply synchronized remote hunter damage or party-share percentages.</summary>
+    [JsonPropertyName("damageScope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DamageScope { get; set; }
+
     [JsonPropertyName("questId")]
     public int QuestId { get; set; }
 
@@ -340,6 +346,10 @@ internal sealed class FightLogIndexEntry
     [JsonPropertyName("totalDamage")]
     public int TotalDamage { get; set; }
 
+    [JsonPropertyName("damageScope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DamageScope { get; set; }
+
     /// <summary>Local hunter's weapon type, when known.</summary>
     [JsonPropertyName("weapon")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -356,6 +366,7 @@ internal sealed class FightLogIndexEntry
         File = log.FileName,
         Kind = log.Kind,
         TotalDamage = log.Players.Sum(player => player.Damage),
+        DamageScope = log.DamageScope,
         Weapon = log.Players.FirstOrDefault(player => player.IsLocal)?.Weapon,
         QuestId = log.QuestId,
         QuestName = log.QuestName,

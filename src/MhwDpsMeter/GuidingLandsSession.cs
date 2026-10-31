@@ -6,6 +6,21 @@ namespace MhwDpsMeter;
 internal static class GuidingLandsSession
 {
     public const int StageId = 109;
+    public const string DamageScope = "local-only";
+
+    // Ordinary quest logs still require a positive quest, players and damage.
+    // The stage-109 exception allows observed local damage or valid gauges,
+    // even if the hook is absent; a completely empty session is never saved.
+    public static bool ShouldPersistLog(
+        int questId, int stageId, bool localOnlyExpedition,
+        int playerCount, int totalDamage, int gaugeSampleCount)
+    {
+        if (localOnlyExpedition && IsStage(stageId))
+            return (playerCount > 0 && totalDamage > 0) || gaugeSampleCount > 0;
+        if (localOnlyExpedition || questId <= 0)
+            return false;
+        return playerCount > 0 && totalDamage > 0;
+    }
     public const string HudProvenance =
         "Guiding Lands: local hook damage only; teammate totals unavailable";
 

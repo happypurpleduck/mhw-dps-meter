@@ -72,6 +72,34 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
      "solo expedition without party table retains local name");
  Equal(400, glSolo.TotalDamage,
      "solo expedition remains local-hook-only without party award data");
+ Equal(true, GuidingLandsSession.ShouldPersistLog(0, 109, true, 1, 250, 0),
+     "Guiding Lands hook-backed session can be saved with questId zero");
+ Equal(true, GuidingLandsSession.ShouldPersistLog(0, 109, true, 0, 0, 3),
+     "Guiding Lands gauge-only session can be saved without hit hook");
+ Equal(false, GuidingLandsSession.ShouldPersistLog(0, 109, true, 0, 0, 0),
+     "empty Guiding Lands expedition cannot create meaningless log");
+ Equal(false, GuidingLandsSession.ShouldPersistLog(0, 109, false, 1, 100, 0),
+     "questId zero needs explicit local-only expedition context");
+ Equal(false, GuidingLandsSession.ShouldPersistLog(0, 108, true, 1, 100, 1),
+     "different stage cannot bypass questId requirement");
+ Equal(true, GuidingLandsSession.ShouldPersistLog(123, 108, false, 1, 50, 0),
+     "ordinary quest log continues to be persisted");
+ Equal(false, GuidingLandsSession.ShouldPersistLog(123, 108, false, 0, 0, 2),
+     "gauge-only persistence remains restricted to Guiding Lands");
+ var glLog = new FightLog {
+     QuestName = "The Guiding Lands",
+     DamageScope = GuidingLandsSession.DamageScope
+ };
+ var glLogJson = System.Text.Json.JsonSerializer.Serialize(glLog);
+ Equal(true, glLogJson.Contains("\"damageScope\":\"local-only\""),
+     "serialized expedition logs explicitly label local-only coverage");
+ Equal(false, System.Text.Json.JsonSerializer.Serialize(new FightLog())
+     .Contains("\"damageScope\""),
+     "normal quest logs omit optional damage coverage metadata");
+ Equal(GuidingLandsSession.DamageScope,
+     FightLogIndexEntry.From(glLog).DamageScope,
+     "fight-log index propagates local-only coverage to viewers");
+
 
 Equal("Stage 999", GameNames.Stage(999), "unknown stage retains ID");
 Equal("Coral Pukei-Pukei", GameNames.Monster(69), "abbreviated monster fallback");

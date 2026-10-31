@@ -14,7 +14,8 @@ internal sealed record FightLogHeader(
     float DurationSeconds,
     string TimerSource,
     int GameBuild,
-    FightLogRewards? Rewards = null);
+    FightLogRewards? Rewards = null,
+    bool LocalOnlyExpedition = false);
 
 /// <summary>
 /// Writes one JSON file per hunt to <c>logs/</c>, keeps <c>logs/index.json</c> as a
@@ -55,7 +56,10 @@ internal sealed class FightLogStore
         LoadHistory();
         _index = ReadIndex();
         // Missing, or written by 0.4.0 before totalDamage/kind existed (a logged hunt never has 0 damage).
-        if (_index.Count == 0 || _index.Any(entry => entry.TotalDamage == 0))
+        // Genuine gauge-only Guiding Lands logs may have zero hit damage.
+        // Do not rebuild index.json on every startup for those entries.
+        if (_index.Count == 0 || _index.Any(entry =>
+            entry.TotalDamage == 0 && entry.QuestId > 0))
             BuildIndexFromFiles();
     }
 
@@ -101,11 +105,14 @@ internal sealed class FightLogStore
         var samples = _samples.ToArray();
         _samples.Clear();
 
-        if (!_logsAvailable || header.QuestId <= 0 || members.Count == 0)
+        if (!_logsAvailable)
             return null;
 
         var total = members.Sum(member => member.Damage);
-        if (total <= 0)
+        var gaugeSamples = recorder.GaugeSamples();
+        if (!GuidingLandsSession.ShouldPersistLog(
+            header.QuestId, header.StageId, header.LocalOnlyExpedition,
+            members.Count, total, gaugeSamples.Length))
             return null;
 
         var safeDuration = Math.Max(header.DurationSeconds, 0.001f);
@@ -114,6 +121,8 @@ internal sealed class FightLogStore
             SchemaVersion = FightLog.CurrentSchemaVersion,
             PluginVersion = Plugin.BuildStamp,
             GameBuild = header.GameBuild,
+            DamageScope = header.LocalOnlyExpedition
+                ? GuidingLandsSession.DamageScope : null,
             QuestId = header.QuestId,
             QuestName = string.IsNullOrWhiteSpace(header.QuestName) ? $"Quest {header.QuestId}" : header.QuestName,
             Result = header.Result,
@@ -143,7 +152,7 @@ internal sealed class FightLogStore
             Monsters = recorder.Monsters(),
             Samples = samples,
             Hits = recorder.Hits(),
-            GaugeSamples = recorder.GaugeSamples(),
+            GaugeSamples = gaugeSamples,
             GaugeSamplesDropped = recorder.GaugeSamplesDropped,
             GaugeClockDiscontinuities = recorder.GaugeClockDiscontinuities,
             Events = recorder.Events()
@@ -172,7 +181,9 @@ internal sealed class FightLogStore
             return false;
 
         var stamp = log.StartedAt.ToLocalTime().ToString("yyyy-MM-dd_HHmmss");
-        var middle = log.Kind == FightLog.KindTrial ? $"trial{log.DurationSeconds:0}s" : log.QuestId.ToString();
+        var middle = log.Kind == FightLog.KindTrial ? $"trial{log.DurationSeconds:0}s"
+            : log.DamageScope == GuidingLandsSession.DamageScope
+                ? "guiding-lands" : log.QuestId.ToString();
         var fileName = $"{stamp}_{middle}_{Sanitize(log.Result)}.json";
         var path = Path.Combine(_logsDirectory, fileName);
 
