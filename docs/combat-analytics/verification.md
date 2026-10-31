@@ -119,3 +119,8 @@ The production `SyncQuestState` path now uses the pure `GuidingLandsSession.Deci
 ### Shared Guiding Lands synthetic schema-3 fixtures (source-only, NOT runtime)
 
 `tests/fixtures/guiding-lands-solo.json` and `tests/fixtures/guiding-lands-multiplayer-gauge-only.json` are **hand-written synthetic** snapshots consumed by **both** SolidJS/web and Rust/GPUI model regression tests. They cover a positive local-hit-only session with explicit `damageScope: local-only`, and a multiplayer-labeled gauge-only zero-damage session with two fight-local monster IDs, no inferred remote damage or hunter rows, and all optional gauges `local-unverified`. The solo fixture's numeric `percent: 100` reflects internal normalization only: viewer UIs must display unknown party share instead. Neither JSON is captured from a real hunt and neither verifies multiplayer authority, monster offsets, Windows/Proton in-game timing or runtime compatibility. GL01–GL08 remain **NOT RUN**.
+
+
+### Preserve source stage at Guiding Lands exit (source-only)
+
+The plugin reads the new destination stage before ending a GL session on area exit. A log finalized with the destination (for example Seliana) would fail the stage-109-only Guiding Lands persistence gate even when valid damage/gauge observations existed. `GuidingLandsSession.LogStageId` now stamps a GL session's log with its original source stage **109** while preserving normal quest stage handling, with explicit departure/acceptance regression tests. GL06 live re-entry and save checks remain **NOT RUN**.

@@ -1237,13 +1237,17 @@ public sealed class Plugin : IPlugin
 
         _hits.RecordHits = false;
         var members = _snapshot?.Members ?? [];
+        // SyncQuestState sets _stageId to the *destination* before ending
+        // an expedition. Persist its original GL stage identity instead,
+        // otherwise the explicit stage-109 log gate rejects the whole log.
+        var logStageId = GuidingLandsSession.LogStageId(wasGuidingLands, _stageId);
         _logs?.EndHunt(
             new FightLogHeader(
                 _questId,
                 _questName,
                 result,
-                _stageId,
-                GameNames.Stage(_stageId),
+                logStageId,
+                GameNames.Stage(logStageId),
                 _questStartedAt,
                 _elapsedSeconds,
                 _timerSource,

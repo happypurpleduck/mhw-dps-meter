@@ -40,6 +40,12 @@ internal static class GuidingLandsSession
 
     public static bool IsStage(int stage) => stage == StageId;
 
+    // At session termination the current stage is often already Seliana or
+    // another destination. Never write the destination into an expedition
+    // record: stage 109 is the source session and the log acceptance gate.
+    public static int LogStageId(bool localOnlyExpedition, int currentStage) =>
+        localOnlyExpedition ? StageId : currentStage;
+
     public static bool CanStart(int stage, nint mainPlayer) =>
         IsStage(stage) && mainPlayer != 0;
 

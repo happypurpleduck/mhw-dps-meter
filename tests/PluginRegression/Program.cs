@@ -47,6 +47,16 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
  Equal(GuidingLandsTransition.Leave,
      GuidingLandsSession.Decide(305, 0, true),
      "leaving GL for Seliana ends current expedition");
+ Equal(109, GuidingLandsSession.LogStageId(true, 305),
+     "leaving Guiding Lands for Seliana preserves source stage in its log");
+ Equal(109, GuidingLandsSession.LogStageId(true, 504),
+     "loading another stage never turns a GL expedition log into training");
+ Equal(305, GuidingLandsSession.LogStageId(false, 305),
+     "normal quest logs retain their original stage semantics");
+ Equal(true, GuidingLandsSession.ShouldPersistLog(
+     0, GuidingLandsSession.LogStageId(true, 305), true, 1, 200, 0),
+     "a finished GL log passes stage-109 gate after leaving to another stage");
+
  Equal(GuidingLandsTransition.None,
      GuidingLandsSession.Decide(305, 0, false),
      "GL session cannot end twice after already leaving stage");
