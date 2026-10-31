@@ -272,6 +272,64 @@ Equal(2, observed.Ailments[0].Procs, "KO proc count");
  Equal(0, MonsterGaugeOverlayRows.Build([], true).Length,
      "empty cache never becomes a fake monster observation");
 
+ // Missing party table must not suppress independently sampled current
+ // monster gauges. This is the same pure frame projection used by ImGui.
+ var freshFrameAvailability = new MonsterGaugeOverlayAvailability(
+     true, true, true, 1, 0.25);
+ var noPartyFrame = MonsterGaugeOverlayFrame.Build(
+     null, [observed], freshFrameAvailability, false, MonsterGaugeOverlayCategories.All);
+ Equal(false, noPartyFrame.HasPartyRows,
+     "missing party snapshot retains waiting-for-hunt-data placeholder");
+ Equal(1, noPartyFrame.GaugeRows.Length,
+     "fresh cached gauges remain visible during temporary party-read gaps");
+ Equal(true, noPartyFrame.GaugeRows[0].Text.Contains("Anjanath | stamina 90/150"),
+     "party-less overlay still presents true cached stamina");
+ Equal<string?>(null, noPartyFrame.GaugeHint,
+     "fresh gauge data must not display a contradictory missing-data hint");
+ var emptyPartyFrame = MonsterGaugeOverlayFrame.Build(
+     new PartySnapshot(), [observed], freshFrameAvailability, true,
+     MonsterGaugeOverlayCategories.All);
+ Equal(false, emptyPartyFrame.HasPartyRows,
+     "a non-null party snapshot with zero members still shows waiting state");
+ Equal(3, emptyPartyFrame.GaugeRows.Length,
+     "expanded gauge details survive the empty-party case");
+ var withPartyFrame = MonsterGaugeOverlayFrame.Build(
+     PartySnapshot.LocalOnly(0, "You", gaugeMonster),
+     [observed], freshFrameAvailability, false, MonsterGaugeOverlayCategories.All);
+ Equal(true, withPartyFrame.HasPartyRows,
+     "party data still uses the normal DPS table");
+ Equal(noPartyFrame.GaugeRows[0].Text, withPartyFrame.GaugeRows[0].Text,
+     "the same gauge observation displays independently of party acquisition");
+ var emptyGaugeFrame = MonsterGaugeOverlayFrame.Build(
+     null, [], freshFrameAvailability with { CachedMonsterCount = 0 },
+     false, MonsterGaugeOverlayCategories.All);
+ Equal(0, emptyGaugeFrame.GaugeRows.Length,
+     "no sampled monster cannot fabricate an observed gauge value");
+ Equal(true, emptyGaugeFrame.GaugeHint?.Contains("no current samples") == true,
+     "missing gauges with missing party data show only no-data hint");
+ var staleNoPartyFrame = MonsterGaugeOverlayFrame.Build(
+     null, [observed], freshFrameAvailability with { SampleAgeSeconds = 3.0 },
+     true, MonsterGaugeOverlayCategories.All);
+ Equal(0, staleNoPartyFrame.GaugeRows.Length,
+     "stale cached gauges are still hidden during party acquisition failures");
+ Equal(true, staleNoPartyFrame.GaugeHint?.Contains("stale") == true,
+     "stale cache displays existing provenance-qualified stale hint");
+ var captureOffFrame = MonsterGaugeOverlayFrame.Build(
+     null, [observed], freshFrameAvailability with { CaptureEnabled = false },
+     true, MonsterGaugeOverlayCategories.All);
+ Equal(0, captureOffFrame.GaugeRows.Length,
+     "capture disabled never leaks prior cache even if party is missing");
+ Equal<string?>(null, captureOffFrame.GaugeHint,
+     "capture-off does not add gauge HUD hints");
+ var unsupportedFrame = MonsterGaugeOverlayFrame.Build(
+     null, [observed], freshFrameAvailability with { BuildReady = false },
+     true, MonsterGaugeOverlayCategories.All);
+ Equal(0, unsupportedFrame.GaugeRows.Length,
+     "unsupported build still hides gauge cache during party gap");
+ Equal<string?>(null, unsupportedFrame.GaugeHint,
+     "unsupported build never exposes a misleading gauge hint");
+
+
 
  // Long labels affect only the presentation, not game-sampled identity.
  var longPrefix = new string('X', MonsterGaugeOverlayLabels.MaxNameTextElements);

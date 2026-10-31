@@ -80,27 +80,29 @@ internal sealed class Overlay
         Disabled(Plugin.BuildStamp);
         ImGui.Separator();
 
-        if (snapshot is null || snapshot.Members.Length == 0)
-        {
-            Disabled("Waiting for hunt data...");
-            ImGui.End();
-            return;
-        }
-
-        DrawPartyTable(snapshot, elapsedSeconds, carts);
-        // An F9 capture-off click must suppress old cached readings on this
-        // very frame, even before the next 100 ms native poll clears them.
+        // A transiently missing party table must not suppress independently
+        // sampled, fresh monster gauges. Preserve the existing gate before
+        // projecting any rows from the cached monster observations.
         _gaugeMonsterSelection.ObserveAvailability(selectionEpoch,
             gauges, gaugeAvailability);
-        if (gaugeAvailability.MayRenderGauges && gauges is { Count: > 0 })
-            DrawGaugeSummary(_gaugeMonsterSelection.Visible(gauges),
-                ShowMonsterGaugeDetails, GaugeCategories);
-        else if (gaugeAvailability.ShowEmptyHudHint || gaugeAvailability.ShowStaleHudHint)
+        var visibleGauges = gaugeAvailability.MayRenderGauges
+            && gauges is { Count: > 0 }
+            ? _gaugeMonsterSelection.Visible(gauges) : null;
+        var frame = MonsterGaugeOverlayFrame.Build(
+            snapshot, visibleGauges, gaugeAvailability,
+            ShowMonsterGaugeDetails, GaugeCategories);
+
+        if (frame.HasPartyRows)
+            DrawPartyTable(snapshot!, elapsedSeconds, carts);
+        else
+            Disabled("Waiting for hunt data...");
+
+        if (frame.GaugeRows.Length > 0)
+            DrawGaugeSummary(frame.GaugeRows);
+        else if (frame.GaugeHint is { } gaugeHint)
         {
             ImGui.Separator();
-            Disabled(gaugeAvailability.ShowStaleHudHint
-                ? "Experimental gauges: cached sample stale (local, unverified)"
-                : "Experimental gauges: no current samples (local, unverified)");
+            Disabled(gaugeHint);
         }
 
         if (trial is { Active: true })
@@ -166,12 +168,11 @@ internal sealed class Overlay
         }
     }
 
-    private static void DrawGaugeSummary(
-        IReadOnlyList<MonsterGaugeState> gauges, bool showDetails, MonsterGaugeOverlayCategories categories)
+    private static void DrawGaugeSummary(IReadOnlyList<MonsterGaugeOverlayRow> rows)
     {
         ImGui.Separator();
         Disabled("Experimental gauges: local observation only, NOT verified host state");
-        foreach (var row in MonsterGaugeOverlayRows.Build(gauges, showDetails, categories))
+        foreach (var row in rows)
         {
             if (row.Heading)
                 ImGui.TextUnformatted(row.Text);
