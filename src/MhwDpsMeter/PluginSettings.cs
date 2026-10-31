@@ -24,6 +24,25 @@ internal sealed class PluginSettings
     [JsonPropertyName("overlayOpacity")]
     public float OverlayOpacity { get; set; } = 0.92f;
 
+    [JsonPropertyName("experimentalMonsterGauges")]
+    public bool ExperimentalMonsterGauges { get; set; } = false;
+
+    // Presentation only: changing this must never enable native gauge reads.
+    // Existing settings files inherit a compact summary by default.
+    [JsonPropertyName("monsterGaugeOverlayDetails")]
+    public bool MonsterGaugeOverlayDetails { get; set; } = false;
+
+    // Presentation-only categories. Older settings default to showing all
+    // cached categories; these never control native polling or log capture.
+    [JsonPropertyName("monsterGaugeShowStamina")]
+    public bool MonsterGaugeShowStamina { get; set; } = true;
+
+    [JsonPropertyName("monsterGaugeShowAilments")]
+    public bool MonsterGaugeShowAilments { get; set; } = true;
+
+    [JsonPropertyName("monsterGaugeShowParts")]
+    public bool MonsterGaugeShowParts { get; set; } = true;
+
     [JsonPropertyName("trialDurationSeconds")]
     public int TrialDurationSeconds { get; set; } = TimeTrial.DefaultDurationSeconds;
 

@@ -92,3 +92,55 @@ As of 2026-10-26, [CI run 40233131193](https://github.com/happypurpleduck/mhw-dp
 ## Merge gate
 
 A PR touching new memory reads must remain draft/unreleased until test evidence, build compatibility and provenance are documented. If real runtime validation cannot be performed, keep code opt-in/unreleased or a research-only branch; document precisely why it is not release-ready. Never weaken crash prevention or falsely claim verification just to clear a checklist.
+
+
+## Guiding Lands mandatory follow-up (not yet run)
+
+These checks apply to stage 109 (The Guiding Lands), in addition to V01–V18. The normal synchronized quest-award damage table is unavailable: remote damage **must remain unknown**, not zero or invented.
+
+| ID | Environment | Required runtime proof |
+| --- | --- | --- |
+| GL01 | Windows solo enter/leave Guiding Lands | stage-based start with or without positive quest ID, valid player guard, no phantom quest-results screen, local-hook totals only |
+| GL02 | Windows host with one to three guests | independent local hook total only, no fake teammate rankings/award values, monster gauges visibly unverified |
+| GL03 | Windows guest/late join | stage entry and local identity/name, correct source labels, no invented remote DPS, no host-authoritative gauge claim |
+| GL04 | Solo/host/guest monster kill → lure → despawn → spawn | one continuous expedition session and monotonic clock; new fight-local monster IDs, no cached stale gauge or previous-monster contamination |
+| GL05 | Player cart, fast travel between Guiding Lands camps, party join/leave | no premature session end or duplicate log, no invalid manual gauge selection, no phantom teammate totals |
+| GL06 | Exit to Seliana and re-enter within three minutes | one finished log per real expedition, no quest-id cooldown blocking re-entry, proper reset of hook damage, poller and selection |
+| GL07 | Windows/Proton, 421810 confirmed, capture off/on | no extra disabled native reads, source-labeled fresh/stale gauges, native pointer failures fail closed, 100-ms/1-s cadence unchanged |
+| GL08 | Solo and multiplayer under Windows and Proton | real overlay position/legibility, FPS/frame-time and startup/teardown smoke; attach anonymized logs/screenshots |
+
+Keep all GL rows **NOT RUN** until real game testing. Source-level simulated model checks are not substitutes.
+
+### Guiding Lands stage lifecycle source regression (not in-game evidence)
+
+The production `SyncQuestState` path now uses the pure `GuidingLandsSession.Decide(stage, player, active)` policy before accessing any quest ID/state. Regression covers no-player load, first entry, repeated monster encounters, missing player pointer during camp travel, changed multiplayer player pointer, stage exit, one-time end and immediate re-entry, and training/non-Guiding stages. Repeated 109-stage updates do not restart a session or reset the capture clock; the first confirmed non-109 stage ends it. **Actual stage transitions during camp travel, loading, multiplayer joins and returns still require GL01–GL08 live evidence; these unit tests do not prove the game always reports stage 109 throughout transitions.**
+
+
+### Shared Guiding Lands synthetic schema-3 fixtures (source-only, NOT runtime)
+
+`tests/fixtures/guiding-lands-solo.json` and `tests/fixtures/guiding-lands-multiplayer-gauge-only.json` are **hand-written synthetic** snapshots consumed by **both** SolidJS/web and Rust/GPUI model regression tests. They cover a positive local-hit-only session with explicit `damageScope: local-only`, and a multiplayer-labeled gauge-only zero-damage session with two fight-local monster IDs, no inferred remote damage or hunter rows, and all optional gauges `local-unverified`. The solo fixture's numeric `percent: 100` reflects internal normalization only: viewer UIs must display unknown party share instead. Neither JSON is captured from a real hunt and neither verifies multiplayer authority, monster offsets, Windows/Proton in-game timing or runtime compatibility. GL01–GL08 remain **NOT RUN**.
+
+
+### Preserve source stage at Guiding Lands exit (source-only)
+
+The plugin reads the new destination stage before ending a GL session on area exit. A log finalized with the destination (for example Seliana) would fail the stage-109-only Guiding Lands persistence gate even when valid damage/gauge observations existed. `GuidingLandsSession.LogStageId` now stamps a GL session's log with its original source stage **109** while preserving normal quest stage handling, with explicit departure/acceptance regression tests. GL06 live re-entry and save checks remain **NOT RUN**.
+
+### Source-only zero-total writer regression
+
+The production `FightLogStore.EndHunt` is now compiled directly in PluginRegression. A gauge-only Guiding Lands session with a valid zero-damage local roster is serialized through the real atomic JSON/file/index paths without producing NaN, followed by an ordinary quest in the same process and reload of both files. A second gauge-only log with no local hunter row also verifies the missing-data case. CI is **source-only**, not runtime proof for GL01–GL08.
+
+### Guiding Lands local-slot source regression
+
+When a valid live roster matches the local hunter pointer in multiplayer, the production Guiding Lands local-only snapshot now retains that hunter's **actual slot** (e.g., guest slot 2) instead of always using slot 0. This preserves local hit/event/cart slot IDs, per-slot sampling and avoids writing the guest's observed damage into a teammate's slot. When the roster is unavailable, slot 0 is explicitly a fallback, not verified multiplayer identity. Regression exercises a nonzero guest slot, correct slot-damage array and no corruption of slot 0. GL03 host/guest source identity still requires live evidence.
+
+### Extended Guiding Lands damage-history retention (source-only)
+
+The bounded 900-point party damage history no longer stops after roughly 30 minutes. Once full, the production writer retains every second existing point and doubles the sampling interval (2→4→8 seconds as needed), keeping `t=0`, chronological sample timestamps and coverage through the end of a multi-hour expedition. Optional additive `damageSamplesCompactions` identifies lost resolution, not lost time coverage. Production regression writes/reads a three-hour Guiding Lands session and checks bounded sample count, monotonic time, tail coverage and metadata. Sparse observed samples are not proof of combat events between timestamps; runtime GL08 still required.
+
+### Guiding Lands confirmed-exit grace (source-only)
+
+`SyncQuestState` now delays expedition teardown until a concrete out-of-109 stage is observed **continuously for at least 1.5 monotonic seconds**. Unknown/loading stage values (`<=0`) or a return to 109 clear the tentative exit; quest callbacks do not finalize the GL session. The production pure transition policy is tested at grace boundaries, unknown stages, invalid clock input and re-entry, while the plugin manages the timestamp from `Stopwatch`. The chosen grace is a conservative source-level heuristic, **not proof** of actual GL loading/camp stage sequences. During GL01–GL06 gameplay checks, capture stage transitions for camp travel, quest exit and re-entry and adjust only from evidence.
+
+### Synthetic fixtures aligned to the real recorder's initial/cumulative timeline (source-only)
+
+`FightLogStore.BeginHunt` emits one `t=0` sample for **every** session, including gauge-only expeditions where `UpdateSamples` is never called because the local hook is unavailable. The shared multiplayer gauge-only fixture now includes this actual initial zero-valued sample (zero means **unobserved**, not verified player damage). The solo fixture has t=0,2,...120 damage rows at the production two-second cadence, with cumulative local damage appearing **only after** the fixture's synthetic hits at t=9 and t=119. Web and Rust tests validate both initial samples, hit-to-sample chronology, and final damage; the production writer regression also asserts the gauge-only initial sample. These remain hand-written test cases, **not live MHW captures**.

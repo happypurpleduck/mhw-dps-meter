@@ -41,4 +41,44 @@ internal static class MonsterParts
 
     public static string Display(int monsterType, int partId) =>
         Name(monsterType, partId) ?? $"Part {partId}";
+
+    /// <summary>Metadata from the same canonical part ids as collision capture.</summary>
+    internal readonly record struct Definition(
+        int Id, string Name, bool Severable, int[] BreakThresholds, int[] TenderizeIds);
+
+    private static readonly Dictionary<int, Definition[]> Definitions = Table.RootElement
+        .GetProperty("monsters").EnumerateObject().ToDictionary(
+            m => int.Parse(m.Name, System.Globalization.CultureInfo.InvariantCulture),
+            m => m.Value.EnumerateObject().Select(p => new Definition(
+                int.Parse(p.Name, System.Globalization.CultureInfo.InvariantCulture),
+                p.Value.GetProperty("name").GetString() ?? $"Part {p.Name}",
+                p.Value.GetProperty("severable").GetBoolean(),
+                ReadIds(p.Value, "breakThresholds"),
+                ReadIds(p.Value, "tenderizeIds"))).ToArray());
+
+    private static int[] ReadIds(JsonElement data, string name) =>
+        data.TryGetProperty(name, out var values) && values.ValueKind == JsonValueKind.Array
+            ? values.EnumerateArray().Select(x => x.GetInt32()).ToArray()
+            : [];
+
+    public static IReadOnlyList<Definition> NormalDefinitions(int monsterType) =>
+        Definitions.TryGetValue(monsterType, out var parts)
+            ? parts.Where(x => !x.Severable).ToArray()
+            : [];
+
+    public static int? NextBreakThreshold(int monsterType, int partId, int completedFlinches)
+    {
+        if (!Definitions.TryGetValue(monsterType, out var parts))
+            return null;
+        foreach (var part in parts)
+        {
+            if (part.Id != partId)
+                continue;
+            foreach (var threshold in part.BreakThresholds)
+                if (threshold > completedFlinches)
+                    return threshold;
+            return null;
+        }
+        return null;
+    }
 }

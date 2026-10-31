@@ -14,9 +14,24 @@
     <Compile Include="../../src/MhwDpsMeter/TimeTrial.cs" Link="TimeTrial.cs" />
     <Compile Include="../../src/MhwDpsMeter/PartySnapshot.cs" Link="PartySnapshot.cs" />
     <Compile Include="../../src/MhwDpsMeter/FightLog.cs" Link="FightLog.cs" />
+    <Compile Include="../../src/MhwDpsMeter/FightLogStore.cs" Link="FightLogStore.cs" />
     <Compile Include="../../src/MhwDpsMeter/AddressMap.cs" Link="AddressMap.cs" />
     <Compile Include="../../src/MhwDpsMeter/GameNames.cs" Link="GameNames.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterParts.cs" Link="MonsterParts.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeReader.cs" Link="MonsterGaugeReader.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayRows.cs" Link="MonsterGaugeOverlayRows.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayFrame.cs" Link="MonsterGaugeOverlayFrame.cs" />
+    <Compile Include="../../src/MhwDpsMeter/GuidingLandsSession.cs" Link="GuidingLandsSession.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayLabels.cs" Link="MonsterGaugeOverlayLabels.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlaySelection.cs" Link="MonsterGaugeOverlaySelection.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayAvailability.cs" Link="MonsterGaugeOverlayAvailability.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayDiagnostics.cs" Link="MonsterGaugeOverlayDiagnostics.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugeOverlayMenu.cs" Link="MonsterGaugeOverlayMenu.cs" />
+    <Compile Include="../../src/MhwDpsMeter/PluginSettings.cs" Link="PluginSettings.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGaugePoller.cs" Link="MonsterGaugePoller.cs" />
+    <Compile Include="../../src/MhwDpsMeter/MonsterGeneration.cs" Link="MonsterGeneration.cs" />
+    <Compile Include="../../src/MhwDpsMeter/GaugeCaptureTimeline.cs" Link="GaugeCaptureTimeline.cs" />
+    <Compile Include="../../src/MhwDpsMeter/HuntGaugeObservation.cs" Link="HuntGaugeObservation.cs" />
     <Compile Include="../../src/MhwDpsMeter/DamageTracker.cs" Link="DamageTracker.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterPartResolver.cs" Link="MonsterPartResolver.cs" />
     <Compile Include="../../src/MhwDpsMeter/HunterActionNames.cs" Link="HunterActionNames.cs" />

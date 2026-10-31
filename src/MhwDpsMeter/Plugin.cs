@@ -25,6 +25,8 @@ public sealed class Plugin : IPlugin
     private readonly Overlay _overlay = new();
     private readonly Stopwatch _questTimer = new();
     private readonly MonsterHpTracker _monsterHp = new();
+    private readonly MonsterGaugePoller _gaugePoller = new();
+    private MonsterGaugeState[] _gaugeStates = [];
     private readonly DamageTracker _hits = new();
     private readonly HuntRecorder _recorder;
     private readonly PartyActionTracker _party;
@@ -41,6 +43,10 @@ public sealed class Plugin : IPlugin
     private LiveDebugStore? _liveDebug;
     private PartySnapshot? _snapshot;
     private bool _inQuest;
+    // Guiding Lands is an expedition stage, not a quest-award table hunt.
+    // Keep one local session across spawns/joins; never infer remote DPS.
+    private bool _guidingLands;
+    private long _guidingLandsOutsideSince;
     private bool _showResults;
     private int _questId;
     private string _questName = "";
@@ -81,6 +87,7 @@ public sealed class Plugin : IPlugin
     {
         _actionNames = new HunterActionNames(IsHunterEntity);
         _recorder = new HuntRecorder(ResolveActionName);
+        _hits.SetMonsterIdentityResolver(_recorder.CaptureMonsterIdentity);
         _party = new PartyActionTracker(ResolveEntityActionName, EntityLooksAlive, IsHunterEntity);
         _trial = new TimeTrial(ResolveActionName);
     }
@@ -136,6 +143,11 @@ public sealed class Plugin : IPlugin
         _settings = PluginSettings.Load(pluginDir);
         _overlay.Visible = _settings.OverlayVisible;
         _overlay.Opacity = _settings.OverlayOpacity;
+        _overlay.ShowMonsterGaugeDetails = _settings.MonsterGaugeOverlayDetails;
+        _overlay.GaugeCategories = new MonsterGaugeOverlayCategories(
+            _settings.MonsterGaugeShowStamina,
+            _settings.MonsterGaugeShowAilments,
+            _settings.MonsterGaugeShowParts);
         _reader = new PartyDamageReader(_map, _moduleBase);
         _carts = new CartTracker(_map, _moduleBase);
         _logs = new FightLogStore(pluginDir);
@@ -286,17 +298,46 @@ public sealed class Plugin : IPlugin
     {
         try
         {
-            var snapshot = ReadPartyWithFallbacks();
-            if (snapshot is null)
-                return;
-
+            // Monster enumeration happens even when the party table is temporarily unreadable.
+            // Gauge capture must never depend on the party snapshot's success.
             _elapsedSeconds = HuntElapsedSeconds();
-            _snapshot = snapshot.WithRates(_elapsedSeconds);
-            _status = string.IsNullOrEmpty(_reader!.LastError)
-                ? $"{snapshot.Members.Length} hunters ({_damageSource})"
-                : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
+            var enabled = _settings.ExperimentalMonsterGauges && _mapMatchesBuild
+                && _buildConfirmed && _gameBuild == 421810;
+            // The same integration seam is exercised with a null party snapshot
+            // in PluginRegression. Always observe monsters before the early return.
+            // Native monster enumeration and hit-target bookkeeping are independent
+            // of fragile party-table decoding. The latter may throw.
+            var fallbackDamage = _monsterHp.Poll();
+            _lastFallbackDamage = fallbackDamage;
+            _hits.UpdateMonsters(_monsterHp.LiveInstances);
+            var snapshot = HuntGaugeObservation.CaptureBeforePartyGuard(
+                () => ReadPartyWithFallbacks(fallbackDamage), _elapsedSeconds,
+                Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency,
+                _timerSource, enabled, _monsterHp.LastPollComplete, _monsterHp.LastTracked,
+                _gaugePoller, _recorder, MonsterGaugeReader.Read,
+                ex => Log.Warn($"MhwDpsMeter: party read failed; gauges kept ({ex.GetType().Name}: {ex.Message})"),
+                _monsterHp.LiveInstances);
+            _gaugeStates = _gaugePoller.Current;
 
-            _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+            if (snapshot is null)
+            {
+                if (_guidingLands)
+                {
+                    // A missing local hook is not zero damage. Do not leave
+                    // the previous local total on screen as if it were live.
+                    _snapshot = null;
+                    _status = "Guiding Lands: local hit tracking unavailable; no remote damage totals";
+                }
+                return;
+            }
+
+            _snapshot = snapshot.WithRates(_elapsedSeconds);
+            _status = _guidingLands
+                ? "Guiding Lands: local hook damage only; teammate totals unavailable"
+                : string.IsNullOrEmpty(_reader!.LastError)
+                    ? $"{snapshot.Members.Length} hunters ({_damageSource})"
+                    : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
+
             _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
             _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), snapshot.LocalSlot);
@@ -348,11 +389,34 @@ public sealed class Plugin : IPlugin
     /// monster HP lost) over it. Returns null when nothing new could be read and the
     /// previous snapshot should stay on screen.
     /// </summary>
-    private PartySnapshot? ReadPartyWithFallbacks()
+    private PartySnapshot? ReadPartyWithFallbacks(int? existingMonsterDamage = null)
     {
-        var fallbackDamage = _monsterHp.Poll();
-        _hits.UpdateMonsters(_monsterHp.LiveInstances);
-        _lastFallbackDamage = fallbackDamage;
+        // EndHunt uses the original combined path. PollHunt can provide its
+        // already-observed monsters so party decode exceptions are isolated.
+        var fallbackDamage = existingMonsterDamage ?? _monsterHp.Poll();
+        if (!existingMonsterDamage.HasValue)
+        {
+            _hits.UpdateMonsters(_monsterHp.LiveInstances);
+            _lastFallbackDamage = fallbackDamage;
+        }
+
+        // Guiding Lands has no synchronized quest-award table. Never use
+        // stale award values or monster-wide HP loss as one hunter's damage.
+        if (_guidingLands)
+        {
+            PartySnapshot? roster = null;
+            if (_reader!.TryRead(out var localRoster, 0))
+                roster = localRoster;
+            var local = GuidingLandsSession.LocalSnapshot(roster,
+                LocalPlayerInstance(), _reader.LastLocalName,
+                _hits.LocalDamage, _hits.Hooked);
+            _damageSource = local is null
+                ? "Guiding Lands: local hook unavailable"
+                : "Guiding Lands: local hook only, no remote totals";
+            if (local is not null)
+                _hits.UpdateParty(local.Members);
+            return local;
+        }
 
         if (!_reader!.TryRead(out var snapshot, fallbackDamage) || snapshot.Members.Length == 0)
         {
@@ -570,10 +634,31 @@ public sealed class Plugin : IPlugin
             _training ? ResetTraining : null,
             _settings,
             _training ? _trial : null,
-            _training ? ToggleTrial : null);
+            _training ? ToggleTrial : null,
+            _inQuest ? _gaugeStates : null,
+            _gaugePoller.SelectionEpoch,
+            CurrentGaugeAvailability(),
+            ResetGaugeCaptureForToggle);
     }
 
-    private string BuildDiagnosticsText()
+    // F9 capture gate transitions must invalidate cached observations
+    // immediately, not wait for the next party/monster poll.
+    private void ResetGaugeCaptureForToggle()
+    {
+        _gaugePoller.Reset();
+        _gaugeStates = [];
+        _overlay.ResetGaugeMonsterSelection();
+    }
+
+    private MonsterGaugeOverlayAvailability CurrentGaugeAvailability() =>
+        new(_settings.ExperimentalMonsterGauges,
+            _mapMatchesBuild && _buildConfirmed && _gameBuild == 421810,
+            _inQuest,
+            _gaugeStates.Length,
+            _gaugePoller.SampleAgeSeconds(
+                Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency));
+
+    private MonsterGaugeOverlayDiagnostics BuildDiagnosticsText()
     {
         var slotLines = "";
         if (_reader?.LastSlots is { Length: > 0 } slots)
@@ -586,15 +671,16 @@ public sealed class Plugin : IPlugin
             }
         }
 
-        return
+        var beforeGauge =
             $"Plugin build: {BuildStamp}\n" +
             $"Status: {_status}\n" +
             $"Game build: {_gameBuild}  map: {Path.GetFileName(_map?.SourceFile ?? "none")}{(_mapMatchesBuild ? "" : "  (MISMATCH)")}\n" +
-            $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}  timer {_timerSource}\n" +
+            $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}  timer {_timerSource}{(_guidingLands ? "  guiding lands (local-only)" : "")}\n" +
             $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
-            $"Part capture: {_hits.PartDiagnostics}\n" +
+            $"Part capture: {_hits.PartDiagnostics}\n";
+        var afterGauge =
             $"Recorder: {_recorder.HitCount} hits ({_recorder.HitCoverage}), weapon {_recorder.LocalWeapon ?? "-"}\n" +
             $"Hunter entities: {_party.Diagnostics()}\n" +
             $"Monsters: {_monsterHp.LastMonsters}\n" +
@@ -610,6 +696,7 @@ public sealed class Plugin : IPlugin
             $"Live debug: {_liveDebug?.LatestPath ?? "n/a"}\n" +
             $"Module: 0x{_moduleBase:X}\n" +
             "F6 = force debug dump, F7 = reset training damage, F8 = time trial, F9 = this menu, F10 = toggle overlay";
+        return new MonsterGaugeOverlayDiagnostics(beforeGauge, afterGauge);
     }
 
     private void WriteLiveDebug(bool force)
@@ -672,7 +759,11 @@ public sealed class Plugin : IPlugin
             _inQuest || _showResults || _training,
             _training ? TrainingHint : null,
             _training ? _trial : null,
-            _inQuest ? _carts : null);
+            _inQuest ? _carts : null,
+            _inQuest ? _gaugeStates : null,
+            _gaugePoller.SelectionEpoch,
+            CurrentGaugeAvailability(),
+            _guidingLands);
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------
@@ -694,17 +785,31 @@ public sealed class Plugin : IPlugin
         BeginHunt(questId);
     });
 
-    public void OnQuestComplete(int questId) => Guarded("OnQuestComplete", () => EndHunt("complete"));
+    public void OnQuestComplete(int questId) => Guarded("OnQuestComplete", () =>
+    {
+        if (!_guidingLands) EndHunt("complete");
+    });
 
-    public void OnQuestFail(int questId) => Guarded("OnQuestFail", () => EndHunt("fail"));
+    public void OnQuestFail(int questId) => Guarded("OnQuestFail", () =>
+    {
+        if (!_guidingLands) EndHunt("fail");
+    });
 
-    public void OnQuestAbandon(int questId) => Guarded("OnQuestAbandon", () => EndHunt("abandon"));
+    public void OnQuestAbandon(int questId) => Guarded("OnQuestAbandon", () =>
+    {
+        if (!_guidingLands) EndHunt("abandon");
+    });
 
-    public void OnQuestReturn(int questId) => Guarded("OnQuestReturn", () => EndHunt("return"));
+    public void OnQuestReturn(int questId) => Guarded("OnQuestReturn", () =>
+    {
+        if (!_guidingLands) EndHunt("return");
+    });
 
     public void OnQuestLeave(int questId) => Guarded("OnQuestLeave", () =>
     {
-        if (!_inQuest)
+        // Guiding Lands has repeated monster encounters without completing
+        // the expedition. Only leaving the actual stage ends its session.
+        if (!_inQuest || _guidingLands)
             return;
 
         var state = _questState;
@@ -909,13 +1014,54 @@ public sealed class Plugin : IPlugin
 
     private void SyncQuestState()
     {
+        // Read the stage *before* quest state: an open-ended Guiding Lands
+        // expedition may not have a positive CurrentQuestId or ordinary
+        // InQuest state. Never rely on quest callbacks to begin this mode.
+        try { _stageId = (int)Area.CurrentStage; }
+        catch { return; }
+
+        // Brief loading-stage or out-of-area readings must not end an
+        // otherwise live expedition. A *concrete* non-109 stage must persist
+        // for the grace interval before teardown; unknown stage IDs fail
+        // closed and reset the candidate timer.
+        if (!_guidingLands || _stageId <= 0 || GuidingLandsSession.IsStage(_stageId))
+            _guidingLandsOutsideSince = 0;
+        else if (_guidingLandsOutsideSince == 0)
+            _guidingLandsOutsideSince = Stopwatch.GetTimestamp();
+
+        var secondsOutside = _guidingLandsOutsideSince == 0 ? 0
+            : Stopwatch.GetElapsedTime(_guidingLandsOutsideSince).TotalSeconds;
+        // Never query the local hunter on ordinary quest stages.
+        var guidingDecision = GuidingLandsSession.Decide(_stageId,
+            GuidingLandsSession.IsStage(_stageId) ? LocalPlayerInstance() : 0,
+            _guidingLands, secondsOutside);
+        if (guidingDecision == GuidingLandsTransition.Begin)
+        {
+            if (_training)
+                EndTraining();
+            if (_inQuest && !_guidingLands)
+                EndHunt("leave");
+            BeginGuidingLands();
+            return;
+        }
+
+        // Monster kills, guest joins and temporary missing player pointers
+        // do not end a stage-109 expedition. Never consult quest states here.
+        if (GuidingLandsSession.IsStage(_stageId)
+            || guidingDecision == GuidingLandsTransition.Continue)
+            return;
+
+        // A confirmed stage exit ends a Guiding Lands session once; normal
+        // quests then proceed through the original quest state handling.
+        if (guidingDecision == GuidingLandsTransition.Leave)
+            EndHunt("leave");
+
         int questId;
         uint questState;
         try
         {
             questId = Quest.CurrentQuestId;
             questState = Quest.QuestState;
-            _stageId = (int)Area.CurrentStage;
         }
         catch
         {
@@ -986,6 +1132,16 @@ public sealed class Plugin : IPlugin
             _status = "not in a hunt";
     }
 
+    private void BeginGuidingLands()
+    {
+        if (_inQuest && _guidingLands)
+            return;
+
+        // No quest ID or award table is required for this expedition stage.
+        // The session survives individual monster spawns, defeats and joins.
+        StartHuntSession(0, "The Guiding Lands", guidingLands: true);
+    }
+
     private void BeginHunt(int questId)
     {
         if (questId <= 0)
@@ -1015,17 +1171,31 @@ public sealed class Plugin : IPlugin
             return;
         }
 
+        StartHuntSession(questId, questName, guidingLands: false);
+    }
+
+    private void StartHuntSession(int questId, string questName, bool guidingLands)
+    {
+        _guidingLands = guidingLands;
+        _guidingLandsOutsideSince = 0;
         _inQuest = true;
         _showResults = false;
         _questId = questId;
-        _questName = string.IsNullOrWhiteSpace(questName) ? $"Quest {questId}" : questName;
+        _questName = string.IsNullOrWhiteSpace(questName)
+            ? (guidingLands ? "The Guiding Lands" : $"Quest {questId}") : questName;
         _questStartedAt = DateTimeOffset.UtcNow;
         _elapsedSeconds = 0;
         _timerSource = "local";
-        _snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
+        // Do not paint a placeholder zero as measured local Guiding Lands
+        // damage before the first valid hook-backed snapshot arrives.
+        _snapshot = guidingLands ? null
+            : PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
         _pollAccumulator = 0;
         _questTimer.Restart();
         _monsterHp.Reset();
+        _gaugePoller.Reset();
+        _gaugeStates = [];
+        _overlay.ResetGaugeMonsterSelection();
         _hits.Reset();
         _hits.RecordHits = true;
         _recorder.Reset();
@@ -1033,7 +1203,9 @@ public sealed class Plugin : IPlugin
         _carts?.Reset();
         _prevSlotDamage = null;
         _logs?.BeginHunt();
-        _status = $"in quest {questId}";
+        _status = guidingLands
+            ? "Guiding Lands expedition: local hit tracking only"
+            : $"in quest {questId}";
     }
 
     private void EndHunt(string result)
@@ -1041,6 +1213,7 @@ public sealed class Plugin : IPlugin
         if (!_inQuest)
             return;
 
+        var wasGuidingLands = _guidingLands;
         _inQuest = false;
         _finishedQuestId = _questId;
         _finishedAt = DateTimeOffset.UtcNow;
@@ -1058,7 +1231,10 @@ public sealed class Plugin : IPlugin
                     _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
                     _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
                 }
-                _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked);
+                // Never interpret a torn final enumeration as disappearance.
+                if (_monsterHp.LastPollComplete)
+                    _recorder.ObserveMonsters(_elapsedSeconds, _monsterHp.LastTracked,
+                        _monsterHp.LiveInstances);
                 _recorder.AddHits(_elapsedSeconds, _hits.DrainHits(), _snapshot?.LocalSlot ?? 0);
                 if (snapshot is not null)
                 {
@@ -1074,22 +1250,30 @@ public sealed class Plugin : IPlugin
 
         _hits.RecordHits = false;
         var members = _snapshot?.Members ?? [];
+        // SyncQuestState sets _stageId to the *destination* before ending
+        // an expedition. Persist its original GL stage identity instead,
+        // otherwise the explicit stage-109 log gate rejects the whole log.
+        var logStageId = GuidingLandsSession.LogStageId(wasGuidingLands, _stageId);
         _logs?.EndHunt(
             new FightLogHeader(
                 _questId,
                 _questName,
                 result,
-                _stageId,
-                GameNames.Stage(_stageId),
+                logStageId,
+                GameNames.Stage(logStageId),
                 _questStartedAt,
                 _elapsedSeconds,
                 _timerSource,
                 _gameBuild,
-                ReadRewards()),
+                wasGuidingLands ? null : ReadRewards(),
+                LocalOnlyExpedition: wasGuidingLands),
             members,
             _recorder);
 
-        _showResults = members.Length > 0;
+        // Expeditions have no normal quest-results screen/reward table.
+        _guidingLands = false;
+        _guidingLandsOutsideSince = 0;
+        _showResults = !wasGuidingLands && members.Length > 0;
         if (!_showResults)
             _snapshot = null;
     }
@@ -1115,6 +1299,14 @@ public sealed class Plugin : IPlugin
     /// <summary>In-game quest timer when it is running (shared by every hunter), else the plugin's own clock.</summary>
     private float HuntElapsedSeconds()
     {
+        if (_guidingLands)
+        {
+            // The game's quest timer is not a continuous Guiding Lands
+            // expedition clock. Use our local session stopwatch instead.
+            _timerSource = "local";
+            return (float)_questTimer.Elapsed.TotalSeconds;
+        }
+
         try
         {
             var time = Quest.QuestEndTimer.Time;

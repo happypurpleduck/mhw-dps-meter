@@ -26,6 +26,7 @@ use crate::analysis::{
     move_breakdown, move_display_name, part_breakdown, part_hits, hit_timeline, PartRow, pct, rolling_dps, interval_dps,
 };
 use crate::model::{FightLog, LogKind};
+use crate::gauge_history::{available_metrics, gauge_segments, observed_counter_intervals, gauge_coverage, gauge_sample_quality, gauge_sample_quality_label, gauge_quality_markers, recent_gauge_quality_markers, observed_counter_timeline, hunt_wide_quality_notice, GaugeMetric};
 
 impl ViewerApp {
     pub(super) fn render_detail(&mut self, log: Arc<FightLog>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -34,12 +35,33 @@ impl ViewerApp {
             Tab::Overview => self.render_overview(&log, cx).into_any_element(),
             Tab::Moves => self.render_moves(&log, cx).into_any_element(),
             Tab::Parts => self.render_parts(&log, cx).into_any_element(),
-            Tab::Monsters => render_monsters(&log, cx).into_any_element(),
+            Tab::Monsters => v_flex().gap_4()
+                .child(render_monsters(&log, cx))
+                .child(self.render_gauge_history(&log, cx))
+                .into_any_element(),
             Tab::Timeline => self.render_timeline(&log, cx).into_any_element(),
         };
         v_flex()
             .gap_4()
             .child(render_header(&log, cx))
+            .when(log.gauge_clock_discontinuities > 0, |this| this.child(
+                muted(
+                    format!(
+                        "Experimental gauge timeline adjusted across {} hunt-clock changes. Sample t preserves capture order; rawHuntT may not align with hit time.",
+                        log.gauge_clock_discontinuities
+                    ),
+                    cx,
+                )
+            ))
+            .when(log.gauge_samples_dropped > 0, |this| this.child(
+                muted(
+                    format!(
+                        "Experimental monster gauge history is incomplete: {} observation intervals omitted after the recording cap.",
+                        log.gauge_samples_dropped
+                    ),
+                    cx,
+                )
+            ))
             .child(
                 TabBar::new("detail-tabs")
                     .underline()
@@ -397,6 +419,149 @@ impl ViewerApp {
             })
     }
 
+    fn render_gauge_history(&mut self, log: &FightLog, cx: &mut Context<Self>) -> AnyElement {
+        let monsters: Vec<_> = log.monsters.iter().filter(|m|
+            log.gauge_samples.iter().any(|s| s.monster == m.id)
+        ).collect();
+        let quality_notice = hunt_wide_quality_notice(
+            log.gauge_samples_dropped, log.gauge_clock_discontinuities,
+        );
+        if monsters.is_empty() {
+            let mut panel = card(cx)
+                .child(section_title("Experimental monster state history", cx))
+                .child(muted("No locally recorded gauge samples for this hunt. Older logs and disabled capture legitimately have none.", cx));
+            if let Some(notice) = quality_notice {
+                panel = panel.child(muted(notice, cx));
+            }
+            return panel.into_any_element();
+        }
+
+        let selected_id = self.gauge_monster.as_deref()
+            .filter(|id| monsters.iter().any(|m| m.id == *id))
+            .unwrap_or(&monsters[0].id);
+        let choices = available_metrics(&log.gauge_samples, selected_id);
+        let chosen = self.gauge_metric.as_deref()
+            .and_then(|key| choices.iter().find(|m| m.key() == key))
+            .or_else(|| choices.first());
+        let active_metric = chosen.map(|m| m.key());
+        let mut series = Vec::new();
+        let mut isolated = Vec::new();
+        let mut last_value: Option<(f32, f32)> = None;
+        let mut has_trend = false;
+        let counter_timeline = observed_counter_timeline(&log.gauge_samples, selected_id);
+        if let Some(metric) = chosen {
+            for points in gauge_segments(&log.gauge_samples, selected_id, metric) {
+                if let Some(last) = points.last() {
+                    last_value = Some(*last);
+                }
+                if points.len() == 1 {
+                    isolated.push(points[0]);
+                }
+                if points.len() > 1 {
+                    has_trend = true;
+                }
+                // Keep singleton segments in the plot's time domain even
+                // though a line cannot be drawn from one observation.
+                if !points.is_empty() {
+                    series.push(Series {
+                        label: metric.label().into(),
+                        color: cx.theme().primary,
+                        points,
+                    });
+                }
+            }
+        }
+        let monster_buttons = h_flex().flex_wrap().gap_1().children(monsters.into_iter().map(|monster| {
+            let id = monster.id.clone();
+            let is_active = id == selected_id;
+            let button = Button::new(SharedString::from(format!("gauge-monster-{id}")))
+                .xsmall()
+                .label(format!("{} ({id})", monster.name))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.gauge_monster = Some(id.clone());
+                    this.gauge_metric = None;
+                    cx.notify();
+                }));
+            if is_active { button.primary() } else { button.ghost() }
+        }));
+        let metric_buttons = h_flex().flex_wrap().gap_1().children(choices.iter().map(|metric| {
+            let key = metric.key();
+            let is_active = active_metric.as_deref() == Some(key.as_str());
+            let button = Button::new(SharedString::from(format!("gauge-metric-{key}")))
+                .xsmall()
+                .label(metric.label())
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.gauge_metric = Some(key.clone());
+                    cx.notify();
+                }));
+            if is_active { button.primary() } else { button.ghost() }
+        }));
+        let mut panel = card(cx)
+            .child(section_title("Experimental monster state history", cx))
+            .child(muted("Local-unverified, non-authoritative sampled readings. Gauge progress is NOT HP part damage, per-hunter KO/status contribution or an exact proc/break event.", cx))
+            .child(monster_buttons);
+        let observation_quality = gauge_sample_quality(&log.gauge_samples, selected_id);
+        panel = panel.child(muted(gauge_sample_quality_label(&observation_quality), cx));
+        let interruption_markers = gauge_quality_markers(&log.gauge_samples, selected_id);
+        if !interruption_markers.is_empty() {
+            panel = panel.child(muted("Stored capture-quality markers (latest five in capture order; not combat events or precise hit times):", cx));
+            for marker in recent_gauge_quality_markers(&interruption_markers) {
+                panel = panel.child(muted(marker.label(), cx));
+            }
+        }
+        if !counter_timeline.is_empty() {
+            panel = panel.child(muted("Recent observed counter increases across sampled ailments and parts (latest five by interval end; not exact proc/break times or hunter attribution):", cx));
+            for item in &counter_timeline {
+                let change = &item.interval;
+                panel = panel.child(muted(format!(
+                    "{}: +{} ({} to {}) observed between {:.1}s and {:.1}s",
+                    item.label(), change.increase, change.before, change.after,
+                    change.start_t, change.end_t,
+                ), cx));
+            }
+        }
+        if choices.is_empty() {
+            panel = panel.child(muted("No usable numeric gauge readings for this monster; metric-specific quality is unavailable.", cx));
+        } else {
+            panel = panel.child(metric_buttons);
+            if let Some(metric) = chosen {
+                let coverage = gauge_coverage(&log.gauge_samples, selected_id, metric);
+                panel = panel.child(muted(format!(
+                    "Selected metric usable: {}; metric missing/invalid: {}; out-of-order readings: {}.",
+                    coverage.usable, coverage.missing_metric, coverage.out_of_order,
+                ), cx));
+            }
+            panel = panel.child(muted(
+                format!("Percent of sampled maximum; {}. Unknown readings, clock corrections, source changes and gaps over 6s are not interpolated.{}",
+                    chosen.map(|m| m.label()).unwrap_or_default(),
+                    if matches!(chosen, Some(GaugeMetric::AilmentDuration(..))) {
+                        " Duration is a sampled remaining-time fraction, not a precise status start/end event."
+                    } else { "" }),
+                cx,
+            ));
+            if let Some((time, percent)) = last_value {
+                panel = panel.child(muted(format!("Last observed: {:.1}% at {:.1}s.", percent, time), cx));
+            }
+            if has_trend {
+                panel = panel.child(div().h(px(235.)).w_full()
+                    .child(LinesPlot::new(series, Vec::new()).with_y_max(100.0)));
+            } else {
+                panel = panel.child(muted("Only isolated observations; a trend needs at least two consecutive valid samples.", cx));
+            }
+            if !isolated.is_empty() {
+                panel = panel.child(muted(format!(
+                    "{} isolated valid reading(s), shown without connecting lines (latest five):", isolated.len()), cx));
+                for &(t, pct) in isolated.iter().rev().take(5) {
+                    panel = panel.child(muted(format!("  {:.1}% at {:.1}s (isolated)", pct, t), cx));
+                }
+            }
+        }
+        if let Some(notice) = quality_notice {
+            panel = panel.child(muted(notice, cx));
+        }
+        panel.into_any_element()
+    }
+
     fn render_timeline(&mut self, log: &FightLog, cx: &mut Context<Self>) -> impl IntoElement {
         let monster_name = |id: &str| log.monsters.iter().find(|m| m.id == id).map(|m| m.name.clone()).unwrap_or_else(|| id.to_string());
         let player_name = |slot: usize| log.players.iter().find(|p| p.slot == slot).map(|p| p.name.clone()).unwrap_or_else(|| format!("slot {}", slot + 1));
@@ -456,6 +621,9 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
     let stats = hit_stats(local_exact_hits(log));
     let total = log.total_damage();
     let duration = log.duration_seconds.max(1.0);
+    let local_only = log.is_local_only();
+    let unknown_scope = log.has_unknown_damage_scope();
+    let has_local_damage = log.has_observed_local_damage();
     v_flex()
         .gap_3()
         .child(
@@ -481,19 +649,48 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                     )))
                 }),
         )
+        .when(local_only || unknown_scope, |this| {
+            this.child(div().text_sm().text_color(cx.theme().muted_foreground)
+                .child(if unknown_scope {
+                    "Unrecognized damage coverage: totals, DPS and party shares unavailable"
+                } else if has_local_damage {
+                    "Guiding Lands: local hit damage only; teammate totals and party share unavailable"
+                } else {
+                    "Guiding Lands: no local hit observations; teammate totals and party share unavailable"
+                }))
+        })
+        .when(log.damage_samples_compactions > 0, |this| {
+            this.child(div().text_sm().text_color(cx.theme().muted_foreground).child(format!(
+                "Damage timeline resolution reduced by {} buffer compaction(s); missing intervals are not observed combat events.",
+                log.damage_samples_compactions
+            )))
+        })
         .child(
             // Tiles share one fixed height and stretch to fill the row.
             h_flex()
                 .w_full()
                 .flex_wrap()
                 .gap_2()
-                .child(stat_tile("Total damage", format_int(total), format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }), None, cx))
-                .child(stat_tile("Party DPS", format!("{:.1}", total as f32 / duration), format!("over {}", format_duration(log.duration_seconds)), None, cx))
+                .child(stat_tile(if local_only { "Observed local damage" } else if unknown_scope { "Damage (unknown coverage)" } else { "Total damage" },
+                    if has_local_damage { format_int(total) } else { "unavailable".to_string() },
+                    if unknown_scope { "unrecognized damage scope".to_string() }
+                    else if local_only {
+                        if has_local_damage { "teammate totals unavailable".to_string() } else { "no local hook observations".to_string() }
+                    } else { format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }) }, None, cx))
+                .child(stat_tile(if local_only { "Observed local DPS" } else if unknown_scope { "DPS (unknown coverage)" } else { "Party DPS" },
+                    if has_local_damage { format!("{:.1}", total as f32 / duration) } else { "unavailable".to_string() },
+                    if has_local_damage { format!("over {}", format_duration(log.duration_seconds)) } else { "no local hook observations".to_string() }, None, cx))
                 .when_some(me, |this, p| {
                     this.child(stat_tile(
                         "Your damage",
-                        format_int(p.damage),
-                        format!("{:.1}% of party · {}", p.percent, weapon_display_name(p.weapon.as_deref())),
+                        if unknown_scope { "unavailable".to_string() } else { format_int(p.damage) },
+                        if unknown_scope {
+                            "unrecognized damage coverage".to_string()
+                        } else if local_only {
+                            format!("local hits only · {}", weapon_display_name(p.weapon.as_deref()))
+                        } else {
+                            format!("{:.1}% of party · {}", p.percent, weapon_display_name(p.weapon.as_deref()))
+                        },
                         Some(cx.theme().primary),
                         cx,
                     ))
@@ -522,6 +719,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
 }
 
 fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
+    let local_only = log.damage_scope.is_some();
     Table::new()
         .small()
         .border_1()
@@ -555,12 +753,14 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
                 .child(TableCell::new().w(px(88.)).text_right().child(format_int(p.damage)))
                 .child(TableCell::new().w(px(56.)).text_right().child(format!("{:.1}", p.dps)))
                 .child(TableCell::new().w(px(48.)).text_right().child(if p.carts > 0 { p.carts.to_string() } else { "—".into() }))
-                .child(TableCell::new().w(px(220.)).child(meter_bar(
-                    (p.percent / 100.0).clamp(0.0, 1.0),
-                    slot_color(p.slot),
-                    cx.theme().border,
-                    format!("{:.1}%", p.percent),
-                )))
+                .child(TableCell::new().w(px(220.))
+                    .when(local_only, |this| this.child(muted("n/a — remote damage unknown", cx)))
+                    .when(!local_only, |this| this.child(meter_bar(
+                        (p.percent / 100.0).clamp(0.0, 1.0),
+                        slot_color(p.slot),
+                        cx.theme().border,
+                        format!("{:.1}%", p.percent),
+                    ))))
         })))
 }
 

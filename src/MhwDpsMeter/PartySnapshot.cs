@@ -60,15 +60,18 @@ internal sealed class PartySnapshot
         };
     }
 
-    /// <summary>Single local hunter in slot 0 (solo, training, or roster unreadable).</summary>
-    public static PartySnapshot LocalOnly(int damage, string name, nint instance)
+    /// <summary>Single local hunter. Use the actual party slot when a
+    /// live matching roster supplies it; slot zero is only the fallback for
+    /// solo/training or a temporarily unreadable roster.</summary>
+    public static PartySnapshot LocalOnly(int damage, string name, nint instance, int slot = 0)
     {
         damage = Math.Max(0, damage);
+        slot = slot is >= 0 and < PartyDamageReader.PartySlots ? slot : 0;
         return From(
         [
             new PartyMemberSnapshot
             {
-                Slot = 0,
+                Slot = slot,
                 Name = string.IsNullOrEmpty(name) ? "You" : name,
                 Damage = damage,
                 IsLocal = true,

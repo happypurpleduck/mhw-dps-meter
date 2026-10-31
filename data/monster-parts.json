@@ -5,3407 +5,6305 @@
   },
   "monsters": {
     "0": {
-      "1": {
-        "key": "PART_THROAT",
-        "name": "Throat",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "5": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "1": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "4": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "4": {
       "0": {
         "key": "PART_REPEL",
         "name": "Repel",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_SHELL",
         "name": "Shell",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_EXHAUST_ORGAN_CENTRAL",
         "name": "Exhaust Organ Central",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_EXHAUST_ORGAN_HEAD",
         "name": "Exhaust Organ Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "12": {
         "key": "PART_EXHAUST_ORGAN_CRATER",
         "name": "Exhaust Organ Crater",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "13": {
         "key": "PART_EXHAUST_ORGAN_REAR",
         "name": "Exhaust Organ Rear",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "14": {
         "key": "PART_WEAK_L_SHELL",
         "name": "Weak L Shell",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "15": {
         "key": "PART_WEAK_R_SHELL",
         "name": "Weak R Shell",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       }
     },
     "7": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "1": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       },
       "2": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "3": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_ABDOMEN",
         "name": "Abdomen",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": []
       }
     },
     "9": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "4": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "10": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "4": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "11": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "4": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "12": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "13": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "14": {
       "0": {
         "key": "PART_HORN",
         "name": "Horn",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          2
+        ]
       },
       "1": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          3
+        ]
       },
       "2": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          3
+        ]
       }
     },
     "15": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2,
+          3
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "5": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          4
+        ]
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "16": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       },
       "4": {
         "key": "PART_L_LIMBS",
         "name": "L Limbs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_R_LIMBS",
         "name": "R Limbs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       }
     },
     "17": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_LIMBS",
         "name": "Limbs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "18": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "19": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          6
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "1": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "2": {
         "key": "PART_ABDOMEN",
         "name": "Abdomen",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "20": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_BIG_FLINCH",
         "name": "Big Flinch",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_REAR",
         "name": "Rear",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "9": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "21": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_HEAD_MUD",
         "name": "Head Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "5": {
         "key": "PART_BODY_MUD",
         "name": "Body Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "6": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_ARMS_MUD",
         "name": "Arms Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "9": {
         "key": "PART_L_LEG_MUD",
         "name": "L Leg Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "10": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "11": {
         "key": "PART_R_LEG_MUD",
         "name": "R Leg Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "12": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       },
       "13": {
         "key": "PART_TAIL_MUD",
         "name": "Tail Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "22": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_JAW",
         "name": "Jaw",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "23": {
       "0": {
         "key": "PART_BODY_LEGS",
         "name": "Body Legs",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_ANTLERS",
         "name": "Antlers",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          1
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          1
+        ]
       },
       "3": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "24": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "25": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          2,
+          3
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "5": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          5
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          8
+        ]
       },
       "11": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6,
+          9
+        ]
       },
       "12": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "26": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_NECK",
         "name": "Neck",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          2,
+          6,
+          8,
+          9
+        ]
       },
       "11": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "27": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "1": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "2": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       },
       "4": {
         "key": "PART_ROCK",
         "name": "Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "28": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "3": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "29": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "1": {
         "key": "PART_TORSO",
         "name": "Torso",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "2": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       },
       "5": {
         "key": "PART_HEAD_MUD",
         "name": "Head Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "6": {
         "key": "PART_TORSO_MUD",
         "name": "Torso Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "7": {
         "key": "PART_L_LEG_MUD",
         "name": "L Leg Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_R_LEG_MUD",
         "name": "R Leg Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_TAIL_MUD",
         "name": "Tail Mud",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "30": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "1": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "2": {
         "key": "PART_MANE",
         "name": "Mane",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "31": {
       "0": {
         "key": "PART_BALLOON",
         "name": "Balloon",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "2": {
         "key": "PART_BALLOON",
         "name": "Balloon",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "7": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5,
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "32": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "1": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "3": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "4": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "5": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "33": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "4": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "34": {
       "0": {
         "key": "PART_COUNTERATTACK",
         "name": "Counterattack",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "4": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "5": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "35": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "6": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "7": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "9": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       },
       "10": {
         "key": "PART_JAW",
         "name": "Jaw",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "12": {
         "key": "PART_L_BONE",
         "name": "L Bone",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "13": {
         "key": "PART_R_BONE",
         "name": "R Bone",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       }
     },
     "36": {
       "0": {
         "key": "PART_EMISSIONS",
         "name": "Emissions",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "37": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "4": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "38": {
-      "1": {
-        "key": "PART_HORNS",
-        "name": "Horns",
-        "severable": true
-      },
       "0": {
         "key": "PART_HORNS_2",
         "name": "Horns 2",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_HORNS",
+        "name": "Horns",
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "3": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_L_LIMBS",
         "name": "L Limbs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LIMBS",
         "name": "R Limbs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          7,
+          9
+        ]
       },
       "8": {
         "key": "PART_HORNS_GOLD",
         "name": "Horns Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_MANE_GOLD",
         "name": "Mane Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_L_CHEST_GOLD",
         "name": "L Chest Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_R_CHEST_GOLD",
         "name": "R Chest Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "12": {
         "key": "PART_L_ARM_GOLD",
         "name": "L Arm Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "13": {
         "key": "PART_R_ARM_GOLD",
         "name": "R Arm Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "14": {
         "key": "PART_L_LEG_GOLD",
         "name": "L Leg Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "15": {
         "key": "PART_R_LEG_GOLD",
         "name": "R Leg Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          8
+        ]
       },
       "16": {
         "key": "PART_L_TAIL_GOLD",
         "name": "L Tail Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "17": {
         "key": "PART_R_TAIL_GOLD",
         "name": "R Tail Gold",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       }
     },
     "39": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          8
+        ]
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "51": {
       "0": {
         "key": "PART_BODY_LEGS",
         "name": "Body Legs",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_ANTLERS",
         "name": "Antlers",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          1
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          1
+        ]
       },
       "3": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "61": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          6
+        ]
       },
       "4": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          4,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "62": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          6
+        ]
       },
       "4": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          4,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "63": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          6
+        ]
       },
       "4": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          4,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "64": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_BIG_FLINCH",
         "name": "Big Flinch",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_COUNTERATTACK",
         "name": "Counterattack",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "5": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_REAR",
         "name": "Rear",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "10": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "65": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "4": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          4
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "66": {
-      "1": {
-        "key": "PART_THROAT",
-        "name": "Throat",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_FIN",
         "name": "Fin",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "5": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "67": {
-      "1": {
-        "key": "PART_THROAT",
-        "name": "Throat",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "4": {
         "key": "PART_FIN",
         "name": "Fin",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "6": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "9": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "68": {
-      "1": {
-        "key": "PART_THROAT",
-        "name": "Throat",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_THROAT",
+        "name": "Throat",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "5": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "69": {
-      "2": {
-        "key": "PART_HEAD",
-        "name": "Head",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_INFLATED_TAIL",
         "name": "Inflated Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "6": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "7": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "9": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "70": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          2,
+          4
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_SILVER_SPIKES_HEAD",
         "name": "Silver Spikes Head",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_SILVER_SPIKES_L_ARM",
         "name": "Silver Spikes L Arm",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_SILVER_SPIKES_R_ARM",
         "name": "Silver Spikes R Arm",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_SILVER_SPIKES_L_WING",
         "name": "Silver Spikes L Wing",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_SILVER_SPIKES_R_WING",
         "name": "Silver Spikes R Wing",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "10": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1
+        ]
       },
       "12": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          5
+        ]
       },
       "13": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "14": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "15": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          8
+        ]
       },
       "16": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6,
+          9
+        ]
       },
       "17": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "71": {
       "0": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "1": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "2": {
         "key": "PART_MANE",
         "name": "Mane",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "4": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "72": {
       "0": {
         "key": "PART_BALLOON",
         "name": "Balloon",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "2": {
         "key": "PART_BALLOON",
         "name": "Balloon",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "7": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5,
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "73": {
       "0": {
         "key": "PART_SKY_FALL",
         "name": "Sky Fall",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "4": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "5": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "6": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "74": {
       "0": {
         "key": "PART_COUNTERATTACK",
         "name": "Counterattack",
-        "severable": true
-      },
-      "2": {
-        "key": "PART_HEAD",
-        "name": "Head",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "2": {
+        "key": "PART_HEAD",
+        "name": "Head",
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "5": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "6": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "75": {
-      "1": {
-        "key": "PART_TAIL",
-        "name": "Tail",
-        "severable": true
-      },
       "0": {
         "key": "PART_EMISSIONS",
         "name": "Emissions",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "5": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "12": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "13": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "14": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "15": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "76": {
-      "1": {
-        "key": "PART_GLOWING_HEAD",
-        "name": "Glowing Head",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_GLOWING_HEAD",
+        "name": "Glowing Head",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_GLOWING_TAIL",
         "name": "Glowing Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          8
+        ]
       },
       "6": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "7": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "77": {
       "0": {
         "key": "PART_EMERGE_SNOW_HEAD",
         "name": "Emerge Snow Head",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_EMERGE_SNOW_BODY",
         "name": "Emerge Snow Body",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_EMERGE_SNOW_TAIL",
         "name": "Emerge Snow Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "4": {
         "key": "PART_HEAD_SNOW",
         "name": "Head Snow",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "5": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "6": {
         "key": "PART_BODY_SNOW",
         "name": "Body Snow",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "7": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       },
       "9": {
         "key": "PART_TAIL_SNOW",
         "name": "Tail Snow",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "78": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          4
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "79": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_SKY_FALL",
         "name": "Sky Fall",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "3": {
         "key": "PART_HEAD_ICE",
         "name": "Head Ice",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_BODY_ICE",
         "name": "Body Ice",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "7": {
         "key": "PART_WINGS_ICE",
         "name": "Wings Ice",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_ARMS_ICE",
         "name": "Arms Ice",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "80": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "2": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       },
       "4": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "5": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       }
     },
     "81": {
       "0": {
         "key": "PART_HEAD_ROCK",
         "name": "Head Rock",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD_ROCK",
         "name": "Head Rock",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_CHEST_ROCK",
         "name": "Chest Rock",
-        "severable": true
-      },
-      "4": {
-        "key": "PART_UNKNOWN",
-        "name": "Unknown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "4": {
+        "key": "PART_UNKNOWN",
+        "name": "Unknown",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_L_NECK_ROCK",
         "name": "L Neck Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_NECK_ROCK",
         "name": "R Neck Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_HEAD_ROCK",
         "name": "Head Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "8": {
         "key": "PART_TAIL_ROCK",
         "name": "Tail Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "9": {
         "key": "PART_L_WING_ROCK",
         "name": "L Wing Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_R_WING_ROCK",
         "name": "R Wing Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_L_ARM_ROCK",
         "name": "L Arm Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "12": {
         "key": "PART_R_ARM_ROCK",
         "name": "R Arm Rock",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "13": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       },
       "14": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "15": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "16": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "17": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "18": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "19": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          4
+        ]
       },
       "20": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "87": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "4": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_WINGS",
         "name": "Wings",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          2,
+          7
+        ]
       },
       "6": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          6
+        ]
       },
       "7": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          8
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "88": {
-      "1": {
-        "key": "PART_BIG_FLINCH",
-        "name": "Big Flinch",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_BIG_FLINCH",
+        "name": "Big Flinch",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "89": {
-      "1": {
-        "key": "PART_BIG_FLINCH",
-        "name": "Big Flinch",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_BIG_FLINCH",
+        "name": "Big Flinch",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "5": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "90": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2,
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "4": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "5": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "6": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "91": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
-      },
-      "2": {
-        "key": "PART_TAIL",
-        "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HORNS_2",
         "name": "Horns 2",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "2": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_RAGE",
         "name": "Rage",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          3
+        ]
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          3
+        ]
       },
       "10": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "92": {
       "0": {
         "key": "PART_HORNS",
         "name": "Horns",
-        "severable": true
-      },
-      "2": {
-        "key": "PART_TAIL",
-        "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HORNS_2",
         "name": "Horns 2",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "2": {
+        "key": "PART_TAIL",
+        "name": "Tail",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_RAGE",
         "name": "Rage",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          3
+        ]
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          3
+        ]
       },
       "10": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "93": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          6
+        ]
       },
       "4": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          4,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "94": {
-      "1": {
-        "key": "PART_CHARGE",
-        "name": "Charge",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_CHARGE",
+        "name": "Charge",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2,
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "4": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "6": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "95": {
-      "1": {
-        "key": "PART_CHARGE",
-        "name": "Charge",
-        "severable": true
-      },
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
+      },
+      "1": {
+        "key": "PART_CHARGE",
+        "name": "Charge",
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "2": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2,
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "3": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          6
+        ]
       },
       "4": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_ARMS",
         "name": "Arms",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": [
+          1,
+          5
+        ]
       },
       "6": {
         "key": "PART_LEGS",
         "name": "Legs",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "96": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          4
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1
+        ]
       },
       "5": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "6": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "7": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          6
+        ]
       },
       "8": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       },
       "9": {
         "key": "PART_TAIL_TIP",
         "name": "Tail Tip",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     },
     "97": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5,
+          10
+        ],
+        "tenderizeIds": [
+          0,
+          4,
+          8,
+          9
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_ABDOMEN",
         "name": "Abdomen",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_BACK",
         "name": "Back",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          7
+        ],
+        "tenderizeIds": [
+          1,
+          10
+        ]
       },
       "7": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          7
+        ],
+        "tenderizeIds": [
+          5
+        ]
       },
       "8": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": [
+          2,
+          12
+        ]
       },
       "9": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          5
+        ],
+        "tenderizeIds": [
+          6
+        ]
       },
       "10": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3
+        ],
+        "tenderizeIds": []
       },
       "12": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3,
+          7
+        ]
       }
     },
     "98": {
       "0": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          0,
+          2
+        ]
       },
       "1": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1
+        ]
       },
       "2": {
         "key": "PART_UNKNOWN",
         "name": "Unknown",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       }
     },
     "99": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2,
+          4
+        ],
+        "tenderizeIds": [
+          0,
+          5
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          3
+        ]
       },
       "4": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          8
+        ]
       },
       "5": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          1,
+          2
+        ]
       },
       "6": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": [
+          6,
+          7
+        ]
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          4,
+          9
+        ]
       }
     },
     "100": {
       "0": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1,
+          2
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          1,
+          6
+        ]
       },
       "4": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": [
+          4,
+          7
+        ]
       },
       "5": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "6": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "7": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2,
+          5
+        ]
       }
     },
     "101": {
       "0": {
         "key": "PART_KNOCKDOWN",
         "name": "Knockdown",
-        "severable": true
+        "severable": true,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "1": {
         "key": "PART_HEAD",
         "name": "Head",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          3,
+          6
+        ],
+        "tenderizeIds": [
+          0,
+          3
+        ]
       },
       "2": {
         "key": "PART_NECK",
         "name": "Neck",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "3": {
         "key": "PART_CHEST",
         "name": "Chest",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          2
+        ],
+        "tenderizeIds": []
       },
       "4": {
         "key": "PART_BODY",
         "name": "Body",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       },
       "5": {
         "key": "PART_L_ARM",
         "name": "L Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "6": {
         "key": "PART_R_ARM",
         "name": "R Arm",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          1,
+          4
+        ]
       },
       "7": {
         "key": "PART_L_LEG",
         "name": "L Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          2
+        ]
       },
       "8": {
         "key": "PART_R_LEG",
         "name": "R Leg",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": [
+          5
+        ]
       },
       "9": {
         "key": "PART_L_WING",
         "name": "L Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "10": {
         "key": "PART_R_WING",
         "name": "R Wing",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [
+          1
+        ],
+        "tenderizeIds": []
       },
       "11": {
         "key": "PART_TAIL",
         "name": "Tail",
-        "severable": false
+        "severable": false,
+        "breakThresholds": [],
+        "tenderizeIds": []
       }
     }
   }

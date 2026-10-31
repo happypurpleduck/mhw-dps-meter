@@ -15,7 +15,11 @@ internal readonly record struct HitRecord(
     int AttackId,
     int ActionSet,
     int ActionId,
-    int? Part);
+    int? Part,
+    // Captured at hook time, before poll-driven despawn/reuse can change the mapping.
+    string? MonsterId = null,
+    int? MonsterType = null,
+    bool HasMonsterIdentity = false);
 
 /// <summary>
 /// Hooks the game's deal-damage function (HunterPie's FUN_DEAL_DAMAGE) to get the
@@ -72,6 +76,7 @@ internal sealed class DamageTracker : IDisposable
     private long _firstHitTimestamp;
     private bool _acceptAllTargets;
     private bool _recordHits;
+    private Func<nint, (string? Id, int? Type)>? _monsterIdentity;
     private List<HitRecord> _pending = [];
     private int _actionSet;
     private int _actionId;
@@ -118,6 +123,15 @@ internal sealed class DamageTracker : IDisposable
             _actionSet = actionSet;
             _actionId = actionId;
         }
+    }
+
+    /// <summary>Bind the recorder's current fight-local monster identity.
+    /// Invoked synchronously from the damage hook; never dereferences a game pointer.
+    /// A null identity at hook time remains unknown rather than being guessed on drain.</summary>
+    public void SetMonsterIdentityResolver(Func<nint, (string? Id, int? Type)> resolver)
+    {
+        lock (_gate)
+            _monsterIdentity = resolver;
     }
 
     /// <summary>Returns and clears the hits recorded since the last call.</summary>
@@ -393,7 +407,16 @@ internal sealed class DamageTracker : IDisposable
                 if (part is not null) _partTagged++;
                 else _partUnknown++;
                 _partLast = partReason;
-                _pending.Add(new HitRecord(now, target, damage, crit, tenderized, attackId, _actionSet, _actionId, part));
+                var identityCaptured = _monsterIdentity is not null;
+                (string? id, int? type) identity = default;
+                if (_monsterIdentity is not null)
+                {
+                    try { identity = _monsterIdentity(target); }
+                    catch { /* Fail closed: never let identity lookup affect the native hook. */ }
+                }
+                _pending.Add(new HitRecord(now, target, damage, crit, tenderized,
+                    attackId, _actionSet, _actionId, part, identity.id, identity.type,
+                    identityCaptured));
             }
         }
     }

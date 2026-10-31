@@ -17,9 +17,18 @@ internal sealed class HuntRecorder
     private readonly object _gate = new();
     private readonly List<FightLogHit> _hits = [];
     private readonly List<FightLogEvent> _events = [];
+    private readonly List<FightLogGaugeSample> _gaugeSamples = [];
+    private readonly Dictionary<string, double> _lastGaugeSampleTime = [];
+    // A reset may land on a throttled poll: latch per monster until written.
+    private readonly HashSet<string> _pendingGaugeClockBoundaries = [];
+    private readonly GaugeCaptureTimeline _gaugeTimeline = new();
+    public const int MaxGaugeSamples = 3600;
+    private int _gaugeSamplesDropped;
+    private const double GaugeSamplePeriod = 2.0;
     /// <summary>Latest monster entry per instance; the game reuses instances, so a second
     /// Beotodus spawning after the first died gets its own entry ("m2") under the same pointer.</summary>
     private readonly Dictionary<nint, FightLogMonster> _monsters = [];
+    private readonly Dictionary<nint, MonsterState> _previousMonsterStates = [];
     private readonly List<FightLogMonster> _allMonsters = [];
     private readonly Dictionary<int, string> _weaponBySlot = [];
     private int _estimatedHits;
@@ -44,13 +53,29 @@ internal sealed class HuntRecorder
         get { lock (_gate) return _hits.Count; }
     }
 
+    /// <summary>Read-only hook-time identity snapshot; never resolves stale native
+    /// pointers. Returning unknown means the hit must not be relabeled on drain.</summary>
+    public (string? Id, int? Type) CaptureMonsterIdentity(nint instance)
+    {
+        lock (_gate)
+            return _monsters.TryGetValue(instance, out var monster)
+                ? (monster.Id, monster.Type)
+                : (null, null);
+    }
+
     public void Reset()
     {
         lock (_gate)
         {
             _hits.Clear();
             _events.Clear();
+            _gaugeSamples.Clear();
+            _lastGaugeSampleTime.Clear();
+            _pendingGaugeClockBoundaries.Clear();
+            _gaugeTimeline.Reset();
+            _gaugeSamplesDropped = 0;
             _monsters.Clear();
+            _previousMonsterStates.Clear();
             _allMonsters.Clear();
             _weaponBySlot.Clear();
             _estimatedHits = 0;
@@ -61,18 +86,21 @@ internal sealed class HuntRecorder
         }
     }
 
-    public void ObserveMonsters(float elapsed, IReadOnlyList<MonsterState> monsters)
+    public void ObserveMonsters(float elapsed, IReadOnlyList<MonsterState> monsters,
+        IReadOnlyCollection<nint>? knownPresentInstances = null)
     {
         lock (_gate)
         {
             foreach (var state in monsters)
             {
                 var exists = _monsters.TryGetValue(state.Instance, out var entry);
-                // Same pointer, but HP jumped back up (after a death or a large heal-from-zero):
-                // the game re-used the instance for a new monster.
-                var respawned = exists && entry!.MaxHealth > 0
-                    && (entry.DiedT.HasValue || state.Health > entry.LastHealth + 0.25f * entry.MaxHealth)
-                    && state.Health > 0.5f * state.MaxHealth;
+                // Share pointer-generation semantics with HP fallback/gauge
+                // polling. Difficulty scaling is NOT a new monster; its
+                // max-HP changes must preserve the same fight-local ID.
+                var respawned = exists && (
+                    (_previousMonsterStates.TryGetValue(state.Instance, out var previous)
+                        && MonsterGeneration.Changed(previous, state))
+                    || (entry!.DiedT.HasValue && state.Health > 0.5f * state.MaxHealth));
                 if (!exists || respawned)
                 {
                     entry = new FightLogMonster
@@ -88,13 +116,93 @@ internal sealed class HuntRecorder
                     _allMonsters.Add(entry);
                 }
 
+                _previousMonsterStates[state.Instance] = state;
                 entry!.LastHealth = state.Health;
                 if (entry.MaxHealth <= 0 && state.MaxHealth > 0)
                     entry.MaxHealth = state.MaxHealth;
                 if (string.IsNullOrEmpty(entry.Name) && !string.IsNullOrEmpty(state.Name))
                     entry.Name = state.Name;
             }
+
+            // Called only after a complete native enumeration. Some known
+            // monsters can have an unreadable HP/type this frame and therefore
+            // be missing from the readable states; those are NOT despawned.
+            // Use the tracker-provided live instances when available.
+            // Forget truly absent pointers from the live map, not history.
+            var present = knownPresentInstances?.ToHashSet()
+                ?? monsters.Select(m => m.Instance).ToHashSet();
+            foreach (var instance in _monsters.Keys.Where(key => !present.Contains(key)).ToArray())
+            {
+                _monsters.Remove(instance);
+                _previousMonsterStates.Remove(instance);
+            }
         }
+    }
+
+    /// <summary>Captures sparse locally observed state, not attribution to a hunter.
+    /// Scheduling uses a process-monotonic timebase independent of the hunt timestamp.</summary>
+    public void ObserveGauges(float elapsed, double monotonicSeconds, string huntClockSource, IReadOnlyList<MonsterGaugeState> gauges)
+    {
+        if (gauges.Count == 0)
+            return;
+
+        lock (_gate)
+        {
+            var capture = _gaugeTimeline.Advance(elapsed, monotonicSeconds, huntClockSource);
+            if (capture.Boundary)
+            {
+                foreach (var tracked in _monsters.Values)
+                    _pendingGaugeClockBoundaries.Add(tracked.Id);
+            }
+            foreach (var gauge in gauges)
+            {
+                if (!_monsters.TryGetValue(gauge.Instance, out var monster))
+                    continue;
+                if (gauge.Stamina is null && gauge.Parts.Length == 0 && gauge.Ailments.Length == 0)
+                    continue;
+                if (_lastGaugeSampleTime.TryGetValue(monster.Id, out var previous)
+                    && monotonicSeconds < previous + GaugeSamplePeriod)
+                    continue;
+
+                _lastGaugeSampleTime[monster.Id] = monotonicSeconds;
+                if (_gaugeSamples.Count >= MaxGaugeSamples)
+                {
+                    // Count due samples only, not repeated 100ms polls.
+                    if (_gaugeSamplesDropped < int.MaxValue)
+                        _gaugeSamplesDropped++;
+                    continue;
+                }
+                _gaugeSamples.Add(new FightLogGaugeSample
+                {
+                    T = capture.T,
+                    RawHuntT = Math.Max(0, elapsed),
+                    ClockAdjusted = capture.Adjusted,
+                    ClockBoundary = _pendingGaugeClockBoundaries.Remove(monster.Id),
+                    Monster = monster.Id,
+                    Source = "local-unverified",
+                    Stamina = gauge.Stamina,
+                    MaxStamina = gauge.MaxStamina,
+                    Parts = gauge.Parts.ToArray(),
+                    Ailments = gauge.Ailments.ToArray()
+                });
+            }
+        }
+    }
+
+    public int GaugeClockDiscontinuities
+    {
+        get { lock (_gate) return _gaugeTimeline.Discontinuities; }
+    }
+
+    public int GaugeSamplesDropped
+    {
+        get { lock (_gate) return _gaugeSamplesDropped; }
+    }
+
+    public FightLogGaugeSample[] GaugeSamples()
+    {
+        lock (_gate)
+            return _gaugeSamples.ToArray(); // capture order, never re-sort on raw quest time
     }
 
     /// <summary>Records join/leave events when the roster changes between polls.</summary>
@@ -176,15 +284,21 @@ internal sealed class HuntRecorder
                 if (_hits.Count >= MaxHits)
                     return;
 
-                _monsters.TryGetValue(hit.Target, out var monster);
+                // Hook-time identity wins over current pointer mapping: buffered
+                // m1 hits must never become m2 after a same-address respawn,
+                // and hits from before any known identity stay unknown.
+                FightLogMonster? monster = null;
+                if (!hit.HasMonsterIdentity)
+                    _monsters.TryGetValue(hit.Target, out monster);
+                var identityType = hit.HasMonsterIdentity ? hit.MonsterType : monster?.Type;
                 string? partName = null;
-                if (hit.Part is int partId && monster is not null)
-                    partName = MonsterParts.Name(monster.Type, partId);
+                if (hit.Part is int partId && identityType is int monsterType)
+                    partName = MonsterParts.Name(monsterType, partId);
                 _hits.Add(new FightLogHit
                 {
                     T = Math.Max(0f, timeOf(hit)),
                     Slot = Math.Max(0, localSlot),
-                    Monster = monster?.Id,
+                    Monster = hit.HasMonsterIdentity ? hit.MonsterId : monster?.Id,
                     Damage = hit.Damage,
                     Crit = hit.Crit,
                     Tenderized = hit.Tenderized,

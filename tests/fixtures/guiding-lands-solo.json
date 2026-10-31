@@ -1,0 +1,644 @@
+{
+  "schemaVersion": 3,
+  "kind": "quest",
+  "pluginVersion": "synthetic-test-only",
+  "gameBuild": 421810,
+  "questId": 0,
+  "questName": "The Guiding Lands",
+  "result": "leave",
+  "stageId": 109,
+  "stage": "Guiding Lands",
+  "damageScope": "local-only",
+  "startedAt": "2026-10-31T07:00:00Z",
+  "endedAt": "2026-10-31T07:02:00Z",
+  "durationSeconds": 120,
+  "timerSource": "local",
+  "hitCoverage": "local",
+  "rewards": null,
+  "players": [
+    {
+      "slot": 0,
+      "name": "Sample Local",
+      "isLocal": true,
+      "weapon": "DualBlades",
+      "damage": 360,
+      "dps": 3,
+      "percent": 100
+    }
+  ],
+  "monsters": [
+    {
+      "id": "m1",
+      "type": 0,
+      "name": "Sample Anjanath",
+      "variant": 0,
+      "maxHealth": 1000,
+      "lastHealth": 800,
+      "firstSeenT": 0
+    }
+  ],
+  "samples": [
+    {
+      "t": 0,
+      "damage": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 2,
+      "damage": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 4,
+      "damage": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 6,
+      "damage": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 8,
+      "damage": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 10,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 12,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 14,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 16,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 18,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 20,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 22,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 24,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 26,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 28,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 30,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 32,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 34,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 36,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 38,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 40,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 42,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 44,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 46,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 48,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 50,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 52,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 54,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 56,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 58,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 60,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 62,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 64,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 66,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 68,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 70,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 72,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 74,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 76,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 78,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 80,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 82,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 84,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 86,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 88,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 90,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 92,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 94,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 96,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 98,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 100,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 102,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 104,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 106,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 108,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 110,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 112,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 114,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 116,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 118,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 120,
+      "damage": [
+        360,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "hits": [
+    {
+      "t": 9,
+      "slot": 0,
+      "monster": "m1",
+      "damage": 120,
+      "crit": false,
+      "tenderized": false,
+      "attackId": 0,
+      "actionSet": 1,
+      "actionId": 2
+    },
+    {
+      "t": 119,
+      "slot": 0,
+      "monster": "m1",
+      "damage": 240,
+      "crit": true,
+      "tenderized": false,
+      "attackId": 0,
+      "actionSet": 1,
+      "actionId": 2
+    }
+  ],
+  "gaugeSamples": [
+    {
+      "t": 2,
+      "rawHuntT": 2,
+      "clockAdjusted": false,
+      "clockBoundary": false,
+      "monster": "m1",
+      "source": "local-unverified",
+      "stamina": 90,
+      "maxStamina": 150,
+      "parts": [],
+      "ailments": []
+    },
+    {
+      "t": 4,
+      "rawHuntT": 4,
+      "clockAdjusted": false,
+      "clockBoundary": false,
+      "monster": "m1",
+      "source": "local-unverified",
+      "stamina": 75,
+      "maxStamina": 150,
+      "parts": [],
+      "ailments": []
+    }
+  ],
+  "gaugeSamplesDropped": 0,
+  "gaugeClockDiscontinuities": 0,
+  "events": []
+}

@@ -1,5 +1,5 @@
 /**
- * TypeScript mirror of the plugin's FightLog.cs (schema 2).
+ * TypeScript mirror of the plugin's FightLog.cs (schema 3).
  *
  * Every schema-1 field keeps its name, so files written by plugin 0.3.0 parse
  * with the same types; `normalizeLog` fills the newer arrays with defaults.
@@ -12,6 +12,8 @@ export interface FightLog {
   kind: LogKind
   pluginVersion?: string
   gameBuild: number
+  /** Explicit source boundary: recorded local hits, remote party damage unknown. */
+  damageScope?: string
   questId: number
   questName: string
   result: string
@@ -28,8 +30,48 @@ export interface FightLog {
   players: FightLogPlayer[]
   monsters: FightLogMonster[]
   samples: FightLogSample[]
+  /** Number of bounded damage-timeline compactions on long sessions. */
+  damageSamplesCompactions?: number
   hits: FightLogHit[]
+  /** Experimental local-only sampled observations (not host-authoritative). */
+  gaugeSamples: FightLogGaugeSample[]
+  /** Due observation intervals omitted after the gauge recording limit. */
+  gaugeSamplesDropped: number
+  /** Clock discontinuities: gauge sample t is capture-normalized, rawHuntT preserves quest timer. */
+  gaugeClockDiscontinuities: number
   events: FightLogEvent[]
+}
+
+export interface FightLogGaugeSample {
+  /** Nondecreasing time in capture order, corrected after hunt-clock discontinuities. */
+  t: number
+  rawHuntT?: number | null
+  /** Persistent normalization offset, not a new break each sample. */
+  clockAdjusted?: boolean
+  /** A real clock break, latched until this monster's next recorded sample. */
+  clockBoundary?: boolean | null
+  monster: string
+  source: string
+  stamina: number | null
+  maxStamina: number | null
+  parts: Array<{
+    part: number
+    name: string
+    remaining: number
+    max: number
+    completedFlinches: number | null
+    nextBreakThreshold: number | null
+  }>
+  ailments: Array<{
+    id: number
+    name: string
+    buildup: number | null
+    maxBuildup: number | null
+    procs: number | null
+    /** Optional sampled duration, not an exact status start/end timestamp. */
+    duration: number | null
+    maxDuration: number | null
+  }>
 }
 
 export interface FightLogPlayer {
@@ -107,6 +149,7 @@ export interface IndexEntry {
   startedAt: string
   durationSeconds: number
   totalDamage: number
+  damageScope?: string
   weapon?: string | null
   players: string[]
   monsters: string[]

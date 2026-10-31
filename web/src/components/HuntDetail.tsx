@@ -1,5 +1,7 @@
+import { hasObservedLocalDamage } from '../data/parse'
 import { weaponDisplayName, stageDisplayName } from '../data/names'
 import { Parts } from './Parts'
+import { GaugeHistory } from './GaugeHistory'
 import { WeaponIcon } from './WeaponIcon'
 import { For, Match, Show, Switch, createMemo, createSignal } from 'solid-js'
 import { createColumnHelper } from '@tanstack/table-core'
@@ -70,6 +72,9 @@ function Header(props: { log: FightLog }) {
   const stats = () => hitStats(props.log.hits.filter((h) => h.slot === me()?.slot && !h.estimated))
   const total = () => totalDamage(props.log)
   const duration = () => Math.max(props.log.durationSeconds, 1)
+  const localOnly = () => props.log.damageScope === 'local-only'
+  const unknownScope = () => props.log.damageScope !== undefined && !localOnly()
+  const observedLocal = () => hasObservedLocalDamage(props.log)
   return (
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-baseline gap-3">
@@ -87,13 +92,37 @@ function Header(props: { log: FightLog }) {
           )}
         </Show>
       </div>
+      <Show when={localOnly()}>
+        <p class="text-sm text-warning">Guiding Lands: {observedLocal() ? 'only local hit damage was recorded' : 'no local hit damage was recorded'}. Teammate damage and actual multiplayer party share are unavailable.</p>
+      </Show>
+      <Show when={unknownScope()}>
+        <p class="text-sm text-warning">Unrecognized damage coverage: totals, DPS and party shares are unavailable. Raw records remain inspectable but do not establish source authority.</p>
+      </Show>
+      <Show when={props.log.gaugeClockDiscontinuities > 0}>
+        <p class="text-sm text-warning">
+          Experimental gauge timeline adjusted across {props.log.gaugeClockDiscontinuities} hunt-clock changes.
+          Gauge sample t preserves capture order; rawHuntT shows the original quest clock and may not align with hit times.
+        </p>
+      </Show>
+      <Show when={props.log.gaugeSamplesDropped > 0}>
+        <p class="text-sm text-warning">
+          Experimental monster gauge history is incomplete: {props.log.gaugeSamplesDropped} observation intervals
+          were omitted after the recording limit was reached.
+        </p>
+      </Show>
+      <Show when={(props.log.damageSamplesCompactions ?? 0) > 0}>
+        <p class="text-sm text-warning">
+          Damage timeline sampled at progressively wider intervals after {props.log.damageSamplesCompactions} buffer compaction(s).
+          Gaps reflect reduced sample resolution, not known combat activity between readings.
+        </p>
+      </Show>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
-        <StatTile title="Total damage" value={formatInt(total())} desc={`${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
-        <StatTile title="Party DPS" value={(total() / duration()).toFixed(1)} desc={`over ${formatDuration(props.log.durationSeconds)}`} />
+        <StatTile title={localOnly() ? "Observed local damage" : unknownScope() ? "Damage (unknown coverage)" : "Total damage"} value={observedLocal() ? formatInt(total()) : "unavailable"} desc={unknownScope() ? "unrecognized damage scope" : localOnly() ? (observedLocal() ? "teammate totals unavailable" : "no local hook observations") : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
+        <StatTile title={localOnly() ? "Observed local DPS" : unknownScope() ? "DPS (unknown coverage)" : "Party DPS"} value={observedLocal() ? (total() / duration()).toFixed(1) : "unavailable"} desc={observedLocal() ? `over ${formatDuration(props.log.durationSeconds)}` : "no local hook observations"} />
         <Show when={me()}>
           {(p) => (
             <>
-              <StatTile title="Your damage" value={formatInt(p().damage)} desc={`${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
+              <StatTile title="Your damage" value={unknownScope() ? "unavailable" : formatInt(p().damage)} desc={unknownScope() ? "unrecognized damage coverage" : localOnly() ? `local hits only · ${weaponDisplayName(p().weapon)}` : `${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
               <StatTile title="Your hits" value={String(stats().hits)} desc={stats().hits ? `crit ${pct(stats().critRate)} · avg ${stats().avg.toFixed(0)} · max ${stats().max}` : 'no per-hit data (schema 1)'} />
               <Show when={stats().hits > 0}>
                 <StatTile title="Active DPS" value={stats().activeDps.toFixed(1)} desc={`first→last hit ${formatDuration(stats().activeSeconds)}`} />
@@ -109,7 +138,7 @@ function Header(props: { log: FightLog }) {
 // ---- Overview ----------------------------------------------------------------
 
 const playerCol = createColumnHelper<Features, FightLogPlayer>()
-const playerColumns = [
+const playerColumns = (shareUnknown: boolean) => [
   playerCol.accessor('name', {
     header: 'Hunter',
     sortFn: 'alphanumeric',
@@ -135,7 +164,9 @@ const playerColumns = [
     header: 'Share',
     sortFn: 'basic',
     meta: { class: 'w-52' },
-    cell: (info) => (
+    cell: (info) => shareUnknown ? (
+      <span class="text-xs text-base-content/60">n/a — remote damage unknown</span>
+    ) : (
       <div class="flex items-center gap-2 min-w-0">
         <progress class="progress progress-primary flex-1 min-w-16 max-w-28" value={info.getValue()} max="100" />
         <span class="text-xs shrink-0 tabular-nums">{info.getValue().toFixed(1)}%</span>
@@ -146,7 +177,7 @@ const playerColumns = [
 
 function Overview(props: { log: FightLog }) {
   const players = () => props.log.players
-  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns, initialSorting: [{ id: 'damage', desc: true }] })
+  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns(props.log.damageScope !== undefined), initialSorting: [{ id: 'damage', desc: true }] })
   const [windowSeconds, setWindowSeconds] = createSignal(20)
   const hasSamples = () => props.log.samples.length > 1
   return (
@@ -313,9 +344,12 @@ function Monsters(props: { log: FightLog }) {
   const rows = () => monsterBreakdown(props.log)
   const table = createSolidTable<MonsterRow>({ data: rows, columns: monsterColumns, getRowId: (m) => m.id })
   return (
-    <Show when={props.log.monsters.length} fallback={<div class="text-sm text-base-content/60">No large monsters were recorded for this log.</div>}>
-      <TableView table={table} />
-    </Show>
+    <div class="flex flex-col gap-4">
+      <Show when={props.log.monsters.length} fallback={<div class="text-sm text-base-content/60">No large monsters were recorded for this log.</div>}>
+        <TableView table={table} />
+      </Show>
+      <GaugeHistory log={props.log} />
+    </div>
   )
 }
 
@@ -393,8 +427,8 @@ function Timeline(props: { log: FightLog }) {
 
 function Raw(props: { log: FightLog }) {
   const summary = () => {
-    const { hits, samples, events, ...rest } = props.log
-    return JSON.stringify({ ...rest, hits: `${hits.length} hits`, samples: `${samples.length} samples`, events: `${events.length} events` }, null, 2)
+    const { hits, samples, gaugeSamples, events, ...rest } = props.log
+    return JSON.stringify({ ...rest, hits: `${hits.length} hits`, samples: `${samples.length} samples`, gaugeSamples: `${gaugeSamples.length} gauge samples`, events: `${events.length} events` }, null, 2)
   }
   const download = () => {
     const blob = new Blob([JSON.stringify(props.log, null, 1)], { type: 'application/json' })

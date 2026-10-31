@@ -3,13 +3,13 @@ using System.Text.Json.Serialization;
 namespace MhwDpsMeter;
 
 /// <summary>
-/// On-disk fight log. Schema 2 is a superset of the original (schema-less) files:
+/// On-disk fight log. Schema 3 is a superset of the original (schema-less) files:
 /// every old top-level field keeps its name, so old logs still deserialize and a
 /// web viewer needs a single parser. New fields default to empty when absent.
 /// </summary>
 internal sealed class FightLog
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public const string KindQuest = "quest";
     public const string KindTrial = "trial";
 
@@ -26,6 +26,12 @@ internal sealed class FightLog
 
     [JsonPropertyName("gameBuild")]
     public int GameBuild { get; set; }
+
+    /// <summary>Optional coverage boundary. Local-only observations never
+    /// imply synchronized remote hunter damage or party-share percentages.</summary>
+    [JsonPropertyName("damageScope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DamageScope { get; set; }
 
     [JsonPropertyName("questId")]
     public int QuestId { get; set; }
@@ -83,14 +89,71 @@ internal sealed class FightLog
     [JsonPropertyName("samples")]
     public FightLogSample[] Samples { get; set; } = [];
 
+    /// <summary>Number of times the bounded damage timeline was thinned
+    /// while preserving the full expedition's time span. Zero for old logs.</summary>
+    [JsonPropertyName("damageSamplesCompactions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int DamageSamplesCompactions { get; set; }
+
     [JsonPropertyName("hits")]
     public FightLogHit[] Hits { get; set; } = [];
+
+    /// <summary>Opt-in client-local sampled readings, not host-authoritative.</summary>
+    [JsonPropertyName("gaugeSamples")]
+    public FightLogGaugeSample[] GaugeSamples { get; set; } = [];
+
+    /// <summary>Due observation intervals omitted when the bounded buffer filled.</summary>
+    [JsonPropertyName("gaugeSamplesDropped")]
+    public int GaugeSamplesDropped { get; set; }
+
+    /// <summary>Clock-source changes or unexpected timer jumps during gauge recording.</summary>
+    [JsonPropertyName("gaugeClockDiscontinuities")]
+    public int GaugeClockDiscontinuities { get; set; }
 
     [JsonPropertyName("events")]
     public FightLogEvent[] Events { get; set; } = [];
 
     [JsonIgnore]
     public string FileName { get; set; } = "";
+}
+
+/// <summary>Read-only local observation, independent of hit or buildup attribution.</summary>
+internal sealed class FightLogGaugeSample
+{
+    /// <summary>Nondecreasing capture timeline adjusted across quest clock jumps.</summary>
+    [JsonPropertyName("t")]
+    public float T { get; set; }
+
+    /// <summary>Raw observed quest time (may jump); never used for sorting history.</summary>
+    [JsonPropertyName("rawHuntT")]
+    public float? RawHuntT { get; set; }
+
+    /// <summary>Persistent normalization offset after a clock jump.</summary>
+    [JsonPropertyName("clockAdjusted")]
+    public bool ClockAdjusted { get; set; }
+
+    /// <summary>True on this monster's first stored sample after a discontinuity.
+    /// Nullable to distinguish explicitly false new records from older logs.</summary>
+    [JsonPropertyName("clockBoundary")]
+    public bool? ClockBoundary { get; set; }
+
+    [JsonPropertyName("monster")]
+    public string Monster { get; set; } = "";
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = "local-unverified";
+
+    [JsonPropertyName("stamina")]
+    public float? Stamina { get; set; }
+
+    [JsonPropertyName("maxStamina")]
+    public float? MaxStamina { get; set; }
+
+    [JsonPropertyName("parts")]
+    public MonsterPartGauge[] Parts { get; set; } = [];
+
+    [JsonPropertyName("ailments")]
+    public MonsterAilmentGauge[] Ailments { get; set; } = [];
 }
 
 internal sealed class FightLogPlayer
@@ -289,6 +352,10 @@ internal sealed class FightLogIndexEntry
     [JsonPropertyName("totalDamage")]
     public int TotalDamage { get; set; }
 
+    [JsonPropertyName("damageScope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DamageScope { get; set; }
+
     /// <summary>Local hunter's weapon type, when known.</summary>
     [JsonPropertyName("weapon")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -305,6 +372,7 @@ internal sealed class FightLogIndexEntry
         File = log.FileName,
         Kind = log.Kind,
         TotalDamage = log.Players.Sum(player => player.Damage),
+        DamageScope = log.DamageScope,
         Weapon = log.Players.FirstOrDefault(player => player.IsLocal)?.Weapon,
         QuestId = log.QuestId,
         QuestName = log.QuestName,

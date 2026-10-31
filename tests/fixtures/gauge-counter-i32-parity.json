@@ -1,0 +1,263 @@
+{
+  "questName": "Malformed imported gauge i32 counters",
+  "players": [],
+  "gaugeSamples": [
+    {
+      "t": 0,
+      "monster": "m1",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 80,
+          "max": 100,
+          "completedFlinches": 2147483648,
+          "nextBreakThreshold": 2147483648
+        },
+        {
+          "part": 3,
+          "name": "Tail",
+          "remaining": 50,
+          "max": 100,
+          "completedFlinches": 0
+        },
+        {
+          "part": 2147483648,
+          "name": "Invalid part ID",
+          "remaining": 50,
+          "max": 100,
+          "completedFlinches": 0
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": 2147483648
+        },
+        {
+          "id": 8,
+          "name": "Exhaust",
+          "procs": 0
+        },
+        {
+          "id": 2147483648,
+          "name": "Invalid ailment ID",
+          "procs": 0
+        }
+      ]
+    },
+    {
+      "t": 2,
+      "monster": "m1",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 79,
+          "max": 100,
+          "completedFlinches": 2147483649
+        },
+        {
+          "part": 3,
+          "name": "Tail",
+          "remaining": 48,
+          "max": 100,
+          "completedFlinches": 1
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": 2147483649
+        },
+        {
+          "id": 8,
+          "name": "Exhaust",
+          "procs": 1
+        }
+      ]
+    },
+    {
+      "t": 4,
+      "monster": "m1",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 78,
+          "max": 100,
+          "completedFlinches": -2147483649
+        },
+        {
+          "part": 3,
+          "name": "Tail",
+          "remaining": 40,
+          "max": 100,
+          "completedFlinches": 2
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": -2147483649
+        },
+        {
+          "id": 8,
+          "name": "Exhaust",
+          "procs": 2
+        }
+      ]
+    },
+    {
+      "t": 6,
+      "monster": "m1",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 77,
+          "max": 100,
+          "completedFlinches": 1
+        },
+        {
+          "part": 3,
+          "name": "Tail",
+          "remaining": 30,
+          "max": 100,
+          "completedFlinches": 3
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": 1
+        },
+        {
+          "id": 8,
+          "name": "Exhaust",
+          "procs": 3
+        }
+      ]
+    },
+    {
+      "t": 8,
+      "monster": "m1",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 76,
+          "max": 100,
+          "completedFlinches": 2
+        },
+        {
+          "part": 3,
+          "name": "Tail",
+          "remaining": 27,
+          "max": 100,
+          "completedFlinches": 4
+        },
+        {
+          "part": 4,
+          "name": "Bad fractional count",
+          "remaining": 80,
+          "max": 100,
+          "completedFlinches": 1.5
+        },
+        {
+          "part": 5,
+          "name": "Bad string count",
+          "remaining": 80,
+          "max": 100,
+          "completedFlinches": "2"
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": 2
+        },
+        {
+          "id": 8,
+          "name": "Exhaust",
+          "procs": 4
+        },
+        {
+          "id": 9,
+          "name": "Fractional",
+          "procs": 1.5
+        },
+        {
+          "id": 10,
+          "name": "String",
+          "procs": "2"
+        }
+      ]
+    },
+    {
+      "t": 0,
+      "monster": "m2",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 80,
+          "max": 100,
+          "completedFlinches": 2147483646
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": 2147483646
+        }
+      ]
+    },
+    {
+      "t": 2,
+      "monster": "m2",
+      "source": "local-unverified",
+      "parts": [
+        {
+          "part": 2,
+          "name": "Head",
+          "remaining": 79,
+          "max": 100,
+          "completedFlinches": 2147483647
+        }
+      ],
+      "ailments": [
+        {
+          "id": 7,
+          "name": "KO",
+          "procs": 2147483647
+        }
+      ]
+    },
+    {"t":0,"monster":"m3","source":"local-unverified","parts":[{"part":2.0,"name":"Head","remaining":80,"max":100,"completedFlinches":1.0,"nextBreakThreshold":3.0}],"ailments":[{"id":7.0,"name":"KO","procs":1.0}]},
+    {"t":2,"monster":"m3","source":"local-unverified","parts":[{"part":2e0,"name":"Head","remaining":75,"max":100,"completedFlinches":2e0}],"ailments":[{"id":7e0,"name":"KO","procs":2e0}]},
+    {"t":4,"monster":"m3","source":"local-unverified","parts":[{"part":2.0,"name":"Head","remaining":70,"max":100,"completedFlinches":3e0}],"ailments":[{"id":7.0,"name":"KO","procs":3e0}]},
+    {"t":6,"monster":"m3","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":65,"max":100,"completedFlinches":3.5}],"ailments":[{"id":7,"name":"KO","procs":3.5}]},
+    {"t":8,"monster":"m3","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":60,"max":100,"completedFlinches":4.0}],"ailments":[{"id":7,"name":"KO","procs":4.0}]},
+    {"t":10,"monster":"m3","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":55,"max":100,"completedFlinches":5e0}],"ailments":[{"id":7,"name":"KO","procs":5e0}]},
+    {"t":0,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":null},{"part":2,"name":"Head","remaining":80,"max":100,"completedFlinches":0}]},
+    {"t":2,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":79,"max":100},{"part":2,"name":"Head","remaining":79,"max":100,"completedFlinches":1}]},
+    {"t":4,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":78,"max":100,"completedFlinches":-1},{"part":2,"name":"Head","remaining":78,"max":100,"completedFlinches":2}]},
+    {"t":6,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":77,"max":100,"completedFlinches":"bad"},{"part":2,"name":"Head","remaining":77,"max":100,"completedFlinches":3}]},
+    {"t":8,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":76,"max":100,"completedFlinches":null},{"part":2,"name":"Head","remaining":76,"max":100,"completedFlinches":null}]},
+    {"t":10,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":75,"max":100,"completedFlinches":2147483648},{"part":2,"name":"Head","remaining":75,"max":100,"completedFlinches":4}]},
+    {"t":12,"monster":"m4","source":"local-unverified","parts":[{"part":2,"name":"Head","remaining":74,"max":100,"completedFlinches":1.5},{"part":2,"name":"Head","remaining":74,"max":100,"completedFlinches":5}]}
+  ]
+}

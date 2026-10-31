@@ -4,6 +4,7 @@ import { createColumnHelper } from '@tanstack/table-core'
 import type { IndexEntry, LogKind } from '../schema/fightlog'
 import { logStore } from '../data/store'
 import { formatDuration, formatInt, formatShortDate } from '../data/analysis'
+import { hasKnownIndexDamage } from '../data/parse'
 import { createSolidTable, type Features } from '../lib/table'
 import { ResultBadge, TableView } from './TableView'
 
@@ -25,7 +26,8 @@ const columns = [
         <div class="min-w-0">
           <div class="font-medium truncate max-w-44">{e.questName}</div>
           <div class="text-xs text-base-content/60 truncate max-w-44">
-            {e.kind === 'trial' ? <WeaponLabel weapon={e.weapon} /> : [...e.monsters, ...e.players].join(' · ')}
+            {e.kind === 'trial' ? <WeaponLabel weapon={e.weapon} /> : [...e.monsters, ...e.players, ...(e.damageScope === 'local-only' ? ['local-only damage']
+              : e.damageScope !== undefined ? ['damage coverage unknown'] : [])].join(' · ')}
           </div>
         </div>
       )
@@ -42,11 +44,16 @@ const columns = [
     meta: { class: 'text-right whitespace-nowrap' },
     cell: (info) => formatDuration(info.getValue()),
   }),
-  col.accessor('totalDamage', {
+  col.accessor((entry) => hasKnownIndexDamage(entry) ? entry.totalDamage : undefined, {
+    id: 'totalDamage',
     header: 'Dmg',
     sortFn: 'basic',
+    sortUndefined: 'last',
     meta: { class: 'text-right whitespace-nowrap' },
-    cell: (info) => formatInt(info.getValue()),
+    cell: (info) => {
+      const value = info.getValue()
+      return value === undefined ? '—' : formatInt(value)
+    },
   }),
 ]
 

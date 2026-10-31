@@ -14,7 +14,8 @@ internal sealed record FightLogHeader(
     float DurationSeconds,
     string TimerSource,
     int GameBuild,
-    FightLogRewards? Rewards = null);
+    FightLogRewards? Rewards = null,
+    bool LocalOnlyExpedition = false);
 
 /// <summary>
 /// Writes one JSON file per hunt to <c>logs/</c>, keeps <c>logs/index.json</c> as a
@@ -37,6 +38,9 @@ internal sealed class FightLogStore
 
     private readonly string _logsDirectory;
     private readonly List<FightLogSample> _samples = [];
+    private float _nextDamageSampleT = SampleIntervalSeconds;
+    private float _damageSampleInterval = SampleIntervalSeconds;
+    private int _damageSamplesCompactions;
     private readonly List<FightLog> _history = [];
     private List<FightLogIndexEntry> _index = [];
     private bool _logsAvailable = true;
@@ -55,7 +59,10 @@ internal sealed class FightLogStore
         LoadHistory();
         _index = ReadIndex();
         // Missing, or written by 0.4.0 before totalDamage/kind existed (a logged hunt never has 0 damage).
-        if (_index.Count == 0 || _index.Any(entry => entry.TotalDamage == 0))
+        // Genuine gauge-only Guiding Lands logs may have zero hit damage.
+        // Do not rebuild index.json on every startup for those entries.
+        if (_index.Count == 0 || _index.Any(entry =>
+            entry.TotalDamage == 0 && entry.QuestId > 0))
             BuildIndexFromFiles();
     }
 
@@ -72,28 +79,49 @@ internal sealed class FightLogStore
     public void BeginHunt()
     {
         _samples.Clear();
+        _damageSampleInterval = SampleIntervalSeconds;
+        _nextDamageSampleT = SampleIntervalSeconds;
+        _damageSamplesCompactions = 0;
         ExpandedHistoryIndex = null;
         _samples.Add(new FightLogSample { T = 0 });
     }
 
     /// <summary>
-    /// Appends one sample per <see cref="SampleIntervalSeconds"/> of hunt time. Catches up
-    /// with repeated samples when the clock jumps (SOS join-in-progress starts mid-quest).
+    /// Bounded, full-session damage history. At capacity keep every second
+    /// observation and double the future interval (2s -> 4s -> 8s ...),
+    /// preserving t=0 and the newest session tail. SOS clock jumps can still
+    /// catch up without truncating the rest of a Guiding Lands expedition.
     /// </summary>
     public void UpdateSamples(float elapsedSeconds, int[] slotDamage)
     {
-        while (_samples.Count < MaxSamples)
+        if (!float.IsFinite(elapsedSeconds) || elapsedSeconds < 0)
+            return;
+
+        while (elapsedSeconds + 0.05f >= _nextDamageSampleT)
         {
-            var nextT = _samples.Count * SampleIntervalSeconds;
-            if (elapsedSeconds + 0.05f < nextT)
-                return;
+            if (_samples.Count >= MaxSamples)
+                CompactDamageSamples();
 
             _samples.Add(new FightLogSample
             {
-                T = nextT,
+                T = _nextDamageSampleT,
                 Damage = (int[])slotDamage.Clone()
             });
+            _nextDamageSampleT += _damageSampleInterval;
         }
+    }
+
+    private void CompactDamageSamples()
+    {
+        // The current observations are aligned to the previous interval.
+        // Keep 0,2,4,... indices; future points align with the doubled
+        // interval, making gaps explicit in sample.T for both viewers.
+        var write = 0;
+        for (var read = 0; read < _samples.Count; read += 2)
+            _samples[write++] = _samples[read];
+        _samples.RemoveRange(write, _samples.Count - write);
+        _damageSampleInterval *= 2f;
+        _damageSamplesCompactions++;
     }
 
     public FightLog? EndHunt(FightLogHeader header, IReadOnlyList<PartyMemberSnapshot> members, HuntRecorder recorder)
@@ -101,11 +129,14 @@ internal sealed class FightLogStore
         var samples = _samples.ToArray();
         _samples.Clear();
 
-        if (!_logsAvailable || header.QuestId <= 0 || members.Count == 0)
+        if (!_logsAvailable)
             return null;
 
         var total = members.Sum(member => member.Damage);
-        if (total <= 0)
+        var gaugeSamples = recorder.GaugeSamples();
+        if (!GuidingLandsSession.ShouldPersistLog(
+            header.QuestId, header.StageId, header.LocalOnlyExpedition,
+            members.Count, total, gaugeSamples.Length))
             return null;
 
         var safeDuration = Math.Max(header.DurationSeconds, 0.001f);
@@ -114,6 +145,8 @@ internal sealed class FightLogStore
             SchemaVersion = FightLog.CurrentSchemaVersion,
             PluginVersion = Plugin.BuildStamp,
             GameBuild = header.GameBuild,
+            DamageScope = header.LocalOnlyExpedition
+                ? GuidingLandsSession.DamageScope : null,
             QuestId = header.QuestId,
             QuestName = string.IsNullOrWhiteSpace(header.QuestName) ? $"Quest {header.QuestId}" : header.QuestName,
             Result = header.Result,
@@ -136,13 +169,19 @@ internal sealed class FightLogStore
                     Weapon = recorder.WeaponOf(member.Slot) ?? (member.IsLocal ? recorder.LocalWeapon : null),
                     Damage = member.Damage,
                     Dps = member.Damage / safeDuration,
-                    Percent = 100f * member.Damage / total,
+                    // A zero-total, gauge-only expedition may still have
+                    // a local roster row. Never serialize NaN/Infinity.
+                    Percent = total > 0 ? 100f * member.Damage / total : 0f,
                     Carts = recorder.CartsOf(member.Slot)
                 })
                 .ToArray(),
             Monsters = recorder.Monsters(),
             Samples = samples,
+            DamageSamplesCompactions = _damageSamplesCompactions,
             Hits = recorder.Hits(),
+            GaugeSamples = gaugeSamples,
+            GaugeSamplesDropped = recorder.GaugeSamplesDropped,
+            GaugeClockDiscontinuities = recorder.GaugeClockDiscontinuities,
             Events = recorder.Events()
         };
 
@@ -169,7 +208,9 @@ internal sealed class FightLogStore
             return false;
 
         var stamp = log.StartedAt.ToLocalTime().ToString("yyyy-MM-dd_HHmmss");
-        var middle = log.Kind == FightLog.KindTrial ? $"trial{log.DurationSeconds:0}s" : log.QuestId.ToString();
+        var middle = log.Kind == FightLog.KindTrial ? $"trial{log.DurationSeconds:0}s"
+            : log.DamageScope == GuidingLandsSession.DamageScope
+                ? "guiding-lands" : log.QuestId.ToString();
         var fileName = $"{stamp}_{middle}_{Sanitize(log.Result)}.json";
         var path = Path.Combine(_logsDirectory, fileName);
 

@@ -1,4 +1,4 @@
-//! Serde mirror of the plugin's `FightLog.cs` (schema 2). Schema-1 files lack
+//! Serde mirror of the plugin's `FightLog.cs` (schema 3). Schema-1 files lack
 //! the newer fields, so everything added after 0.3.0 has a default.
 
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,8 @@ pub struct FightLog {
     #[serde(default)]
     pub game_build: u32,
     #[serde(default)]
+    pub damage_scope: Option<String>,
+    #[serde(default)]
     pub quest_id: i64,
     pub quest_name: String,
     #[serde(default)]
@@ -58,9 +60,158 @@ pub struct FightLog {
     #[serde(default)]
     pub samples: Vec<Sample>,
     #[serde(default)]
+    pub damage_samples_compactions: usize,
+    #[serde(default)]
     pub hits: Vec<Hit>,
+    // Optional experimental observations must never reject an otherwise-valid hunt.
+    #[serde(default, deserialize_with = "deserialize_gauge_samples")]
+    pub gauge_samples: Vec<GaugeSample>,
+    #[serde(default)]
+    pub gauge_samples_dropped: usize,
+    #[serde(default)]
+    pub gauge_clock_discontinuities: usize,
     #[serde(default)]
     pub events: Vec<Event>,
+}
+
+/// Optional locally sampled MHW monster gauges; never assume the client is host.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GaugeSample {
+    pub t: f32,
+    #[serde(default)]
+    pub raw_hunt_t: Option<f32>,
+    #[serde(default)]
+    pub clock_adjusted: bool,
+    /// True on a monster's next stored sample after a clock discontinuity.
+    /// None in pre-fix schema-3 logs where only clock_adjusted was emitted.
+    #[serde(default)]
+    pub clock_boundary: Option<bool>,
+    pub monster: String,
+    pub source: String,
+    #[serde(default)]
+    pub stamina: Option<f32>,
+    #[serde(default)]
+    pub max_stamina: Option<f32>,
+    #[serde(default)]
+    pub parts: Vec<PartGauge>,
+    #[serde(default)]
+    pub ailments: Vec<AilmentGauge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PartGauge {
+    pub part: i32,
+    pub name: String,
+    pub remaining: f32,
+    pub max: f32,
+    #[serde(default)]
+    pub completed_flinches: Option<i32>,
+    #[serde(default)]
+    pub next_break_threshold: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AilmentGauge {
+    pub id: i32,
+    pub name: String,
+    #[serde(default)]
+    pub buildup: Option<f32>,
+    #[serde(default)]
+    pub max_buildup: Option<f32>,
+    #[serde(default)]
+    pub procs: Option<i32>,
+    /// Optional sampled duration; absent/invalid must not become a zero reading.
+    #[serde(default)]
+    pub duration: Option<f32>,
+    #[serde(default)]
+    pub max_duration: Option<f32>,
+}
+
+
+/// Accept only valid optional gauges, independently of core hunt-log parsing.
+/// A recognizable monster with an invalid capture time becomes a non-plottable
+/// gap marker (t=-1), so later readings cannot cross an observed discontinuity.
+fn deserialize_gauge_samples<'de, D>(deserializer: D) -> Result<Vec<GaugeSample>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(value.as_array().map(|items| items.iter().filter_map(decode_gauge_sample).collect())
+        .unwrap_or_default())
+}
+
+fn gauge_number(value: Option<&serde_json::Value>) -> Option<f32> {
+    value?.as_f64().filter(|n| n.is_finite() && n.abs() <= f32::MAX as f64).map(|n| n as f32)
+}
+
+fn gauge_integer(value: Option<&serde_json::Value>) -> Option<i32> {
+    let value = value?;
+    // JS JSON.parse cannot distinguish 1, 1.0, and 1e0. Accept finite
+    // mathematically integral float representations too, but preserve the
+    // signed i32 bounds shared by the web viewer. Never round a fraction.
+    if let Some(integer) = value.as_i64() {
+        return i32::try_from(integer).ok();
+    }
+    let number = value.as_f64()?;
+    if !number.is_finite() || number.fract() != 0.0
+        || number < f64::from(i32::MIN) || number > f64::from(i32::MAX)
+    {
+        return None;
+    }
+    Some(number as i32)
+}
+
+fn decode_gauge_sample(value: &serde_json::Value) -> Option<GaugeSample> {
+    let obj = value.as_object()?;
+    let monster = obj.get("monster")?.as_str()?.to_string();
+    if monster.is_empty() { return None; }
+    let time = gauge_number(obj.get("t")).filter(|t| *t >= 0.0);
+    let gap = time.is_none();
+
+    let parts = if gap { Vec::new() } else {
+        obj.get("parts").and_then(serde_json::Value::as_array).into_iter()
+            .flatten().filter_map(|item| {
+                let part = item.as_object()?;
+                Some(PartGauge {
+                    part: gauge_integer(part.get("part"))?,
+                    name: part.get("name")?.as_str()?.to_string(),
+                    remaining: gauge_number(part.get("remaining"))?,
+                    max: gauge_number(part.get("max"))?,
+                    completed_flinches: gauge_integer(part.get("completedFlinches")),
+                    next_break_threshold: gauge_integer(part.get("nextBreakThreshold")),
+                })
+            }).collect()
+    };
+    let ailments = if gap { Vec::new() } else {
+        obj.get("ailments").and_then(serde_json::Value::as_array).into_iter()
+            .flatten().filter_map(|item| {
+                let ailment = item.as_object()?;
+                Some(AilmentGauge {
+                    id: gauge_integer(ailment.get("id"))?,
+                    name: ailment.get("name")?.as_str()?.to_string(),
+                    buildup: gauge_number(ailment.get("buildup")),
+                    max_buildup: gauge_number(ailment.get("maxBuildup")),
+                    procs: gauge_integer(ailment.get("procs")),
+                    duration: gauge_number(ailment.get("duration")),
+                    max_duration: gauge_number(ailment.get("maxDuration")),
+                })
+            }).collect()
+    };
+    Some(GaugeSample {
+        t: time.unwrap_or(-1.0),
+        raw_hunt_t: gauge_number(obj.get("rawHuntT")),
+        clock_adjusted: obj.get("clockAdjusted").and_then(serde_json::Value::as_bool).unwrap_or(false),
+        clock_boundary: obj.get("clockBoundary").and_then(serde_json::Value::as_bool),
+        monster,
+        source: obj.get("source").and_then(serde_json::Value::as_str).unwrap_or("unknown").to_string(),
+        stamina: if gap { None } else { gauge_number(obj.get("stamina")) },
+        max_stamina: if gap { None } else { gauge_number(obj.get("maxStamina")) },
+        parts,
+        ailments,
+    })
 }
 
 fn one() -> u32 {
@@ -192,6 +343,8 @@ pub struct IndexEntry {
     #[serde(default)]
     pub total_damage: i64,
     #[serde(default)]
+    pub damage_scope: Option<String>,
+    #[serde(default)]
     pub weapon: Option<String>,
     #[serde(default)]
     pub players: Vec<String>,
@@ -200,6 +353,28 @@ pub struct IndexEntry {
 }
 
 impl IndexEntry {
+    pub fn has_known_damage(&self) -> bool {
+        self.damage_scope.is_none() ||
+            (self.damage_scope.as_deref() == Some("local-only") && !self.players.is_empty())
+    }
+
+    pub fn damage_text(&self) -> String {
+        if self.has_known_damage() { self.total_damage.to_string() } else { "—".into() }
+    }
+
+    /// Sort missing observations after measured numbers in both directions.
+    pub fn compare_damage(&self, other: &Self, descending: bool) -> std::cmp::Ordering {
+        match (self.has_known_damage(), other.has_known_damage()) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            (false, false) => std::cmp::Ordering::Equal,
+            (true, true) => {
+                let order = self.total_damage.cmp(&other.total_damage);
+                if descending { order.reverse() } else { order }
+            }
+        }
+    }
+
     /// Same derivation as `FightLogIndexEntry.From` in the plugin.
     pub fn from_log(log: &FightLog, file: impl Into<String>) -> Self {
         let mut monsters: Vec<String> = log.monsters.iter().map(|m| m.name.clone()).collect();
@@ -214,6 +389,7 @@ impl IndexEntry {
             started_at: log.started_at.clone(),
             duration_seconds: log.duration_seconds,
             total_damage: log.players.iter().map(|p| p.damage).sum(),
+            damage_scope: log.damage_scope.clone(),
             weapon: log.players.iter().find(|p| p.is_local).and_then(|p| p.weapon.clone()),
             players: log.players.iter().map(|p| p.name.clone()).collect(),
             monsters,
@@ -239,6 +415,19 @@ impl FightLog {
         self.players.iter().map(|p| p.damage).sum()
     }
 
+    pub fn is_local_only(&self) -> bool {
+        self.damage_scope.as_deref() == Some("local-only")
+    }
+
+    pub fn has_observed_local_damage(&self) -> bool {
+        self.damage_scope.is_none() ||
+            (self.is_local_only() && self.players.iter().any(|p| p.is_local))
+    }
+
+    pub fn has_unknown_damage_scope(&self) -> bool {
+        self.damage_scope.as_deref().is_some_and(|value| value != "local-only")
+    }
+
     /// Hits of one hunter (teammates only have estimated rows).
     pub fn hits_for_slot(&self, slot: usize) -> Vec<&Hit> {
         self.hits.iter().filter(|h| h.slot == slot).collect()
@@ -262,4 +451,105 @@ pub fn parse_index(text: &str) -> anyhow::Result<Vec<IndexEntry>> {
 /// Per-hunt log files only: excludes index.json and the live-debug files.
 pub fn is_log_file_name(name: &str) -> bool {
     name.ends_with(".json") && name != "index.json" && !name.starts_with("live-debug")
+}
+
+#[cfg(test)]
+mod guiding_lands_scope_tests {
+    use super::*;
+
+    #[test]
+    fn shared_guiding_lands_synthetic_fixtures_preserve_coverage_boundaries() {
+        let solo = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-solo.json")).unwrap();
+        assert!(solo.is_local_only());
+        assert_eq!(solo.damage_samples_compactions, 0);
+        let long = FightLog::parse(r#"{"questName":"Long GL","players":[],"damageSamplesCompactions":3}"#).unwrap();
+        assert_eq!(long.damage_samples_compactions, 3);
+        assert!(solo.has_observed_local_damage());
+        assert_eq!(solo.quest_id, 0);
+        assert_eq!(solo.stage_id, 109);
+        assert_eq!(solo.players.len(), 1);
+        assert_eq!(solo.players[0].damage, 360);
+        assert_eq!(solo.players[0].percent, 100.0); // never an actual multiplayer party share
+        assert_eq!(solo.hits.len(), 2);
+        assert_eq!(solo.samples.len(), 61);
+        assert_eq!(solo.samples[0].t, 0.0);
+        assert_eq!(solo.samples[4].damage[0], 0);
+        assert_eq!(solo.samples[5].damage[0], 120);
+        assert_eq!(solo.samples[59].damage[0], 120);
+        assert_eq!(solo.samples[60].damage[0], 360);
+        assert!(solo.samples.iter().all(|s| {
+            let recorded_hits: i64 = solo.hits.iter()
+                .filter(|h| h.t <= s.t).map(|h| h.damage).sum();
+            s.damage[0] <= recorded_hits
+        }));
+        assert!(solo.gauge_samples.iter().all(|g| g.source == "local-unverified"));
+        assert_eq!(IndexEntry::from_log(&solo, "solo.json").damage_scope.as_deref(), Some("local-only"));
+
+        let multi = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-multiplayer-gauge-only.json")).unwrap();
+        assert!(multi.is_local_only());
+        assert!(!multi.has_observed_local_damage());
+        assert_eq!(IndexEntry::from_log(&multi, "gauge-only.json").damage_text(), "—");
+        assert_eq!(multi.quest_id, 0);
+        assert!(multi.players.is_empty());
+        assert!(multi.hits.is_empty());
+        assert_eq!(multi.samples.len(), 1);
+        assert_eq!(multi.samples[0].t, 0.0);
+        assert!(multi.samples[0].damage.iter().all(|d| *d == 0));
+        assert_eq!(multi.monsters.len(), 2);
+        assert_eq!(multi.gauge_samples.len(), 2);
+        assert_eq!(multi.gauge_samples[0].monster, "m1");
+        assert_eq!(multi.gauge_samples[1].monster, "m2");
+        assert!(multi.gauge_samples.iter().all(|g| g.source == "local-unverified"));
+        assert_eq!(IndexEntry::from_log(&multi, "gauge-only.json").total_damage, 0);
+    }
+
+    #[test]
+    fn unknown_damage_sorts_last_but_measured_zero_is_numeric() {
+        let entry = |damage: i64, scope: Option<&str>, has_player: bool| {
+            let mut value = serde_json::json!({
+                "file": "test.json",
+                "totalDamage": damage,
+                "players": if has_player { vec!["Local"] } else { vec![] }
+            });
+            if let Some(scope) = scope { value["damageScope"] = serde_json::json!(scope); }
+            serde_json::from_value::<IndexEntry>(value).unwrap()
+        };
+        let zero = entry(0, None, true);
+        let positive = entry(50, None, true);
+        let gauge_only = entry(0, Some("local-only"), false);
+        let unknown = entry(900, Some("future"), true);
+        assert_eq!(zero.damage_text(), "0");
+        assert_eq!(gauge_only.damage_text(), "—");
+        assert_eq!(unknown.damage_text(), "—");
+        assert_eq!(zero.compare_damage(&positive, false), std::cmp::Ordering::Less);
+        assert_eq!(zero.compare_damage(&positive, true), std::cmp::Ordering::Greater);
+        for descending in [false, true] {
+            assert_eq!(gauge_only.compare_damage(&zero, descending),
+                std::cmp::Ordering::Greater);
+            assert_eq!(unknown.compare_damage(&positive, descending),
+                std::cmp::Ordering::Greater);
+            assert_eq!(unknown.compare_damage(&gauge_only, descending),
+                std::cmp::Ordering::Equal);
+        }
+    }
+
+    #[test]
+    fn parses_guiding_lands_local_only_and_old_quest_defaults() {
+        let gl = FightLog::parse(r#"{"questName":"The Guiding Lands","questId":0,"stageId":109,"damageScope":"local-only","players":[],"gaugeSamples":[{"t":2,"monster":"m1","source":"local-unverified"}]}"#).unwrap();
+        assert!(gl.is_local_only());
+        assert_eq!(gl.gauge_samples.len(), 1);
+        let entry = IndexEntry::from_log(&gl, "guiding-lands.json");
+        assert_eq!(entry.damage_scope.as_deref(), Some("local-only"));
+        let old = FightLog::parse(r#"{"questName":"Normal hunt","players":[]}"#).unwrap();
+        assert!(!old.is_local_only());
+        assert!(old.has_observed_local_damage());
+        let future = FightLog::parse(r#"{"questName":"Future","players":[],"damageScope":"host-verified"}"#).unwrap();
+        assert!(future.has_unknown_damage_scope());
+        assert!(!future.has_observed_local_damage());
+        assert_eq!(IndexEntry::from_log(&future, "future.json").damage_scope.as_deref(), Some("host-verified"));
+        assert!(!IndexEntry::from_log(&future, "future.json").has_known_damage());
+        assert_eq!(IndexEntry::from_log(&future, "future.json").damage_text(), "—");
+        assert!(old.damage_scope.is_none());
+        assert!(IndexEntry::from_log(&old, "old.json").damage_scope.is_none());
+    }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseIndex, parseLog, indexEntryFromLog } from '../src/data/parse'
+import { parseIndex, parseLog, indexEntryFromLog, hasObservedLocalDamage } from '../src/data/parse'
 import {
   activeSlots,
   intervalDps,
@@ -23,6 +23,79 @@ const logs = files.map((f) => [f, parseLog(readFileSync(join(SAMPLE, f), 'utf8')
 const v2 = logs.filter(([, l]) => l.schemaVersion === 2 && l.kind === 'quest')
 
 describe('parse', () => {
+  it('reads shared synthetic Guiding Lands hit and gauge-only fixtures', () => {
+    const fixtureDir = join(__dirname, '..', '..', 'tests', 'fixtures')
+    const solo = parseLog(readFileSync(join(fixtureDir, 'guiding-lands-solo.json'), 'utf8'))
+    const multiplayer = parseLog(readFileSync(join(fixtureDir, 'guiding-lands-multiplayer-gauge-only.json'), 'utf8'))
+    expect(solo.damageScope).toBe('local-only')
+    expect(solo.damageSamplesCompactions).toBe(0)
+    const long = parseLog(JSON.stringify({
+      questName: 'Long Guiding Lands', players: [],
+      damageSamplesCompactions: 3, samples: [{ t: 0, damage: [0, 0, 0, 0] }],
+    }))
+    expect(long.damageSamplesCompactions).toBe(3)
+    const corrupt = parseLog(JSON.stringify({
+      questName: 'Imported', players: [], damageSamplesCompactions: -2,
+    }))
+    expect(corrupt.damageSamplesCompactions).toBe(0)
+    expect(solo.questId).toBe(0)
+    expect(solo.stageId).toBe(109)
+    expect(hasObservedLocalDamage(solo)).toBe(true)
+    expect(solo.players).toHaveLength(1)
+    expect(solo.players[0]!.damage).toBe(360)
+    expect(solo.players[0]!.percent).toBe(100) // internal only, not a party-share UI claim
+    expect(solo.hits).toHaveLength(2)
+    expect(solo.samples).toHaveLength(61) // t=0,2,...120 from the two-second writer
+    expect(solo.samples[0]).toEqual({ t: 0, damage: [0, 0, 0, 0] })
+    expect(solo.samples.find(s => s.t === 8)!.damage[0]).toBe(0)
+    expect(solo.samples.find(s => s.t === 10)!.damage[0]).toBe(120)
+    expect(solo.samples.find(s => s.t === 118)!.damage[0]).toBe(120)
+    expect(solo.samples.find(s => s.t === 120)!.damage[0]).toBe(360)
+    expect(solo.samples.every(s =>
+      s.damage[0]! <= solo.hits.filter(h => h.t <= s.t).reduce((sum, h) => sum + h.damage, 0)
+    )).toBe(true)
+    expect(solo.gaugeSamples.every((s) => s.source === 'local-unverified')).toBe(true)
+    expect(indexEntryFromLog(solo, 'guiding-lands-solo.json').damageScope).toBe('local-only')
+    expect(multiplayer.damageScope).toBe('local-only')
+    expect(multiplayer.questId).toBe(0)
+    expect(hasObservedLocalDamage(multiplayer)).toBe(false)
+    expect(multiplayer.players).toHaveLength(0)
+    expect(multiplayer.hits).toHaveLength(0)
+    expect(multiplayer.samples).toEqual([{ t: 0, damage: [0, 0, 0, 0] }])
+    expect(multiplayer.monsters.map((m) => m.id)).toEqual(['m1', 'm2'])
+    expect(multiplayer.gaugeSamples.map((s) => s.monster)).toEqual(['m1', 'm2'])
+    expect(multiplayer.gaugeSamples.every((s) => s.source === 'local-unverified')).toBe(true)
+    expect(indexEntryFromLog(multiplayer, 'guiding-lands-multiplayer-gauge-only.json').totalDamage).toBe(0)
+  })
+  it('retains local-only Guiding Lands damage coverage without changing old quests', () => {
+    const guidingLands = parseLog(JSON.stringify({
+      schemaVersion: 3, kind: 'quest', questName: 'The Guiding Lands',
+      questId: 0, stageId: 109, damageScope: 'local-only', players: [],
+      gaugeSamples: [{ t: 2, monster: 'm1', source: 'local-unverified' }],
+    }))
+    expect(guidingLands.damageScope).toBe('local-only')
+    expect(guidingLands.questId).toBe(0)
+    expect(guidingLands.gaugeSamples).toHaveLength(1)
+    expect(indexEntryFromLog(guidingLands, 'guiding-lands.json').damageScope).toBe('local-only')
+    const parsedIndex = parseIndex(JSON.stringify([{
+      file: 'guiding-lands.json', questName: 'The Guiding Lands',
+      damageScope: 'local-only', questId: 0, totalDamage: 0,
+    }]))
+    expect(parsedIndex[0]!.damageScope).toBe('local-only')
+    const regular = parseLog(JSON.stringify({ questName: 'Normal hunt', players: [] }))
+    expect(regular.damageScope).toBeUndefined()
+    expect(hasObservedLocalDamage(regular)).toBe(true)
+    expect(indexEntryFromLog(regular, 'normal.json').damageScope).toBeUndefined()
+    const unknownScope = parseLog(JSON.stringify({ questName: 'Future hunt', players: [], damageScope: 'host-verified' }))
+    expect(unknownScope.damageScope).toBe('host-verified')
+    expect(hasObservedLocalDamage(unknownScope)).toBe(false)
+    const futureIndex = parseIndex(JSON.stringify([{
+      file: 'future.json', questName: 'Future', players: ['Local'],
+      totalDamage: 9999, damageScope: 'host-verified',
+    }]))
+    expect(futureIndex[0]!.damageScope).toBe('host-verified')
+  })
+
   it('reads every sample file, schema 1 included', () => {
     expect(logs.length).toBeGreaterThan(3)
     for (const [, log] of logs) {
