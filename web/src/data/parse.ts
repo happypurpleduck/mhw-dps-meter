@@ -1,6 +1,10 @@
 import type { FightLog, FightLogGaugeSample, FightLogPlayer, IndexEntry } from '../schema/fightlog'
 import { gaugeI32, isGaugeI32 } from './gaugeInteger'
 
+/** A gauge-only expedition lacks measured local hook damage. */
+export const hasObservedLocalDamage = (log: FightLog): boolean =>
+  log.damageScope !== 'local-only' || log.players.some(p => p.isLocal)
+
 /** Accepts schema-1 or schema-2 JSON and returns a fully populated FightLog. */
 export function normalizeLog(raw: unknown): FightLog {
   if (!raw || typeof raw !== 'object') throw new Error('fight log is not an object')

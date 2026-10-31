@@ -46,7 +46,8 @@ const columns = [
     header: 'Dmg',
     sortFn: 'basic',
     meta: { class: 'text-right whitespace-nowrap' },
-    cell: (info) => formatInt(info.getValue()),
+    cell: (info) => info.row.original.damageScope === 'local-only' && info.row.original.players.length === 0
+      ? '—' : formatInt(info.getValue()),
   }),
 ]
 

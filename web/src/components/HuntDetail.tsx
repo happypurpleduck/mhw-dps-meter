@@ -1,3 +1,4 @@
+import { hasObservedLocalDamage } from '../data/parse'
 import { weaponDisplayName, stageDisplayName } from '../data/names'
 import { Parts } from './Parts'
 import { GaugeHistory } from './GaugeHistory'
@@ -72,6 +73,7 @@ function Header(props: { log: FightLog }) {
   const total = () => totalDamage(props.log)
   const duration = () => Math.max(props.log.durationSeconds, 1)
   const localOnly = () => props.log.damageScope === 'local-only'
+  const observedLocal = () => hasObservedLocalDamage(props.log)
   return (
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-baseline gap-3">
@@ -90,7 +92,7 @@ function Header(props: { log: FightLog }) {
         </Show>
       </div>
       <Show when={localOnly()}>
-        <p class="text-sm text-warning">Guiding Lands: only local hit damage was recorded. Teammate damage and actual multiplayer party share are unavailable.</p>
+        <p class="text-sm text-warning">Guiding Lands: {observedLocal() ? 'only local hit damage was recorded' : 'no local hit damage was recorded'}. Teammate damage and actual multiplayer party share are unavailable.</p>
       </Show>
       <Show when={props.log.gaugeClockDiscontinuities > 0}>
         <p class="text-sm text-warning">
@@ -105,8 +107,8 @@ function Header(props: { log: FightLog }) {
         </p>
       </Show>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
-        <StatTile title={localOnly() ? "Observed local damage" : "Total damage"} value={formatInt(total())} desc={localOnly() ? "teammate totals unavailable" : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
-        <StatTile title={localOnly() ? "Observed local DPS" : "Party DPS"} value={(total() / duration()).toFixed(1)} desc={`over ${formatDuration(props.log.durationSeconds)}`} />
+        <StatTile title={localOnly() ? "Observed local damage" : "Total damage"} value={observedLocal() ? formatInt(total()) : "unavailable"} desc={localOnly() ? (observedLocal() ? "teammate totals unavailable" : "no local hook observations") : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
+        <StatTile title={localOnly() ? "Observed local DPS" : "Party DPS"} value={observedLocal() ? (total() / duration()).toFixed(1) : "unavailable"} desc={observedLocal() ? `over ${formatDuration(props.log.durationSeconds)}` : "no local hook observations"} />
         <Show when={me()}>
           {(p) => (
             <>

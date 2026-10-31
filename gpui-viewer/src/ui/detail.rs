@@ -622,6 +622,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
     let total = log.total_damage();
     let duration = log.duration_seconds.max(1.0);
     let local_only = log.is_local_only();
+    let has_local_damage = log.has_observed_local_damage();
     v_flex()
         .gap_3()
         .child(
@@ -649,7 +650,11 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
         )
         .when(local_only, |this| {
             this.child(div().text_sm().text_color(cx.theme().muted_foreground)
-                .child("Guiding Lands: local hit damage only; teammate totals and party share unavailable"))
+                .child(if has_local_damage {
+                    "Guiding Lands: local hit damage only; teammate totals and party share unavailable"
+                } else {
+                    "Guiding Lands: no local hit observations; teammate totals and party share unavailable"
+                }))
         })
         .child(
             // Tiles share one fixed height and stretch to fill the row.
@@ -657,9 +662,14 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                 .w_full()
                 .flex_wrap()
                 .gap_2()
-                .child(stat_tile(if local_only { "Observed local damage" } else { "Total damage" }, format_int(total),
-                    if local_only { "teammate totals unavailable".to_string() } else { format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }) }, None, cx))
-                .child(stat_tile(if local_only { "Observed local DPS" } else { "Party DPS" }, format!("{:.1}", total as f32 / duration), format!("over {}", format_duration(log.duration_seconds)), None, cx))
+                .child(stat_tile(if local_only { "Observed local damage" } else { "Total damage" },
+                    if has_local_damage { format_int(total) } else { "unavailable".to_string() },
+                    if local_only {
+                        if has_local_damage { "teammate totals unavailable".to_string() } else { "no local hook observations".to_string() }
+                    } else { format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }) }, None, cx))
+                .child(stat_tile(if local_only { "Observed local DPS" } else { "Party DPS" },
+                    if has_local_damage { format!("{:.1}", total as f32 / duration) } else { "unavailable".to_string() },
+                    if has_local_damage { format!("over {}", format_duration(log.duration_seconds)) } else { "no local hook observations".to_string() }, None, cx))
                 .when_some(me, |this, p| {
                     this.child(stat_tile(
                         "Your damage",

@@ -160,7 +160,10 @@ impl TableDelegate for HuntListDelegate {
                 .into_any_element(),
             "result" => result_tag(&entry.result).into_any_element(),
             "time" => div().w_full().text_right().whitespace_nowrap().child(format_duration(entry.duration_seconds)).into_any_element(),
-            "damage" => div().w_full().text_right().whitespace_nowrap().child(format_int(entry.total_damage)).into_any_element(),
+            "damage" => div().w_full().text_right().whitespace_nowrap()
+                .child(if entry.damage_scope.as_deref() == Some("local-only") && entry.players.is_empty() {
+                    "—".to_string()
+                } else { format_int(entry.total_damage) }).into_any_element(),
             _ => div().into_any_element(),
         }
     }

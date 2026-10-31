@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseIndex, parseLog, indexEntryFromLog } from '../src/data/parse'
+import { parseIndex, parseLog, indexEntryFromLog, hasObservedLocalDamage } from '../src/data/parse'
 import {
   activeSlots,
   intervalDps,
@@ -30,6 +30,7 @@ describe('parse', () => {
     expect(solo.damageScope).toBe('local-only')
     expect(solo.questId).toBe(0)
     expect(solo.stageId).toBe(109)
+    expect(hasObservedLocalDamage(solo)).toBe(true)
     expect(solo.players).toHaveLength(1)
     expect(solo.players[0]!.damage).toBe(360)
     expect(solo.players[0]!.percent).toBe(100) // internal only, not a party-share UI claim
@@ -38,6 +39,7 @@ describe('parse', () => {
     expect(indexEntryFromLog(solo, 'guiding-lands-solo.json').damageScope).toBe('local-only')
     expect(multiplayer.damageScope).toBe('local-only')
     expect(multiplayer.questId).toBe(0)
+    expect(hasObservedLocalDamage(multiplayer)).toBe(false)
     expect(multiplayer.players).toHaveLength(0)
     expect(multiplayer.hits).toHaveLength(0)
     expect(multiplayer.monsters.map((m) => m.id)).toEqual(['m1', 'm2'])
@@ -62,6 +64,7 @@ describe('parse', () => {
     expect(parsedIndex[0]!.damageScope).toBe('local-only')
     const regular = parseLog(JSON.stringify({ questName: 'Normal hunt', players: [] }))
     expect(regular.damageScope).toBeUndefined()
+    expect(hasObservedLocalDamage(regular)).toBe(true)
     expect(indexEntryFromLog(regular, 'normal.json').damageScope).toBeUndefined()
     const unknownScope = parseLog(JSON.stringify({ questName: 'Future hunt', players: [], damageScope: 'host-verified' }))
     expect(unknownScope.damageScope).toBeUndefined()

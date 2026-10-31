@@ -395,6 +395,10 @@ impl FightLog {
         self.damage_scope.as_deref() == Some("local-only")
     }
 
+    pub fn has_observed_local_damage(&self) -> bool {
+        !self.is_local_only() || self.players.iter().any(|p| p.is_local)
+    }
+
     /// Hits of one hunter (teammates only have estimated rows).
     pub fn hits_for_slot(&self, slot: usize) -> Vec<&Hit> {
         self.hits.iter().filter(|h| h.slot == slot).collect()
@@ -428,6 +432,7 @@ mod guiding_lands_scope_tests {
     fn shared_guiding_lands_synthetic_fixtures_preserve_coverage_boundaries() {
         let solo = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-solo.json")).unwrap();
         assert!(solo.is_local_only());
+        assert!(solo.has_observed_local_damage());
         assert_eq!(solo.quest_id, 0);
         assert_eq!(solo.stage_id, 109);
         assert_eq!(solo.players.len(), 1);
@@ -439,6 +444,7 @@ mod guiding_lands_scope_tests {
 
         let multi = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-multiplayer-gauge-only.json")).unwrap();
         assert!(multi.is_local_only());
+        assert!(!multi.has_observed_local_damage());
         assert_eq!(multi.quest_id, 0);
         assert!(multi.players.is_empty());
         assert!(multi.hits.is_empty());
@@ -459,6 +465,7 @@ mod guiding_lands_scope_tests {
         assert_eq!(entry.damage_scope.as_deref(), Some("local-only"));
         let old = FightLog::parse(r#"{"questName":"Normal hunt","players":[]}"#).unwrap();
         assert!(!old.is_local_only());
+        assert!(old.has_observed_local_damage());
         assert!(old.damage_scope.is_none());
         assert!(IndexEntry::from_log(&old, "old.json").damage_scope.is_none());
     }
