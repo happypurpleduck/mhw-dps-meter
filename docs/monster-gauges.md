@@ -120,3 +120,10 @@ Offsets follow the [HunterPie MHWMonster reader](https://github.com/HunterPie/Hu
 5. After these pass, proceed to #14 log capture/viewers and full gauge widget; keep #15 distinct.
 
 Run `dotnet run --project tests/PluginRegression` for simulated-reading regressions, **not** a substitute for in-game validation.
+
+
+## Guiding Lands support — source-only experimental slice
+
+The Guiding Lands is stage **109** and does **not** supply normal quest-award damage totals; the old code explicitly excluded it. The dedicated stage-driven expedition path can begin when the player is present **without requiring a positive quest ID or InQuest state**. A session stays active across monster spawn/despawn, carts, joins and leaves; individual quest callbacks do not end it. Returning to another stage ends the expedition and saves a bounded log, without presenting a normal quest rewards/results screen. The local monotonic session timer avoids treating a Guiding Lands internal quest timer as continuous.
+
+**DPS in solo and multiplayer:** only measured **local hit-hook damage** is presented; no remote players' damage or contribution percent is inferred, and quest award values or whole-monster HP loss are never used as a local-player proxy in this mode. When the hook is unavailable, there is no fabricated zero-damage reading, although opted-in, fresh experimental monster gauges may still appear independently. All gauge values remain **local-unverified**, especially on multiplayer guests. This is a source-level implementation and does not prove live behavior across Guiding Lands load screens, quest-state transitions or multiplayer host/guest authority. See #17 runtime matrix; do not merge or release until Windows and Proton evidence is attached.

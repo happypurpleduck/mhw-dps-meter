@@ -92,3 +92,21 @@ As of 2026-10-26, [CI run 40233131193](https://github.com/happypurpleduck/mhw-dp
 ## Merge gate
 
 A PR touching new memory reads must remain draft/unreleased until test evidence, build compatibility and provenance are documented. If real runtime validation cannot be performed, keep code opt-in/unreleased or a research-only branch; document precisely why it is not release-ready. Never weaken crash prevention or falsely claim verification just to clear a checklist.
+
+
+## Guiding Lands mandatory follow-up (not yet run)
+
+These checks apply to stage 109 (The Guiding Lands), in addition to V01–V18. The normal synchronized quest-award damage table is unavailable: remote damage **must remain unknown**, not zero or invented.
+
+| ID | Environment | Required runtime proof |
+| --- | --- | --- |
+| GL01 | Windows solo enter/leave Guiding Lands | stage-based start with or without positive quest ID, valid player guard, no phantom quest-results screen, local-hook totals only |
+| GL02 | Windows host with one to three guests | independent local hook total only, no fake teammate rankings/award values, monster gauges visibly unverified |
+| GL03 | Windows guest/late join | stage entry and local identity/name, correct source labels, no invented remote DPS, no host-authoritative gauge claim |
+| GL04 | Solo/host/guest monster kill → lure → despawn → spawn | one continuous expedition session and monotonic clock; new fight-local monster IDs, no cached stale gauge or previous-monster contamination |
+| GL05 | Player cart, fast travel between Guiding Lands camps, party join/leave | no premature session end or duplicate log, no invalid manual gauge selection, no phantom teammate totals |
+| GL06 | Exit to Seliana and re-enter within three minutes | one finished log per real expedition, no quest-id cooldown blocking re-entry, proper reset of hook damage, poller and selection |
+| GL07 | Windows/Proton, 421810 confirmed, capture off/on | no extra disabled native reads, source-labeled fresh/stale gauges, native pointer failures fail closed, 100-ms/1-s cadence unchanged |
+| GL08 | Solo and multiplayer under Windows and Proton | real overlay position/legibility, FPS/frame-time and startup/teardown smoke; attach anonymized logs/screenshots |
+
+Keep all GL rows **NOT RUN** until real game testing. Source-level simulated model checks are not substitutes.

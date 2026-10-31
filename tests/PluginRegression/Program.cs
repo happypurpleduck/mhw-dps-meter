@@ -17,6 +17,54 @@ Equal("LightBowgun", GameNames.Weapon((WeaponType)13), "light bowgun game ID des
 Equal<string?>(null, GameNames.Weapon((WeaponType)99), "invalid weapon stays unknown");
 
 Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
+ // Guiding Lands stage 109 is an open-ended expedition, even when the
+ // quest-id/state API does not expose a normal accepted quest.
+ Equal(true, GuidingLandsSession.IsStage(109),
+     "The Guiding Lands stage is recognized independently of quest state");
+ Equal(false, GuidingLandsSession.IsStage(504),
+     "training camp never starts a Guiding Lands session");
+ Equal(false, GuidingLandsSession.CanStart(109, 0),
+     "Guiding Lands waits for a valid local player before starting");
+ Equal(true, GuidingLandsSession.CanStart(109, (nint)0xB0000),
+     "local player presence permits expedition session capture");
+ var glLocal = new PartyMemberSnapshot {
+     Slot = 2, Name = "Local", Instance = (nint)0xB0000,
+     IsLocal = true, Damage = 9000 };
+ var glRemote = new PartyMemberSnapshot {
+     Slot = 0, Name = "Guest", Instance = (nint)0xB1000,
+     IsLocal = false, Damage = 12345 };
+ var glRoster = PartySnapshot.From([glRemote, glLocal], hasAwardTable: true);
+ var glSnapshot = GuidingLandsSession.LocalSnapshot(
+     glRoster, glLocal.Instance, "SavedLocal", 1350, hookAvailable: true);
+ Equal(1, glSnapshot!.Members.Length,
+     "multiplayer Guiding Lands never fabricates remote tracked DPS");
+ Equal("Local", glSnapshot.Members[0].Name,
+     "matched local-player identity survives multiplayer party roster");
+ Equal(1350, glSnapshot.TotalDamage,
+     "Guiding Lands uses local hook damage, not stale party-award totals");
+ Equal(false, glSnapshot.HasAwardTable,
+     "expedition local hits are not labeled as verified quest award data");
+ Equal(100f, glSnapshot.WithRates(10).Members[0].Percent,
+     "displayed percentage is over local-only observations, not the party");
+ var glFallback = GuidingLandsSession.LocalSnapshot(
+     glRoster, (nint)0xC0000, "SavedLocal", 75, hookAvailable: true);
+ Equal("SavedLocal", glFallback!.Members[0].Name,
+     "unknown roster identity uses the saved local name, not a remote name");
+ Equal((nint)0xC0000, glFallback.Members[0].Instance,
+     "fallback still targets only the real local hunter instance");
+ Equal<PartySnapshot?>(null, GuidingLandsSession.LocalSnapshot(
+     glRoster, glLocal.Instance, "Local", 9999, hookAvailable: false),
+     "without a verified local hook never substitute aggregate monster damage");
+ Equal<PartySnapshot?>(null, GuidingLandsSession.LocalSnapshot(
+     glRoster, 0, "Local", 9999, hookAvailable: true),
+     "without a live local hunter never claim captured damage");
+ var glSolo = GuidingLandsSession.LocalSnapshot(
+     null, glLocal.Instance, "Solo", 400, hookAvailable: true);
+ Equal("Solo", glSolo!.Members.Single().Name,
+     "solo expedition without party table retains local name");
+ Equal(400, glSolo.TotalDamage,
+     "solo expedition remains local-hook-only without party award data");
+
 Equal("Stage 999", GameNames.Stage(999), "unknown stage retains ID");
 Equal("Coral Pukei-Pukei", GameNames.Monster(69), "abbreviated monster fallback");
 Equal("Monster 999", GameNames.Monster(999), "unknown monster retains ID");

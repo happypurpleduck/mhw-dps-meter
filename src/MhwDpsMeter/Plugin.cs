@@ -43,6 +43,9 @@ public sealed class Plugin : IPlugin
     private LiveDebugStore? _liveDebug;
     private PartySnapshot? _snapshot;
     private bool _inQuest;
+    // Guiding Lands is an expedition stage, not a quest-award table hunt.
+    // Keep one local session across spawns/joins; never infer remote DPS.
+    private bool _guidingLands;
     private bool _showResults;
     private int _questId;
     private string _questName = "";
@@ -316,12 +319,18 @@ public sealed class Plugin : IPlugin
             _gaugeStates = _gaugePoller.Current;
 
             if (snapshot is null)
+            {
+                if (_guidingLands)
+                    _status = "Guiding Lands: local hit tracking unavailable; no remote damage totals";
                 return;
+            }
 
             _snapshot = snapshot.WithRates(_elapsedSeconds);
-            _status = string.IsNullOrEmpty(_reader!.LastError)
-                ? $"{snapshot.Members.Length} hunters ({_damageSource})"
-                : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
+            _status = _guidingLands
+                ? "Guiding Lands: local hook damage only; teammate totals unavailable"
+                : string.IsNullOrEmpty(_reader!.LastError)
+                    ? $"{snapshot.Members.Length} hunters ({_damageSource})"
+                    : $"{snapshot.Members.Length} hunters ({_reader.LastError})";
 
             _recorder.ObserveParty(_elapsedSeconds, snapshot.Members);
             _recorder.ObserveWeapon(_elapsedSeconds, ReadLocalWeapon(), snapshot.LocalSlot);
@@ -383,6 +392,24 @@ public sealed class Plugin : IPlugin
         {
             _hits.UpdateMonsters(_monsterHp.LiveInstances);
             _lastFallbackDamage = fallbackDamage;
+        }
+
+        // Guiding Lands has no synchronized quest-award table. Never use
+        // stale award values or monster-wide HP loss as one hunter's damage.
+        if (_guidingLands)
+        {
+            PartySnapshot? roster = null;
+            if (_reader!.TryRead(out var localRoster, 0))
+                roster = localRoster;
+            var local = GuidingLandsSession.LocalSnapshot(roster,
+                LocalPlayerInstance(), _reader.LastLocalName,
+                _hits.LocalDamage, _hits.Hooked);
+            _damageSource = local is null
+                ? "Guiding Lands: local hook unavailable"
+                : "Guiding Lands: local hook only, no remote totals";
+            if (local is not null)
+                _hits.UpdateParty(local.Members);
+            return local;
         }
 
         if (!_reader!.TryRead(out var snapshot, fallbackDamage) || snapshot.Members.Length == 0)
@@ -642,7 +669,7 @@ public sealed class Plugin : IPlugin
             $"Plugin build: {BuildStamp}\n" +
             $"Status: {_status}\n" +
             $"Game build: {_gameBuild}  map: {Path.GetFileName(_map?.SourceFile ?? "none")}{(_mapMatchesBuild ? "" : "  (MISMATCH)")}\n" +
-            $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}  timer {_timerSource}\n" +
+            $"Quest: {_inQuest} id {_questId} state {DescribeQuestState(_questState)}  timer {_timerSource}{(_guidingLands ? "  guiding lands (local-only)" : "")}\n" +
             $"Stage: {(Stage)_stageId} ({_stageId}){(_training ? "  training mode" : "")}\n" +
             $"Damage source: {_damageSource}\n" +
             $"Hit hook: {_hits.Status} calls={_hits.Calls} counted={_hits.Hits} ignored={_hits.Ignored} local={_hits.LocalDamage} last {_hits.LastHit}\n" +
@@ -751,17 +778,31 @@ public sealed class Plugin : IPlugin
         BeginHunt(questId);
     });
 
-    public void OnQuestComplete(int questId) => Guarded("OnQuestComplete", () => EndHunt("complete"));
+    public void OnQuestComplete(int questId) => Guarded("OnQuestComplete", () =>
+    {
+        if (!_guidingLands) EndHunt("complete");
+    });
 
-    public void OnQuestFail(int questId) => Guarded("OnQuestFail", () => EndHunt("fail"));
+    public void OnQuestFail(int questId) => Guarded("OnQuestFail", () =>
+    {
+        if (!_guidingLands) EndHunt("fail");
+    });
 
-    public void OnQuestAbandon(int questId) => Guarded("OnQuestAbandon", () => EndHunt("abandon"));
+    public void OnQuestAbandon(int questId) => Guarded("OnQuestAbandon", () =>
+    {
+        if (!_guidingLands) EndHunt("abandon");
+    });
 
-    public void OnQuestReturn(int questId) => Guarded("OnQuestReturn", () => EndHunt("return"));
+    public void OnQuestReturn(int questId) => Guarded("OnQuestReturn", () =>
+    {
+        if (!_guidingLands) EndHunt("return");
+    });
 
     public void OnQuestLeave(int questId) => Guarded("OnQuestLeave", () =>
     {
-        if (!_inQuest)
+        // Guiding Lands has repeated monster encounters without completing
+        // the expedition. Only leaving the actual stage ends its session.
+        if (!_inQuest || _guidingLands)
             return;
 
         var state = _questState;
@@ -966,13 +1007,39 @@ public sealed class Plugin : IPlugin
 
     private void SyncQuestState()
     {
+        // Read the stage *before* quest state: an open-ended Guiding Lands
+        // expedition may not have a positive CurrentQuestId or ordinary
+        // InQuest state. Never rely on quest callbacks to begin this mode.
+        try { _stageId = (int)Area.CurrentStage; }
+        catch { return; }
+
+        if (GuidingLandsSession.IsStage(_stageId))
+        {
+            // Wait for the player's actual in-area entity so loading screens
+            // cannot start a phantom session. Ignore transient missing player
+            // pointers after a session has already begun.
+            if (GuidingLandsSession.CanStart(_stageId, LocalPlayerInstance()))
+            {
+                if (_training)
+                    EndTraining();
+                if (_inQuest && !_guidingLands)
+                    EndHunt("leave");
+                BeginGuidingLands();
+            }
+            return;
+        }
+
+        // Leaving the stage, rather than a quest objective completing,
+        // ends a Guiding Lands expedition session.
+        if (_guidingLands)
+            EndHunt("leave");
+
         int questId;
         uint questState;
         try
         {
             questId = Quest.CurrentQuestId;
             questState = Quest.QuestState;
-            _stageId = (int)Area.CurrentStage;
         }
         catch
         {
@@ -1043,6 +1110,16 @@ public sealed class Plugin : IPlugin
             _status = "not in a hunt";
     }
 
+    private void BeginGuidingLands()
+    {
+        if (_inQuest && _guidingLands)
+            return;
+
+        // No quest ID or award table is required for this expedition stage.
+        // The session survives individual monster spawns, defeats and joins.
+        StartHuntSession(0, "The Guiding Lands", guidingLands: true);
+    }
+
     private void BeginHunt(int questId)
     {
         if (questId <= 0)
@@ -1072,10 +1149,17 @@ public sealed class Plugin : IPlugin
             return;
         }
 
+        StartHuntSession(questId, questName, guidingLands: false);
+    }
+
+    private void StartHuntSession(int questId, string questName, bool guidingLands)
+    {
+        _guidingLands = guidingLands;
         _inQuest = true;
         _showResults = false;
         _questId = questId;
-        _questName = string.IsNullOrWhiteSpace(questName) ? $"Quest {questId}" : questName;
+        _questName = string.IsNullOrWhiteSpace(questName)
+            ? (guidingLands ? "The Guiding Lands" : $"Quest {questId}") : questName;
         _questStartedAt = DateTimeOffset.UtcNow;
         _elapsedSeconds = 0;
         _timerSource = "local";
@@ -1093,7 +1177,9 @@ public sealed class Plugin : IPlugin
         _carts?.Reset();
         _prevSlotDamage = null;
         _logs?.BeginHunt();
-        _status = $"in quest {questId}";
+        _status = guidingLands
+            ? "Guiding Lands expedition: local hit tracking only"
+            : $"in quest {questId}";
     }
 
     private void EndHunt(string result)
@@ -1101,6 +1187,7 @@ public sealed class Plugin : IPlugin
         if (!_inQuest)
             return;
 
+        var wasGuidingLands = _guidingLands;
         _inQuest = false;
         _finishedQuestId = _questId;
         _finishedAt = DateTimeOffset.UtcNow;
@@ -1148,11 +1235,13 @@ public sealed class Plugin : IPlugin
                 _elapsedSeconds,
                 _timerSource,
                 _gameBuild,
-                ReadRewards()),
+                wasGuidingLands ? null : ReadRewards()),
             members,
             _recorder);
 
-        _showResults = members.Length > 0;
+        // Expeditions have no normal quest-results screen/reward table.
+        _guidingLands = false;
+        _showResults = !wasGuidingLands && members.Length > 0;
         if (!_showResults)
             _snapshot = null;
     }
@@ -1178,6 +1267,14 @@ public sealed class Plugin : IPlugin
     /// <summary>In-game quest timer when it is running (shared by every hunter), else the plugin's own clock.</summary>
     private float HuntElapsedSeconds()
     {
+        if (_guidingLands)
+        {
+            // The game's quest timer is not a continuous Guiding Lands
+            // expedition clock. Use our local session stopwatch instead.
+            _timerSource = "local";
+            return (float)_questTimer.Elapsed.TotalSeconds;
+        }
+
         try
         {
             var time = Quest.QuestEndTimer.Time;
