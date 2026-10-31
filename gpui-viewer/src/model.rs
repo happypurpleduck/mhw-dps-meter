@@ -32,6 +32,8 @@ pub struct FightLog {
     #[serde(default)]
     pub game_build: u32,
     #[serde(default)]
+    pub damage_scope: Option<String>,
+    #[serde(default)]
     pub quest_id: i64,
     pub quest_name: String,
     #[serde(default)]
@@ -339,6 +341,8 @@ pub struct IndexEntry {
     #[serde(default)]
     pub total_damage: i64,
     #[serde(default)]
+    pub damage_scope: Option<String>,
+    #[serde(default)]
     pub weapon: Option<String>,
     #[serde(default)]
     pub players: Vec<String>,
@@ -361,6 +365,7 @@ impl IndexEntry {
             started_at: log.started_at.clone(),
             duration_seconds: log.duration_seconds,
             total_damage: log.players.iter().map(|p| p.damage).sum(),
+            damage_scope: log.damage_scope.clone(),
             weapon: log.players.iter().find(|p| p.is_local).and_then(|p| p.weapon.clone()),
             players: log.players.iter().map(|p| p.name.clone()).collect(),
             monsters,
@@ -386,6 +391,10 @@ impl FightLog {
         self.players.iter().map(|p| p.damage).sum()
     }
 
+    pub fn is_local_only(&self) -> bool {
+        self.damage_scope.as_deref() == Some("local-only")
+    }
+
     /// Hits of one hunter (teammates only have estimated rows).
     pub fn hits_for_slot(&self, slot: usize) -> Vec<&Hit> {
         self.hits.iter().filter(|h| h.slot == slot).collect()
@@ -409,4 +418,22 @@ pub fn parse_index(text: &str) -> anyhow::Result<Vec<IndexEntry>> {
 /// Per-hunt log files only: excludes index.json and the live-debug files.
 pub fn is_log_file_name(name: &str) -> bool {
     name.ends_with(".json") && name != "index.json" && !name.starts_with("live-debug")
+}
+
+#[cfg(test)]
+mod guiding_lands_scope_tests {
+    use super::*;
+
+    #[test]
+    fn parses_guiding_lands_local_only_and_old_quest_defaults() {
+        let gl = FightLog::parse(r#"{"questName":"The Guiding Lands","questId":0,"stageId":109,"damageScope":"local-only","players":[],"gaugeSamples":[{"t":2,"monster":"m1","source":"local-unverified"}]}"#).unwrap();
+        assert!(gl.is_local_only());
+        assert_eq!(gl.gauge_samples.len(), 1);
+        let entry = IndexEntry::from_log(&gl, "guiding-lands.json");
+        assert_eq!(entry.damage_scope.as_deref(), Some("local-only"));
+        let old = FightLog::parse(r#"{"questName":"Normal hunt","players":[]}"#).unwrap();
+        assert!(!old.is_local_only());
+        assert!(old.damage_scope.is_none());
+        assert!(IndexEntry::from_log(&old, "old.json").damage_scope.is_none());
+    }
 }

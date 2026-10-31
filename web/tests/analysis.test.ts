@@ -23,6 +23,28 @@ const logs = files.map((f) => [f, parseLog(readFileSync(join(SAMPLE, f), 'utf8')
 const v2 = logs.filter(([, l]) => l.schemaVersion === 2 && l.kind === 'quest')
 
 describe('parse', () => {
+  it('retains local-only Guiding Lands damage coverage without changing old quests', () => {
+    const guidingLands = parseLog(JSON.stringify({
+      schemaVersion: 3, kind: 'quest', questName: 'The Guiding Lands',
+      questId: 0, stageId: 109, damageScope: 'local-only', players: [],
+      gaugeSamples: [{ t: 2, monster: 'm1', source: 'local-unverified' }],
+    }))
+    expect(guidingLands.damageScope).toBe('local-only')
+    expect(guidingLands.questId).toBe(0)
+    expect(guidingLands.gaugeSamples).toHaveLength(1)
+    expect(indexEntryFromLog(guidingLands, 'guiding-lands.json').damageScope).toBe('local-only')
+    const parsedIndex = parseIndex(JSON.stringify([{
+      file: 'guiding-lands.json', questName: 'The Guiding Lands',
+      damageScope: 'local-only', questId: 0, totalDamage: 0,
+    }]))
+    expect(parsedIndex[0]!.damageScope).toBe('local-only')
+    const regular = parseLog(JSON.stringify({ questName: 'Normal hunt', players: [] }))
+    expect(regular.damageScope).toBeUndefined()
+    expect(indexEntryFromLog(regular, 'normal.json').damageScope).toBeUndefined()
+    const unknownScope = parseLog(JSON.stringify({ questName: 'Future hunt', players: [], damageScope: 'host-verified' }))
+    expect(unknownScope.damageScope).toBeUndefined()
+  })
+
   it('reads every sample file, schema 1 included', () => {
     expect(logs.length).toBeGreaterThan(3)
     for (const [, log] of logs) {

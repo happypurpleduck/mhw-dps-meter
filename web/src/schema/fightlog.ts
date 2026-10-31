@@ -12,6 +12,8 @@ export interface FightLog {
   kind: LogKind
   pluginVersion?: string
   gameBuild: number
+  /** Explicit source boundary: recorded local hits, remote party damage unknown. */
+  damageScope?: 'local-only'
   questId: number
   questName: string
   result: string
@@ -145,6 +147,7 @@ export interface IndexEntry {
   startedAt: string
   durationSeconds: number
   totalDamage: number
+  damageScope?: 'local-only'
   weapon?: string | null
   players: string[]
   monsters: string[]

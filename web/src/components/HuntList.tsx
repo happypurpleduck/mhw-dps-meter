@@ -25,7 +25,7 @@ const columns = [
         <div class="min-w-0">
           <div class="font-medium truncate max-w-44">{e.questName}</div>
           <div class="text-xs text-base-content/60 truncate max-w-44">
-            {e.kind === 'trial' ? <WeaponLabel weapon={e.weapon} /> : [...e.monsters, ...e.players].join(' · ')}
+            {e.kind === 'trial' ? <WeaponLabel weapon={e.weapon} /> : [...e.monsters, ...e.players, ...(e.damageScope === 'local-only' ? ['local-only damage'] : [])].join(' · ')}
           </div>
         </div>
       )

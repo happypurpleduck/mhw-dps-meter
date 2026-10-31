@@ -146,7 +146,14 @@ impl TableDelegate for HuntListDelegate {
                             weapon_label(entry.weapon.as_deref(), cx.theme().foreground).into_any_element()
                         } else {
                             div()
-                                .child(entry.monsters.iter().chain(entry.players.iter()).cloned().collect::<Vec<_>>().join(" · "))
+                                .child({
+                                    let mut names = entry.monsters.iter().chain(entry.players.iter())
+                                        .cloned().collect::<Vec<_>>();
+                                    if entry.damage_scope.as_deref() == Some("local-only") {
+                                        names.push("local-only damage".to_string());
+                                    }
+                                    names.join(" · ")
+                                })
                                 .into_any_element()
                         }),
                 )

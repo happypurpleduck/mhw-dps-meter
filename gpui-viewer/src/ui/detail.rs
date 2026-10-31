@@ -621,6 +621,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
     let stats = hit_stats(local_exact_hits(log));
     let total = log.total_damage();
     let duration = log.duration_seconds.max(1.0);
+    let local_only = log.is_local_only();
     v_flex()
         .gap_3()
         .child(
@@ -646,19 +647,28 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                     )))
                 }),
         )
+        .when(local_only, |this| {
+            this.child(div().text_sm().text_color(cx.theme().muted_foreground)
+                .child("Guiding Lands: local hit damage only; teammate totals and party share unavailable"))
+        })
         .child(
             // Tiles share one fixed height and stretch to fill the row.
             h_flex()
                 .w_full()
                 .flex_wrap()
                 .gap_2()
-                .child(stat_tile("Total damage", format_int(total), format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }), None, cx))
-                .child(stat_tile("Party DPS", format!("{:.1}", total as f32 / duration), format!("over {}", format_duration(log.duration_seconds)), None, cx))
+                .child(stat_tile(if local_only { "Observed local damage" } else { "Total damage" }, format_int(total),
+                    if local_only { "teammate totals unavailable".to_string() } else { format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }) }, None, cx))
+                .child(stat_tile(if local_only { "Observed local DPS" } else { "Party DPS" }, format!("{:.1}", total as f32 / duration), format!("over {}", format_duration(log.duration_seconds)), None, cx))
                 .when_some(me, |this, p| {
                     this.child(stat_tile(
                         "Your damage",
                         format_int(p.damage),
-                        format!("{:.1}% of party · {}", p.percent, weapon_display_name(p.weapon.as_deref())),
+                        if local_only {
+                            format!("local hits only · {}", weapon_display_name(p.weapon.as_deref()))
+                        } else {
+                            format!("{:.1}% of party · {}", p.percent, weapon_display_name(p.weapon.as_deref()))
+                        },
                         Some(cx.theme().primary),
                         cx,
                     ))
@@ -687,6 +697,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
 }
 
 fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
+    let local_only = log.is_local_only();
     Table::new()
         .small()
         .border_1()
@@ -720,12 +731,14 @@ fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
                 .child(TableCell::new().w(px(88.)).text_right().child(format_int(p.damage)))
                 .child(TableCell::new().w(px(56.)).text_right().child(format!("{:.1}", p.dps)))
                 .child(TableCell::new().w(px(48.)).text_right().child(if p.carts > 0 { p.carts.to_string() } else { "—".into() }))
-                .child(TableCell::new().w(px(220.)).child(meter_bar(
-                    (p.percent / 100.0).clamp(0.0, 1.0),
-                    slot_color(p.slot),
-                    cx.theme().border,
-                    format!("{:.1}%", p.percent),
-                )))
+                .child(TableCell::new().w(px(220.))
+                    .when(local_only, |this| this.child(muted("n/a — remote damage unknown", cx)))
+                    .when(!local_only, |this| this.child(meter_bar(
+                        (p.percent / 100.0).clamp(0.0, 1.0),
+                        slot_color(p.slot),
+                        cx.theme().border,
+                        format!("{:.1}%", p.percent),
+                    ))))
         })))
 }
 

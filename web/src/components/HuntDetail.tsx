@@ -71,6 +71,7 @@ function Header(props: { log: FightLog }) {
   const stats = () => hitStats(props.log.hits.filter((h) => h.slot === me()?.slot && !h.estimated))
   const total = () => totalDamage(props.log)
   const duration = () => Math.max(props.log.durationSeconds, 1)
+  const localOnly = () => props.log.damageScope === 'local-only'
   return (
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-baseline gap-3">
@@ -88,6 +89,9 @@ function Header(props: { log: FightLog }) {
           )}
         </Show>
       </div>
+      <Show when={localOnly()}>
+        <p class="text-sm text-warning">Guiding Lands: only local hit damage was recorded. Teammate damage and actual multiplayer party share are unavailable.</p>
+      </Show>
       <Show when={props.log.gaugeClockDiscontinuities > 0}>
         <p class="text-sm text-warning">
           Experimental gauge timeline adjusted across {props.log.gaugeClockDiscontinuities} hunt-clock changes.
@@ -101,12 +105,12 @@ function Header(props: { log: FightLog }) {
         </p>
       </Show>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
-        <StatTile title="Total damage" value={formatInt(total())} desc={`${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
-        <StatTile title="Party DPS" value={(total() / duration()).toFixed(1)} desc={`over ${formatDuration(props.log.durationSeconds)}`} />
+        <StatTile title={localOnly() ? "Observed local damage" : "Total damage"} value={formatInt(total())} desc={localOnly() ? "teammate totals unavailable" : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
+        <StatTile title={localOnly() ? "Observed local DPS" : "Party DPS"} value={(total() / duration()).toFixed(1)} desc={`over ${formatDuration(props.log.durationSeconds)}`} />
         <Show when={me()}>
           {(p) => (
             <>
-              <StatTile title="Your damage" value={formatInt(p().damage)} desc={`${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
+              <StatTile title="Your damage" value={formatInt(p().damage)} desc={localOnly() ? `local hits only · ${weaponDisplayName(p().weapon)}` : `${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
               <StatTile title="Your hits" value={String(stats().hits)} desc={stats().hits ? `crit ${pct(stats().critRate)} · avg ${stats().avg.toFixed(0)} · max ${stats().max}` : 'no per-hit data (schema 1)'} />
               <Show when={stats().hits > 0}>
                 <StatTile title="Active DPS" value={stats().activeDps.toFixed(1)} desc={`first→last hit ${formatDuration(stats().activeSeconds)}`} />
@@ -122,7 +126,7 @@ function Header(props: { log: FightLog }) {
 // ---- Overview ----------------------------------------------------------------
 
 const playerCol = createColumnHelper<Features, FightLogPlayer>()
-const playerColumns = [
+const playerColumns = (localOnly: boolean) => [
   playerCol.accessor('name', {
     header: 'Hunter',
     sortFn: 'alphanumeric',
@@ -148,7 +152,9 @@ const playerColumns = [
     header: 'Share',
     sortFn: 'basic',
     meta: { class: 'w-52' },
-    cell: (info) => (
+    cell: (info) => localOnly ? (
+      <span class="text-xs text-base-content/60">n/a — remote damage unknown</span>
+    ) : (
       <div class="flex items-center gap-2 min-w-0">
         <progress class="progress progress-primary flex-1 min-w-16 max-w-28" value={info.getValue()} max="100" />
         <span class="text-xs shrink-0 tabular-nums">{info.getValue().toFixed(1)}%</span>
@@ -159,7 +165,7 @@ const playerColumns = [
 
 function Overview(props: { log: FightLog }) {
   const players = () => props.log.players
-  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns, initialSorting: [{ id: 'damage', desc: true }] })
+  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns(props.log.damageScope === 'local-only'), initialSorting: [{ id: 'damage', desc: true }] })
   const [windowSeconds, setWindowSeconds] = createSignal(20)
   const hasSamples = () => props.log.samples.length > 1
   return (
