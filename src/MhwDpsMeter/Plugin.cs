@@ -1387,42 +1387,15 @@ public sealed class Plugin : IPlugin
     // ---- damage merging --------------------------------------------------------------
 
     /// <summary>
-    /// Award table wins once it has real totals (zero slots are still patched from the hook).
-    /// Otherwise the live fallbacks fill in: hooked hits per slot, and monster HP lost when solo.
+    /// Award table wins for every slot, including zero, once it has real totals.
+    /// Otherwise a working local hit hook supplies damage, including zero.
+    /// Solo monster HP loss is only an estimate when that hook is unavailable.
     /// Sets <see cref="_damageSource"/> to say which one the overlay is showing.
     /// </summary>
     private PartySnapshot MergeLiveDamage(PartySnapshot snapshot, int fallbackLocalDamage)
     {
-        var hooked = _hits.Snapshot();
-        if (snapshot.HasAwardTable && snapshot.TotalDamage > 0)
-        {
-            _damageSource = _reader!.DamageSource;
-            return PartySnapshot.From(snapshot.Members.Select(member =>
-            {
-                if (member.Damage > 0 || member.Slot is < 0 or >= PartyDamageReader.PartySlots)
-                    return member;
-                var hookedDamage = hooked[member.Slot];
-                return hookedDamage > 0 ? member.With(damage: hookedDamage) : member;
-            }), hasAwardTable: true);
-        }
-
-        var solo = snapshot.Members.Length == 1;
-        var members = snapshot.Members.Select(member =>
-        {
-            var damage = member.Damage;
-            if (member.Slot is >= 0 and < PartyDamageReader.PartySlots)
-                damage = Math.Max(damage, hooked[member.Slot]);
-            if (member.IsLocal && solo)
-                damage = Math.Max(damage, Math.Max(0, fallbackLocalDamage));
-            return member.With(damage: damage);
-        }).ToArray();
-
-        var tableTotal = snapshot.Members.Sum(member => member.Damage);
-        _damageSource = tableTotal > 0 || members.Length == 0
-            ? _reader!.DamageSource
-            : hooked.Sum() > 0 ? "live hits" : solo ? "monster HP" : "party list";
-
-        return PartySnapshot.From(members, hasAwardTable: false);
+        return HuntDamageMerger.Merge(snapshot, _hits.Snapshot(), _hits.Hooked,
+            fallbackLocalDamage, _reader!.DamageSource, out _damageSource);
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetModuleHandleW")]
