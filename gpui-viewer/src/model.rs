@@ -60,6 +60,8 @@ pub struct FightLog {
     #[serde(default)]
     pub samples: Vec<Sample>,
     #[serde(default)]
+    pub damage_samples_compactions: usize,
+    #[serde(default)]
     pub hits: Vec<Hit>,
     // Optional experimental observations must never reject an otherwise-valid hunt.
     #[serde(default, deserialize_with = "deserialize_gauge_samples")]
@@ -459,6 +461,9 @@ mod guiding_lands_scope_tests {
     fn shared_guiding_lands_synthetic_fixtures_preserve_coverage_boundaries() {
         let solo = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-solo.json")).unwrap();
         assert!(solo.is_local_only());
+        assert_eq!(solo.damage_samples_compactions, 0);
+        let long = FightLog::parse(r#"{"questName":"Long GL","players":[],"damageSamplesCompactions":3}"#).unwrap();
+        assert_eq!(long.damage_samples_compactions, 3);
         assert!(solo.has_observed_local_damage());
         assert_eq!(solo.quest_id, 0);
         assert_eq!(solo.stage_id, 109);

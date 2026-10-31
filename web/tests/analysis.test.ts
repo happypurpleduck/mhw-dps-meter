@@ -28,6 +28,16 @@ describe('parse', () => {
     const solo = parseLog(readFileSync(join(fixtureDir, 'guiding-lands-solo.json'), 'utf8'))
     const multiplayer = parseLog(readFileSync(join(fixtureDir, 'guiding-lands-multiplayer-gauge-only.json'), 'utf8'))
     expect(solo.damageScope).toBe('local-only')
+    expect(solo.damageSamplesCompactions).toBe(0)
+    const long = parseLog(JSON.stringify({
+      questName: 'Long Guiding Lands', players: [],
+      damageSamplesCompactions: 3, samples: [{ t: 0, damage: [0, 0, 0, 0] }],
+    }))
+    expect(long.damageSamplesCompactions).toBe(3)
+    const corrupt = parseLog(JSON.stringify({
+      questName: 'Imported', players: [], damageSamplesCompactions: -2,
+    }))
+    expect(corrupt.damageSamplesCompactions).toBe(0)
     expect(solo.questId).toBe(0)
     expect(solo.stageId).toBe(109)
     expect(hasObservedLocalDamage(solo)).toBe(true)

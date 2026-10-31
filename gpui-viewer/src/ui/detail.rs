@@ -659,6 +659,12 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                     "Guiding Lands: no local hit observations; teammate totals and party share unavailable"
                 }))
         })
+        .when(log.damage_samples_compactions > 0, |this| {
+            this.child(div().text_sm().text_color(cx.theme().muted_foreground).child(format!(
+                "Damage timeline resolution reduced by {} buffer compaction(s); missing intervals are not observed combat events.",
+                log.damage_samples_compactions
+            )))
+        })
         .child(
             // Tiles share one fixed height and stretch to fill the row.
             h_flex()

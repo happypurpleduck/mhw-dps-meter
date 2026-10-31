@@ -30,6 +30,8 @@ export interface FightLog {
   players: FightLogPlayer[]
   monsters: FightLogMonster[]
   samples: FightLogSample[]
+  /** Number of bounded damage-timeline compactions on long sessions. */
+  damageSamplesCompactions?: number
   hits: FightLogHit[]
   /** Experimental local-only sampled observations (not host-authoritative). */
   gaugeSamples: FightLogGaugeSample[]

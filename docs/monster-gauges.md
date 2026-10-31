@@ -151,3 +151,7 @@ Both viewers now preserve unknown future `damageScope` values as opaque provenan
 ### Index damage sorting and accessible text (source-only review correction)
 
 Web HuntList uses an optional numeric damage accessor and TanStack's `sortUndefined:'last'`, so unknown damage does not sort like measured zero in either direction. Rust GPUI sorts missing index damage last independently of order and uses the same model predicate for visible cells and `cell_text` (copy/accessibility), preventing a hidden raw numeric zero. Forward-compatible unknown coverage scopes also render as missing. Source tests cover zero, positive, gauge-only and unknown-scope entries; UI runtime evidence remains for #17.
+
+### Visible long-expedition damage sampling provenance (source-only)
+
+Both viewers now read the optional additive `damageSamplesCompactions` field from the production writer and show a notice when the bounded 900-point damage buffer has been thinned to cover a multi-hour expedition. Charts already use explicit sample timestamps; this notice makes reduced resolution visible rather than suggesting an uninterrupted two-second cadence. Normal and old logs default to zero compactions. Web/Rust parsing tests cover field omission and nonzero values. Real GL08 long-session runtime behavior is still unverified.

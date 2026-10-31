@@ -110,6 +110,12 @@ function Header(props: { log: FightLog }) {
           were omitted after the recording limit was reached.
         </p>
       </Show>
+      <Show when={(props.log.damageSamplesCompactions ?? 0) > 0}>
+        <p class="text-sm text-warning">
+          Damage timeline sampled at progressively wider intervals after {props.log.damageSamplesCompactions} buffer compaction(s).
+          Gaps reflect reduced sample resolution, not known combat activity between readings.
+        </p>
+      </Show>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
         <StatTile title={localOnly() ? "Observed local damage" : unknownScope() ? "Damage (unknown coverage)" : "Total damage"} value={observedLocal() ? formatInt(total()) : "unavailable"} desc={unknownScope() ? "unrecognized damage scope" : localOnly() ? (observedLocal() ? "teammate totals unavailable" : "no local hook observations") : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
         <StatTile title={localOnly() ? "Observed local DPS" : unknownScope() ? "DPS (unknown coverage)" : "Party DPS"} value={observedLocal() ? (total() / duration()).toFixed(1) : "unavailable"} desc={observedLocal() ? `over ${formatDuration(props.log.durationSeconds)}` : "no local hook observations"} />
