@@ -128,3 +128,7 @@ The plugin reads the new destination stage before ending a GL session on area ex
 ### Source-only zero-total writer regression
 
 The production `FightLogStore.EndHunt` is now compiled directly in PluginRegression. A gauge-only Guiding Lands session with a valid zero-damage local roster is serialized through the real atomic JSON/file/index paths without producing NaN, followed by an ordinary quest in the same process and reload of both files. A second gauge-only log with no local hunter row also verifies the missing-data case. CI is **source-only**, not runtime proof for GL01–GL08.
+
+### Guiding Lands local-slot source regression
+
+When a valid live roster matches the local hunter pointer in multiplayer, the production Guiding Lands local-only snapshot now retains that hunter's **actual slot** (e.g., guest slot 2) instead of always using slot 0. This preserves local hit/event/cart slot IDs, per-slot sampling and avoids writing the guest's observed damage into a teammate's slot. When the roster is unavailable, slot 0 is explicitly a fallback, not verified multiplayer identity. Regression exercises a nonzero guest slot, correct slot-damage array and no corruption of slot 0. GL03 host/guest source identity still requires live evidence.

@@ -82,6 +82,9 @@ internal static class GuidingLandsSession
 
         // Present only the local player's observed hook damage, not fake
         // remote 0-DPS rows or potentially stale quest award totals.
-        return PartySnapshot.LocalOnly(localHookDamage, name!, mainPlayer);
+        // Preserve a guest's actual roster slot for hit/event/carts and
+        // slot-indexed samples. Zero remains only the no-roster fallback.
+        return PartySnapshot.LocalOnly(localHookDamage, name!, mainPlayer,
+            identity?.Slot ?? 0);
     }
 }

@@ -85,6 +85,17 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
      "matched local-player identity survives multiplayer party roster");
  Equal(1350, glSnapshot.TotalDamage,
      "Guiding Lands uses local hook damage, not stale party-award totals");
+ Equal(2, glSnapshot.LocalSlot,
+     "a multiplayer guest's observed local slot is preserved");
+ Equal(1350, glSnapshot.SlotDamage[2],
+     "guest damage is recorded in the true party slot");
+ Equal(0, glSnapshot.SlotDamage[0],
+     "remote slot zero is never populated with the guest's damage");
+ Equal(2, glSnapshot.Members.Single().Slot,
+     "the same guest slot feeds hit, cart and event attribution");
+ Equal(0, GuidingLandsSession.LocalSnapshot(
+     null, glLocal.Instance, "Solo", 10, true)!.LocalSlot,
+     "missing roster defaults to slot zero only when no match exists");
  Equal(false, glSnapshot.HasAwardTable,
      "expedition local hits are not labeled as verified quest award data");
  Equal(100f, glSnapshot.WithRates(10).Members[0].Percent,
