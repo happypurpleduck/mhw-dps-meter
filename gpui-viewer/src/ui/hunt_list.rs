@@ -201,4 +201,3 @@ pub fn result_tag(result: &str) -> Tag {
     .xsmall()
     .child(result.to_string())
 }
-

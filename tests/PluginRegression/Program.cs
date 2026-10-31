@@ -1214,7 +1214,7 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
  Equal("End\nMonster gauges: " + availabilityOff.StatusText + "\nSuffix without newline",
      new MonsterGaugeOverlayDiagnostics("End\n", "Suffix without newline").Render(availabilityOff),
      "non-terminated trailing diagnostics are preserved exactly");
- 
+
  // Real settings.json roundtrip, including a legacy file with no presentation
  // field; the experimental capture gate must remain false by default.
  var overlaySettingsDir = Path.Combine(Path.GetTempPath(), "mhw-gauge-rows-" + Guid.NewGuid().ToString("N"));
@@ -1903,7 +1903,7 @@ using (var damage = new DamageTracker())
         "buffered m2 hit cannot be relabeled as m3 on drain");
     Equal("m3", queuedRecorder.Hits()[2].Monster,
         "subsequent m3 hit uses new generation");
-    
+
     queuedRecorder.ObserveMonsters(4, [], Array.Empty<nint>());
     // During pointer handoff the hook still has an accepted target until
     // UpdateMonsters runs; unknown identity must remain unknown after re-spawn.

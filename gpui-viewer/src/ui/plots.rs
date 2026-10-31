@@ -159,4 +159,3 @@ pub fn slot_color(slot: usize) -> Hsla {
     };
     rgb(((r as u32) << 16) | ((g as u32) << 8) | b as u32).into()
 }
-
