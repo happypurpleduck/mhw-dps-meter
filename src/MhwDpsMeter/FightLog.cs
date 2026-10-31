@@ -89,6 +89,12 @@ internal sealed class FightLog
     [JsonPropertyName("samples")]
     public FightLogSample[] Samples { get; set; } = [];
 
+    /// <summary>Number of times the bounded damage timeline was thinned
+    /// while preserving the full expedition's time span. Zero for old logs.</summary>
+    [JsonPropertyName("damageSamplesCompactions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int DamageSamplesCompactions { get; set; }
+
     [JsonPropertyName("hits")]
     public FightLogHit[] Hits { get; set; } = [];
 

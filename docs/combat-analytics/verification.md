@@ -132,3 +132,7 @@ The production `FightLogStore.EndHunt` is now compiled directly in PluginRegress
 ### Guiding Lands local-slot source regression
 
 When a valid live roster matches the local hunter pointer in multiplayer, the production Guiding Lands local-only snapshot now retains that hunter's **actual slot** (e.g., guest slot 2) instead of always using slot 0. This preserves local hit/event/cart slot IDs, per-slot sampling and avoids writing the guest's observed damage into a teammate's slot. When the roster is unavailable, slot 0 is explicitly a fallback, not verified multiplayer identity. Regression exercises a nonzero guest slot, correct slot-damage array and no corruption of slot 0. GL03 host/guest source identity still requires live evidence.
+
+### Extended Guiding Lands damage-history retention (source-only)
+
+The bounded 900-point party damage history no longer stops after roughly 30 minutes. Once full, the production writer retains every second existing point and doubles the sampling interval (2→4→8 seconds as needed), keeping `t=0`, chronological sample timestamps and coverage through the end of a multi-hour expedition. Optional additive `damageSamplesCompactions` identifies lost resolution, not lost time coverage. Production regression writes/reads a three-hour Guiding Lands session and checks bounded sample count, monotonic time, tail coverage and metadata. Sparse observed samples are not proof of combat events between timestamps; runtime GL08 still required.

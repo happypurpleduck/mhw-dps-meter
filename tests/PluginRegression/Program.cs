@@ -2015,6 +2015,35 @@ try
     Equal(true, reopened.Index.Any(e => e.DamageScope == "local-only"),
         "coverage marker survives JSON index persistence");
 
+    // An extended open-world expedition must keep its full observed
+    // time range without exceeding the bounded in-memory sample budget.
+    store.BeginHunt();
+    for (var elapsed = 2; elapsed <= 10800; elapsed += 2)
+        store.UpdateSamples(elapsed, [elapsed, 0, 0, 0]);
+    var extended = store.EndHunt(new FightLogHeader(
+        0, "The Guiding Lands", "leave", 109, "The Guiding Lands",
+        t0.AddMinutes(20), 10800, "local", 421810,
+        LocalOnlyExpedition: true),
+        [new PartyMemberSnapshot { Slot = 0, IsLocal = true,
+            Name = "Sample Local", Damage = 10800 }], recorded);
+    Equal(true, extended is not null, "three-hour Guiding Lands log persists");
+    Equal(true, extended!.DamageSamplesCompactions > 0,
+        "long expedition explicitly reports bounded timeline compactions");
+    Equal(true, extended.Samples.Length <= FightLogStore.MaxSamples,
+        "three-hour expedition retains bounded sample count");
+    Equal(0f, extended.Samples[0].T, "long timeline keeps initial t=0");
+    Equal(true, extended.Samples[^1].T >= 10784,
+        "three-hour expedition retains a recent damage observation");
+    Equal(true, extended.Samples.Zip(extended.Samples.Skip(1))
+        .All(pair => pair.First.T < pair.Second.T),
+        "downsampled damage timeline remains strictly ordered");
+    Equal(true, extended.Samples.Zip(extended.Samples.Skip(1))
+        .Any(pair => pair.Second.T - pair.First.T > FightLogStore.SampleIntervalSeconds),
+        "downsampled timeline exposes real expanded sample spacing");
+    Equal(true, File.ReadAllText(Path.Combine(store.LogsDirectory, extended.FileName))
+        .Contains("\"damageSamplesCompactions\""),
+        "full-session compaction metadata survives disk serialization");
+
     // No player row is also a valid gauge-only expedition: the absence of
     // local hit data must not invent damage or trigger the zero-share path.
     store.BeginHunt();
@@ -2024,7 +2053,7 @@ try
         [], recorded);
     Equal(true, noHook is not null && noHook.Players.Length == 0,
         "gauge-only expedition saves without any fabricated player row");
-    Equal(3, store.Index.Count, "gauge-only no-hook entry added to index");
+    Equal(4, store.Index.Count, "gauge-only no-hook entry added after two quest logs and three-hour sample log");
 }
 finally
 {
