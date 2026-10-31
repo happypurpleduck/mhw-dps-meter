@@ -1,5 +1,16 @@
 # MHW Fight Logs
 
+## 0.3.1
+
+### Patch Changes
+
+- 00396cf: Document ordinary solo and two-hunter hosted quest smoke testing on build 421810 under Linux/Proton, including saved gauge histories, part-counter observations, manual display selection and clearing after quest exit. Numerical gauge accuracy, guest authority and Guiding Lands gameplay remain unverified. The two ordinary damage-source corrections have regression coverage but still need an installed-game retest. See the release validation notes for the tested scope and remaining limits.
+- bb4a82d: Add experimental monster stamina, ailment and normal-part observations for confirmed game build 421810. Capture remains off by default; F9 provides compact/detailed rows, category switches, manual monster selection and explicit missing/stale-sample labels. Readings remain local observations, not verified host state.
+
+  Add schema-3 sampled gauge histories in the native and web viewers, with observed counter-change intervals, missing-data gaps, capture-quality summaries and explicit recording/clock limits. Older fight logs remain readable; sampled counters do not establish exact proc or break times or hunter attribution.
+
+  Add continuous Guiding Lands sessions with local-hook damage only, separate expedition logs and bounded long-session history. Teammate damage stays unknown. Guiding Lands gameplay testing remains pending.
+
 ## 0.3.0
 
 ### Minor Changes
@@ -29,7 +40,7 @@
 ### Minor Changes
 
 - 185fffe: Watch native log folders for new and changed fights while preserving the selected fight and comparisons. Add a DPS chart using consecutive sample intervals with no rolling window.
-  
+
   Reject ambiguous teammate entity matches, discard despawned candidates, identify single-teammate weapons without an award table, and correct the older loader's reversed bowgun names for new recordings.
 
 ### Patch Changes
