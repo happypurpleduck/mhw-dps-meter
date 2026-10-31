@@ -1946,4 +1946,78 @@ finally
     directory.Delete(recursive: true);
 }
 
+// Exercise the REAL production store, including JSON serialization and
+// atomic log/index writes. A zero-damage local row plus valid gauge sample
+// previously produced NaN share and disabled all subsequent disk logging.
+var storeDir = Directory.CreateTempSubdirectory("mhw-guiding-logs-");
+try
+{
+    var store = new FightLogStore(storeDir.FullName);
+    var recorded = new HuntRecorder((_, _) => null);
+    recorded.ObserveMonsters(0, [gaugeInput]);
+    recorded.ObserveGauges(2, 2.0, "local", [observed]);
+    Equal(true, recorded.GaugeSamples().Length > 0,
+        "integration fixture has real recorder-generated gauge observations");
+    var zeroPlayer = new PartyMemberSnapshot
+    {
+        Slot = 2, Name = "Sample Local", Instance = (nint)0xB0000,
+        IsLocal = true, Damage = 0
+    };
+    var t0 = new DateTimeOffset(2026, 10, 31, 7, 0, 0, TimeSpan.Zero);
+    store.BeginHunt();
+    var zeroLog = store.EndHunt(new FightLogHeader(
+        0, "The Guiding Lands", "leave", 109, "The Guiding Lands",
+        t0, 120, "local", 421810, LocalOnlyExpedition: true),
+        [zeroPlayer], recorded);
+    Equal(true, zeroLog is not null, "zero-total gauge log serializes successfully");
+    Equal(0f, zeroLog!.Players.Single().Percent,
+        "zero total becomes finite 0 percent, not JSON NaN");
+    Equal(1, store.Index.Count, "gauge-only zero-total log enters index");
+    Equal(1, store.History.Count, "gauge-only zero-total log enters F9 history");
+    Equal(true, File.Exists(Path.Combine(store.LogsDirectory, zeroLog.FileName)),
+        "zero-total gauge log actually written to disk");
+    var persisted = File.ReadAllText(Path.Combine(store.LogsDirectory, zeroLog.FileName));
+    Equal(false, persisted.Contains("NaN") || persisted.Contains("Infinity"),
+        "serialized gauge-only log contains no non-finite JSON numbers");
+    using (var parsed = System.Text.Json.JsonDocument.Parse(persisted))
+    {
+        Equal(0, parsed.RootElement.GetProperty("players")[0].GetProperty("percent").GetInt32(),
+            "file reader sees finite zero share");
+        Equal(1, parsed.RootElement.GetProperty("gaugeSamples").GetArrayLength(),
+            "gauge-only observations survive full serializer");
+    }
+    // A second write must work in the same store. The old exception path
+    // disabled all future logging for the process after the first NaN.
+    store.BeginHunt();
+    var regularLog = store.EndHunt(new FightLogHeader(
+        123, "Ordinary quest", "complete", 108, "Ancient Forest",
+        t0.AddMinutes(5), 60, "quest", 421810),
+        [new PartyMemberSnapshot { Slot = 0, IsLocal = true,
+            Name = "Sample Local", Damage = 240 }], new HuntRecorder((_, _) => null));
+    Equal(true, regularLog is not null, "subsequent ordinary quest still logs");
+    Equal(100f, regularLog!.Players.Single().Percent,
+        "ordinary nonzero party-share calculation unchanged");
+    Equal(2, store.Index.Count, "index contains both consecutive writes");
+    var reopened = new FightLogStore(storeDir.FullName);
+    Equal(2, reopened.Index.Count, "index reload preserves both writes");
+    Equal(2, reopened.History.Count, "history reload parses both files");
+    Equal(true, reopened.Index.Any(e => e.DamageScope == "local-only"),
+        "coverage marker survives JSON index persistence");
+
+    // No player row is also a valid gauge-only expedition: the absence of
+    // local hit data must not invent damage or trigger the zero-share path.
+    store.BeginHunt();
+    var noHook = store.EndHunt(new FightLogHeader(
+        0, "The Guiding Lands", "leave", 109, "The Guiding Lands",
+        t0.AddMinutes(10), 180, "local", 421810, LocalOnlyExpedition: true),
+        [], recorded);
+    Equal(true, noHook is not null && noHook.Players.Length == 0,
+        "gauge-only expedition saves without any fabricated player row");
+    Equal(3, store.Index.Count, "gauge-only no-hook entry added to index");
+}
+finally
+{
+    storeDir.Delete(recursive: true);
+}
+
 Console.WriteLine($"Passed {checks} plugin regression checks.");

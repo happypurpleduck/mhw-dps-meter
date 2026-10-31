@@ -145,7 +145,9 @@ internal sealed class FightLogStore
                     Weapon = recorder.WeaponOf(member.Slot) ?? (member.IsLocal ? recorder.LocalWeapon : null),
                     Damage = member.Damage,
                     Dps = member.Damage / safeDuration,
-                    Percent = 100f * member.Damage / total,
+                    // A zero-total, gauge-only expedition may still have
+                    // a local roster row. Never serialize NaN/Infinity.
+                    Percent = total > 0 ? 100f * member.Damage / total : 0f,
                     Carts = recorder.CartsOf(member.Slot)
                 })
                 .ToArray(),

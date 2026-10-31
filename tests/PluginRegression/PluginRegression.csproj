@@ -14,6 +14,7 @@
     <Compile Include="../../src/MhwDpsMeter/TimeTrial.cs" Link="TimeTrial.cs" />
     <Compile Include="../../src/MhwDpsMeter/PartySnapshot.cs" Link="PartySnapshot.cs" />
     <Compile Include="../../src/MhwDpsMeter/FightLog.cs" Link="FightLog.cs" />
+    <Compile Include="../../src/MhwDpsMeter/FightLogStore.cs" Link="FightLogStore.cs" />
     <Compile Include="../../src/MhwDpsMeter/AddressMap.cs" Link="AddressMap.cs" />
     <Compile Include="../../src/MhwDpsMeter/GameNames.cs" Link="GameNames.cs" />
     <Compile Include="../../src/MhwDpsMeter/MonsterParts.cs" Link="MonsterParts.cs" />

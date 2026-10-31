@@ -51,7 +51,6 @@ namespace SharpPluginLoader.Core.Actions
 namespace MhwDpsMeter
 {
     internal static class PartyDamageReader { public const int PartySlots = 4; }
-    internal static class FightLogStore { public const float SampleIntervalSeconds = 2f; }
     internal static class Plugin { public const string BuildStamp = "regression"; }
     /// <summary>Typed sparse memory for exercising production readers without a game.</summary>
     internal static class SafeMemory

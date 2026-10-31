@@ -124,3 +124,7 @@ The production `SyncQuestState` path now uses the pure `GuidingLandsSession.Deci
 ### Preserve source stage at Guiding Lands exit (source-only)
 
 The plugin reads the new destination stage before ending a GL session on area exit. A log finalized with the destination (for example Seliana) would fail the stage-109-only Guiding Lands persistence gate even when valid damage/gauge observations existed. `GuidingLandsSession.LogStageId` now stamps a GL session's log with its original source stage **109** while preserving normal quest stage handling, with explicit departure/acceptance regression tests. GL06 live re-entry and save checks remain **NOT RUN**.
+
+### Source-only zero-total writer regression
+
+The production `FightLogStore.EndHunt` is now compiled directly in PluginRegression. A gauge-only Guiding Lands session with a valid zero-damage local roster is serialized through the real atomic JSON/file/index paths without producing NaN, followed by an ordinary quest in the same process and reload of both files. A second gauge-only log with no local hunter row also verifies the missing-data case. CI is **source-only**, not runtime proof for GL01–GL08.
