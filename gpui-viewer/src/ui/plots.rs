@@ -85,13 +85,13 @@ impl Plot for LinesPlot {
             return;
         }
 
-        let x = ScaleLinear::new(vec![0.0f64, self.x_max as f64], vec![LEFT_GUTTER, width]);
-        let y = ScaleLinear::new(vec![0.0f64, self.y_max as f64], vec![height, 6.0]);
+        let x = ScaleLinear::new(vec![0.0f64, self.x_max as f64], [LEFT_GUTTER, width]);
+        let y = ScaleLinear::new(vec![0.0f64, self.y_max as f64], [height, 6.0]);
 
         // Grid + y labels at 4 even steps.
         let y_ticks: Vec<f32> = (0..=4).map(|i| self.y_max * i as f32 / 4.0).collect();
         Grid::new()
-            .y(y_ticks.iter().filter_map(|v| y.tick(&(*v as f64))).map(px).collect())
+            .y(y_ticks.iter().filter_map(|v| y.tick(&(*v as f64))).map(px).collect::<Vec<Pixels>>())
             .stroke(cx.theme().border)
             .dash_array(&[px(4.), px(2.)])
             .paint(&bounds, window);
