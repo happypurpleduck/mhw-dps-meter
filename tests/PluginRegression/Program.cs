@@ -665,6 +665,66 @@ Equal(1, MonsterGaugeOverlayRows.Build([busyGauge], false).Length,
      "additional distinct monsters are acknowledged");
  Equal(boundedMenu.Choices.Length, boundedMenu.Choices.Select(c => c.ControlId).Distinct().Count(),
      "all rendered ImGui controls have unique stable identities");
+ // If the selected sample moves outside the first eight on reorder,
+ // F9 must retain a visible Selected control under the same cap.
+ var overflowSelection = new MonsterGaugeOverlaySelection();
+ overflowSelection.Observe(30, menuOverflowRoster);
+ Equal(true, overflowSelection.Select(menuOverflowRoster[8], 30, menuOverflowRoster),
+     "a valid ninth sampled monster may be selected manually");
+ var retainedMenu = MonsterGaugeOverlayMenuChoices.Build(
+     menuOverflowRoster, 30, overflowSelection);
+ Equal(MonsterGaugeOverlaySelection.MaxMenuChoices, retainedMenu.Choices.Length,
+     "retaining the selected overflow monster does not exceed the F9 cap");
+ Equal(2, retainedMenu.MoreCount,
+     "the menu still accurately counts unshown sampled choices");
+ Equal(1, retainedMenu.Choices.Count(c => c.Selected),
+     "the selected overflow monster always has a visible selected control");
+ Equal(menuOverflowRoster[8].Instance, retainedMenu.Choices[^1].Sample.Instance,
+     "the final menu slot is reserved for a selected ninth monster");
+ Equal(true, retainedMenu.Choices.Take(7).Select(c => c.Sample.Instance)
+     .SequenceEqual(menuOverflowRoster.Take(7).Select(g => g.Instance)),
+     "seven preceding menu choices retain their roster order");
+ Equal(menuOverflowRoster[8].Instance,
+     overflowSelection.Visible(menuOverflowRoster).Single().Instance,
+     "the HUD still displays the exact full-identity manual choice");
+ Equal(retainedMenu.Choices.Length,
+     retainedMenu.Choices.Select(c => c.ControlId).Distinct().Count(),
+     "pinning the selected choice never duplicates an ImGui ID");
+ var overflowReordered = new[] { menuOverflowRoster[8] }
+     .Concat(menuOverflowRoster.Where(g => g.Instance != menuOverflowRoster[8].Instance))
+     .ToArray();
+ var selectedFirstMenu = MonsterGaugeOverlayMenuChoices.Build(
+     overflowReordered, 30, overflowSelection);
+ Equal(1, selectedFirstMenu.Choices.Count(c => c.Selected),
+     "reordering the selected monster into the first eight retains feedback");
+ Equal(retainedMenu.Choices.Single(c => c.Selected).ControlId,
+     selectedFirstMenu.Choices.Single(c => c.Selected).ControlId,
+     "selection retains a stable ImGui identity across menu reordering");
+ var duplicateOverflow = menuOverflowRoster.Append(menuOverflowRoster[8]).ToArray();
+ var duplicateSelectedMenu = MonsterGaugeOverlayMenuChoices.Build(
+     duplicateOverflow, 30, overflowSelection);
+ Equal(1, duplicateSelectedMenu.Choices.Count(c => c.Selected),
+     "duplicate samples cannot produce duplicate selected F9 controls");
+ Equal(2, duplicateSelectedMenu.MoreCount,
+     "identical duplicate samples cannot inflate the overflow indicator");
+ overflowSelection.Clear();
+ var automaticOverflow = MonsterGaugeOverlayMenuChoices.Build(
+     menuOverflowRoster, 30, overflowSelection);
+ Equal(false, automaticOverflow.Choices.Any(c => c.Selected),
+     "automatic mode clears manual selected feedback");
+ Equal(false, automaticOverflow.Choices.Any(c =>
+     c.Sample.Instance == menuOverflowRoster[8].Instance),
+     "automatic mode restores original first-eight menu ordering");
+ Equal(true, overflowSelection.Select(menuOverflowRoster[8], 30, menuOverflowRoster),
+     "the ninth monster can be reselected before disappearing");
+ overflowSelection.Observe(30, menuOverflowRoster.Take(8).ToArray());
+ Equal(false, overflowSelection.IsManual,
+     "a genuinely absent selected monster invalidates manual selection");
+ Equal(false, MonsterGaugeOverlayMenuChoices.Build(
+     menuOverflowRoster.Take(8).ToArray(), 30, overflowSelection)
+     .Choices.Any(c => c.Selected),
+     "after despawn F9 has no stale selected entry");
+
  uiChoice.Observe(31, uiRoster);
  Equal(false, MonsterGaugeOverlayMenuChoices.Build(uiRoster, 31, uiChoice)
      .Choices.Any(c => c.Selected), "generation change clears selected-row feedback");

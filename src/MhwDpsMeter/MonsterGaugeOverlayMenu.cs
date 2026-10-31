@@ -27,6 +27,20 @@ internal static class MonsterGaugeOverlayMenuChoices
             .DistinctBy(g => (g.Instance, g.Name))
             .ToArray();
         var shown = unique.Take(MonsterGaugeOverlaySelection.MaxMenuChoices).ToArray();
+        // Keep a valid manually selected monster in the F9 list even after
+        // roster reordering pushes it past the eight-control preview limit.
+        // This changes only menu projection, not HUD selection or native data.
+        if (selection.IsManual && unique.Length > shown.Length
+            && !shown.Any(selection.Matches))
+        {
+            for (var i = shown.Length; i < unique.Length; i++)
+            {
+                if (!selection.Matches(unique[i]))
+                    continue;
+                shown[^1] = unique[i];
+                break;
+            }
+        }
         var choices = new MonsterGaugeOverlayMenuChoice[shown.Length];
         // Segment each Unicode label once rather than once per collision check.
         // The F9 selector is bounded to eight visible choices.
