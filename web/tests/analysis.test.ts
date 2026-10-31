@@ -23,6 +23,28 @@ const logs = files.map((f) => [f, parseLog(readFileSync(join(SAMPLE, f), 'utf8')
 const v2 = logs.filter(([, l]) => l.schemaVersion === 2 && l.kind === 'quest')
 
 describe('parse', () => {
+  it('reads shared synthetic Guiding Lands hit and gauge-only fixtures', () => {
+    const fixtureDir = join(__dirname, '..', '..', 'tests', 'fixtures')
+    const solo = parseLog(readFileSync(join(fixtureDir, 'guiding-lands-solo.json'), 'utf8'))
+    const multiplayer = parseLog(readFileSync(join(fixtureDir, 'guiding-lands-multiplayer-gauge-only.json'), 'utf8'))
+    expect(solo.damageScope).toBe('local-only')
+    expect(solo.questId).toBe(0)
+    expect(solo.stageId).toBe(109)
+    expect(solo.players).toHaveLength(1)
+    expect(solo.players[0]!.damage).toBe(360)
+    expect(solo.players[0]!.percent).toBe(100) // internal only, not a party-share UI claim
+    expect(solo.hits).toHaveLength(2)
+    expect(solo.gaugeSamples.every((s) => s.source === 'local-unverified')).toBe(true)
+    expect(indexEntryFromLog(solo, 'guiding-lands-solo.json').damageScope).toBe('local-only')
+    expect(multiplayer.damageScope).toBe('local-only')
+    expect(multiplayer.questId).toBe(0)
+    expect(multiplayer.players).toHaveLength(0)
+    expect(multiplayer.hits).toHaveLength(0)
+    expect(multiplayer.monsters.map((m) => m.id)).toEqual(['m1', 'm2'])
+    expect(multiplayer.gaugeSamples.map((s) => s.monster)).toEqual(['m1', 'm2'])
+    expect(multiplayer.gaugeSamples.every((s) => s.source === 'local-unverified')).toBe(true)
+    expect(indexEntryFromLog(multiplayer, 'guiding-lands-multiplayer-gauge-only.json').totalDamage).toBe(0)
+  })
   it('retains local-only Guiding Lands damage coverage without changing old quests', () => {
     const guidingLands = parseLog(JSON.stringify({
       schemaVersion: 3, kind: 'quest', questName: 'The Guiding Lands',

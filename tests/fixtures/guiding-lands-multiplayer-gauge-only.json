@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 3,
+  "kind": "quest",
+  "pluginVersion": "synthetic-test-only",
+  "gameBuild": 421810,
+  "questId": 0,
+  "questName": "The Guiding Lands (multiplayer synthetic)",
+  "result": "leave",
+  "stageId": 109,
+  "stage": "Guiding Lands",
+  "damageScope": "local-only",
+  "startedAt": "2026-10-31T07:00:00Z",
+  "endedAt": "2026-10-31T07:03:00Z",
+  "durationSeconds": 180,
+  "timerSource": "local",
+  "hitCoverage": "local",
+  "rewards": null,
+  "players": [],
+  "monsters": [
+    {
+      "id": "m1",
+      "type": 0,
+      "name": "Sample Anjanath",
+      "variant": 0,
+      "maxHealth": 1000,
+      "lastHealth": 800,
+      "firstSeenT": 2
+    },
+    {
+      "id": "m2",
+      "type": 1,
+      "name": "Sample Rathalos",
+      "variant": 0,
+      "maxHealth": 1500,
+      "lastHealth": 1300,
+      "firstSeenT": 90
+    }
+  ],
+  "samples": [],
+  "hits": [],
+  "gaugeSamples": [
+    {
+      "t": 2,
+      "rawHuntT": 2,
+      "clockAdjusted": false,
+      "clockBoundary": false,
+      "monster": "m1",
+      "source": "local-unverified",
+      "stamina": 90,
+      "maxStamina": 150,
+      "parts": [],
+      "ailments": []
+    },
+    {
+      "t": 92,
+      "rawHuntT": 92,
+      "clockAdjusted": false,
+      "clockBoundary": false,
+      "monster": "m2",
+      "source": "local-unverified",
+      "stamina": 100,
+      "maxStamina": 160,
+      "parts": [],
+      "ailments": []
+    }
+  ],
+  "gaugeSamplesDropped": 0,
+  "gaugeClockDiscontinuities": 0,
+  "events": []
+}

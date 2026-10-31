@@ -425,6 +425,32 @@ mod guiding_lands_scope_tests {
     use super::*;
 
     #[test]
+    fn shared_guiding_lands_synthetic_fixtures_preserve_coverage_boundaries() {
+        let solo = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-solo.json")).unwrap();
+        assert!(solo.is_local_only());
+        assert_eq!(solo.quest_id, 0);
+        assert_eq!(solo.stage_id, 109);
+        assert_eq!(solo.players.len(), 1);
+        assert_eq!(solo.players[0].damage, 360);
+        assert_eq!(solo.players[0].percent, 100.0); // never an actual multiplayer party share
+        assert_eq!(solo.hits.len(), 2);
+        assert!(solo.gauge_samples.iter().all(|g| g.source == "local-unverified"));
+        assert_eq!(IndexEntry::from_log(&solo, "solo.json").damage_scope.as_deref(), Some("local-only"));
+
+        let multi = FightLog::parse(include_str!("../../tests/fixtures/guiding-lands-multiplayer-gauge-only.json")).unwrap();
+        assert!(multi.is_local_only());
+        assert_eq!(multi.quest_id, 0);
+        assert!(multi.players.is_empty());
+        assert!(multi.hits.is_empty());
+        assert_eq!(multi.monsters.len(), 2);
+        assert_eq!(multi.gauge_samples.len(), 2);
+        assert_eq!(multi.gauge_samples[0].monster, "m1");
+        assert_eq!(multi.gauge_samples[1].monster, "m2");
+        assert!(multi.gauge_samples.iter().all(|g| g.source == "local-unverified"));
+        assert_eq!(IndexEntry::from_log(&multi, "gauge-only.json").total_damage, 0);
+    }
+
+    #[test]
     fn parses_guiding_lands_local_only_and_old_quest_defaults() {
         let gl = FightLog::parse(r#"{"questName":"The Guiding Lands","questId":0,"stageId":109,"damageScope":"local-only","players":[],"gaugeSamples":[{"t":2,"monster":"m1","source":"local-unverified"}]}"#).unwrap();
         assert!(gl.is_local_only());

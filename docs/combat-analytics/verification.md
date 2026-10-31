@@ -114,3 +114,8 @@ Keep all GL rows **NOT RUN** until real game testing. Source-level simulated mod
 ### Guiding Lands stage lifecycle source regression (not in-game evidence)
 
 The production `SyncQuestState` path now uses the pure `GuidingLandsSession.Decide(stage, player, active)` policy before accessing any quest ID/state. Regression covers no-player load, first entry, repeated monster encounters, missing player pointer during camp travel, changed multiplayer player pointer, stage exit, one-time end and immediate re-entry, and training/non-Guiding stages. Repeated 109-stage updates do not restart a session or reset the capture clock; the first confirmed non-109 stage ends it. **Actual stage transitions during camp travel, loading, multiplayer joins and returns still require GL01–GL08 live evidence; these unit tests do not prove the game always reports stage 109 throughout transitions.**
+
+
+### Shared Guiding Lands synthetic schema-3 fixtures (source-only, NOT runtime)
+
+`tests/fixtures/guiding-lands-solo.json` and `tests/fixtures/guiding-lands-multiplayer-gauge-only.json` are **hand-written synthetic** snapshots consumed by **both** SolidJS/web and Rust/GPUI model regression tests. They cover a positive local-hit-only session with explicit `damageScope: local-only`, and a multiplayer-labeled gauge-only zero-damage session with two fight-local monster IDs, no inferred remote damage or hunter rows, and all optional gauges `local-unverified`. The solo fixture's numeric `percent: 100` reflects internal normalization only: viewer UIs must display unknown party share instead. Neither JSON is captured from a real hunt and neither verifies multiplayer authority, monster offsets, Windows/Proton in-game timing or runtime compatibility. GL01–GL08 remain **NOT RUN**.

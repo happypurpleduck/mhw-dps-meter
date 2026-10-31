@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 3,
+  "kind": "quest",
+  "pluginVersion": "synthetic-test-only",
+  "gameBuild": 421810,
+  "questId": 0,
+  "questName": "The Guiding Lands",
+  "result": "leave",
+  "stageId": 109,
+  "stage": "Guiding Lands",
+  "damageScope": "local-only",
+  "startedAt": "2026-10-31T07:00:00Z",
+  "endedAt": "2026-10-31T07:02:00Z",
+  "durationSeconds": 120,
+  "timerSource": "local",
+  "hitCoverage": "local",
+  "rewards": null,
+  "players": [
+    {
+      "slot": 0,
+      "name": "Sample Local",
+      "isLocal": true,
+      "weapon": "DualBlades",
+      "damage": 360,
+      "dps": 3,
+      "percent": 100
+    }
+  ],
+  "monsters": [
+    {
+      "id": "m1",
+      "type": 0,
+      "name": "Sample Anjanath",
+      "variant": 0,
+      "maxHealth": 1000,
+      "lastHealth": 800,
+      "firstSeenT": 0
+    }
+  ],
+  "samples": [
+    {
+      "t": 2,
+      "damage": [
+        120,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "t": 120,
+      "damage": [
+        360,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "hits": [
+    {
+      "t": 9,
+      "slot": 0,
+      "monster": "m1",
+      "damage": 120,
+      "crit": false,
+      "tenderized": false,
+      "attackId": 0,
+      "actionSet": 1,
+      "actionId": 2
+    },
+    {
+      "t": 119,
+      "slot": 0,
+      "monster": "m1",
+      "damage": 240,
+      "crit": true,
+      "tenderized": false,
+      "attackId": 0,
+      "actionSet": 1,
+      "actionId": 2
+    }
+  ],
+  "gaugeSamples": [
+    {
+      "t": 2,
+      "rawHuntT": 2,
+      "clockAdjusted": false,
+      "clockBoundary": false,
+      "monster": "m1",
+      "source": "local-unverified",
+      "stamina": 90,
+      "maxStamina": 150,
+      "parts": [],
+      "ailments": []
+    },
+    {
+      "t": 4,
+      "rawHuntT": 4,
+      "clockAdjusted": false,
+      "clockBoundary": false,
+      "monster": "m1",
+      "source": "local-unverified",
+      "stamina": 75,
+      "maxStamina": 150,
+      "parts": [],
+      "ailments": []
+    }
+  ],
+  "gaugeSamplesDropped": 0,
+  "gaugeClockDiscontinuities": 0,
+  "events": []
+}
