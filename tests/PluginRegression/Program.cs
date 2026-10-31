@@ -45,7 +45,15 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
  Equal(false, glSnapshot.HasAwardTable,
      "expedition local hits are not labeled as verified quest award data");
  Equal(100f, glSnapshot.WithRates(10).Members[0].Percent,
-     "displayed percentage is over local-only observations, not the party");
+     "internal normalization only counts observed local damage");
+ Equal("n/a", GuidingLandsSession.DisplayShare(true, 100f),
+     "Guiding Lands UI never claims 100 percent of unknown remote damage");
+ Equal("n/a", GuidingLandsSession.DisplayShare(true, 0f),
+     "missing remote contributions cannot be presented as known zero share");
+ Equal("37.5%", GuidingLandsSession.DisplayShare(false, 37.5f),
+     "ordinary quests retain their numerical party-share display");
+ Equal(true, GuidingLandsSession.HudProvenance.Contains("teammate totals unavailable"),
+     "Guiding Lands overlay explicitly explains missing remote totals");
  var glFallback = GuidingLandsSession.LocalSnapshot(
      glRoster, (nint)0xC0000, "SavedLocal", 75, hookAvailable: true);
  Equal("SavedLocal", glFallback!.Members[0].Name,

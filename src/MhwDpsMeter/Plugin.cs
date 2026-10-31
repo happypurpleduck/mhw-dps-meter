@@ -321,7 +321,12 @@ public sealed class Plugin : IPlugin
             if (snapshot is null)
             {
                 if (_guidingLands)
+                {
+                    // A missing local hook is not zero damage. Do not leave
+                    // the previous local total on screen as if it were live.
+                    _snapshot = null;
                     _status = "Guiding Lands: local hit tracking unavailable; no remote damage totals";
+                }
                 return;
             }
 
@@ -756,7 +761,8 @@ public sealed class Plugin : IPlugin
             _inQuest ? _carts : null,
             _inQuest ? _gaugeStates : null,
             _gaugePoller.SelectionEpoch,
-            CurrentGaugeAvailability());
+            CurrentGaugeAvailability(),
+            _guidingLands);
     }
 
     // ---- SPL quest callbacks -------------------------------------------------------
@@ -1163,7 +1169,10 @@ public sealed class Plugin : IPlugin
         _questStartedAt = DateTimeOffset.UtcNow;
         _elapsedSeconds = 0;
         _timerSource = "local";
-        _snapshot = PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
+        // Do not paint a placeholder zero as measured local Guiding Lands
+        // damage before the first valid hook-backed snapshot arrives.
+        _snapshot = guidingLands ? null
+            : PartySnapshot.LocalOnly(0, "You", LocalPlayerInstance());
         _pollAccumulator = 0;
         _questTimer.Restart();
         _monsterHp.Reset();

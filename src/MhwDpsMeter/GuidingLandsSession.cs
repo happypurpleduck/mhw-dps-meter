@@ -6,6 +6,14 @@ namespace MhwDpsMeter;
 internal static class GuidingLandsSession
 {
     public const int StageId = 109;
+    public const string HudProvenance =
+        "Guiding Lands: local hook damage only; teammate totals unavailable";
+
+    // Percent in a local-only PartySnapshot describes a single known
+    // hunter's fraction of *observed* damage, not the multiplayer party.
+    // Never expose that internal 100% as a synchronized party share.
+    public static string DisplayShare(bool guidingLands, float percent) =>
+        guidingLands ? "n/a" : $"{percent:0.0}%";
 
     public static bool IsStage(int stage) => stage == StageId;
 

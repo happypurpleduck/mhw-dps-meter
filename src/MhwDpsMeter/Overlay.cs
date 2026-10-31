@@ -52,7 +52,7 @@ internal sealed class Overlay
         ImGui.PopTextWrapPos();
     }
 
-    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null, long selectionEpoch = 0, MonsterGaugeOverlayAvailability gaugeAvailability = default)
+    public void Draw(PartySnapshot? snapshot, float elapsedSeconds, bool inQuest, string? hint = null, TimeTrial? trial = null, CartTracker? carts = null, IReadOnlyList<MonsterGaugeState>? gauges = null, long selectionEpoch = 0, MonsterGaugeOverlayAvailability gaugeAvailability = default, bool guidingLands = false)
     {
         if (!Visible || !inQuest)
             return;
@@ -93,9 +93,13 @@ internal sealed class Overlay
             ShowMonsterGaugeDetails, GaugeCategories);
 
         if (frame.HasPartyRows)
-            DrawPartyTable(snapshot!, elapsedSeconds, carts);
+            DrawPartyTable(snapshot!, elapsedSeconds, carts, guidingLands);
         else
+        {
             Disabled("Waiting for hunt data...");
+            if (guidingLands)
+                Disabled(GuidingLandsSession.HudProvenance);
+        }
 
         if (frame.GaugeRows.Length > 0)
             DrawGaugeSummary(frame.GaugeRows);
@@ -113,7 +117,8 @@ internal sealed class Overlay
         ImGui.End();
     }
 
-    private static void DrawPartyTable(PartySnapshot snapshot, float elapsedSeconds, CartTracker? carts)
+    private static void DrawPartyTable(PartySnapshot snapshot, float elapsedSeconds,
+        CartTracker? carts, bool guidingLands)
     {
         var members = snapshot.Members
             .OrderByDescending(member => member.Damage)
@@ -152,7 +157,8 @@ internal sealed class Overlay
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted($"{member.Dps:0.0}");
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted($"{member.Percent:0.0}%");
+                ImGui.TextUnformatted(GuidingLandsSession.DisplayShare(
+                    guidingLands, member.Percent));
                 ImGui.PopStyleColor();
             }
 
@@ -160,7 +166,9 @@ internal sealed class Overlay
         }
 
         ImGui.Separator();
-        ImGui.TextUnformatted($"Total  {total:N0}   {total / duration:0.0} DPS");
+        ImGui.TextUnformatted($"{(guidingLands ? "Local" : "Total")}  {total:N0}   {total / duration:0.0} DPS");
+        if (guidingLands)
+            Disabled(GuidingLandsSession.HudProvenance);
         if (carts is { MaxDeaths: > 0 } || carts is { Deaths: > 0 })
         {
             ImGui.SameLine();
