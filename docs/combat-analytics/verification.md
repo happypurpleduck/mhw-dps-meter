@@ -136,3 +136,7 @@ When a valid live roster matches the local hunter pointer in multiplayer, the pr
 ### Extended Guiding Lands damage-history retention (source-only)
 
 The bounded 900-point party damage history no longer stops after roughly 30 minutes. Once full, the production writer retains every second existing point and doubles the sampling interval (2→4→8 seconds as needed), keeping `t=0`, chronological sample timestamps and coverage through the end of a multi-hour expedition. Optional additive `damageSamplesCompactions` identifies lost resolution, not lost time coverage. Production regression writes/reads a three-hour Guiding Lands session and checks bounded sample count, monotonic time, tail coverage and metadata. Sparse observed samples are not proof of combat events between timestamps; runtime GL08 still required.
+
+### Guiding Lands confirmed-exit grace (source-only)
+
+`SyncQuestState` now delays expedition teardown until a concrete out-of-109 stage is observed **continuously for at least 1.5 monotonic seconds**. Unknown/loading stage values (`<=0`) or a return to 109 clear the tentative exit; quest callbacks do not finalize the GL session. The production pure transition policy is tested at grace boundaries, unknown stages, invalid clock input and re-entry, while the plugin manages the timestamp from `Stopwatch`. The chosen grace is a conservative source-level heuristic, **not proof** of actual GL loading/camp stage sequences. During GL01–GL06 gameplay checks, capture stage transitions for camp travel, quest exit and re-entry and adjust only from evidence.

@@ -44,9 +44,24 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
  Equal(GuidingLandsTransition.Continue,
      GuidingLandsSession.Decide(109, (nint)0xC0000, true),
      "GL multiplayer membership/pointer changes do not restart session");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(0, 0, true, 10),
+     "an unknown loading stage never finalizes a GL expedition");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(305, 0, true, 0.1),
+     "one brief Seliana reading cannot prematurely terminate the expedition");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(305, 0, true, 1.49),
+     "out-of-area grace interval still holds the same GL session");
  Equal(GuidingLandsTransition.Leave,
-     GuidingLandsSession.Decide(305, 0, true),
-     "leaving GL for Seliana ends current expedition");
+     GuidingLandsSession.Decide(305, 0, true, 1.5),
+     "sustained concrete departure ends current GL expedition");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(109, 0, true, 10),
+     "re-entering stage 109 during grace cancels the tentative departure");
+ Equal(GuidingLandsTransition.Continue,
+     GuidingLandsSession.Decide(305, 0, true, double.NaN),
+     "invalid timing never authorizes an expedition exit");
  Equal(109, GuidingLandsSession.LogStageId(true, 305),
      "leaving Guiding Lands for Seliana preserves source stage in its log");
  Equal(109, GuidingLandsSession.LogStageId(true, 504),
@@ -67,8 +82,8 @@ Equal("Secluded Valley", GameNames.Stage(416), "Alatreon arena display name");
      GuidingLandsSession.Decide(504, (nint)0xB0000, false),
      "training area never enters a GL expedition");
  Equal(GuidingLandsTransition.Leave,
-     GuidingLandsSession.Decide(504, 0, true),
-     "leaving GL for any other stage ends active expedition");
+     GuidingLandsSession.Decide(504, 0, true, 2),
+     "sustained concrete training stage ends the active expedition");
 
  var glLocal = new PartyMemberSnapshot {
      Slot = 2, Name = "Local", Instance = (nint)0xB0000,

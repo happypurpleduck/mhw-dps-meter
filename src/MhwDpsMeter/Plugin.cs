@@ -46,6 +46,7 @@ public sealed class Plugin : IPlugin
     // Guiding Lands is an expedition stage, not a quest-award table hunt.
     // Keep one local session across spawns/joins; never infer remote DPS.
     private bool _guidingLands;
+    private long _guidingLandsOutsideSince;
     private bool _showResults;
     private int _questId;
     private string _questName = "";
@@ -1019,11 +1020,21 @@ public sealed class Plugin : IPlugin
         try { _stageId = (int)Area.CurrentStage; }
         catch { return; }
 
-        // Make the entire Guiding Lands stage policy pure and testable.
+        // Brief loading-stage or out-of-area readings must not end an
+        // otherwise live expedition. A *concrete* non-109 stage must persist
+        // for the grace interval before teardown; unknown stage IDs fail
+        // closed and reset the candidate timer.
+        if (!_guidingLands || _stageId <= 0 || GuidingLandsSession.IsStage(_stageId))
+            _guidingLandsOutsideSince = 0;
+        else if (_guidingLandsOutsideSince == 0)
+            _guidingLandsOutsideSince = Stopwatch.GetTimestamp();
+
+        var secondsOutside = _guidingLandsOutsideSince == 0 ? 0
+            : Stopwatch.GetElapsedTime(_guidingLandsOutsideSince).TotalSeconds;
         // Never query the local hunter on ordinary quest stages.
         var guidingDecision = GuidingLandsSession.Decide(_stageId,
             GuidingLandsSession.IsStage(_stageId) ? LocalPlayerInstance() : 0,
-            _guidingLands);
+            _guidingLands, secondsOutside);
         if (guidingDecision == GuidingLandsTransition.Begin)
         {
             if (_training)
@@ -1036,7 +1047,8 @@ public sealed class Plugin : IPlugin
 
         // Monster kills, guest joins and temporary missing player pointers
         // do not end a stage-109 expedition. Never consult quest states here.
-        if (GuidingLandsSession.IsStage(_stageId))
+        if (GuidingLandsSession.IsStage(_stageId)
+            || guidingDecision == GuidingLandsTransition.Continue)
             return;
 
         // A confirmed stage exit ends a Guiding Lands session once; normal
@@ -1165,6 +1177,7 @@ public sealed class Plugin : IPlugin
     private void StartHuntSession(int questId, string questName, bool guidingLands)
     {
         _guidingLands = guidingLands;
+        _guidingLandsOutsideSince = 0;
         _inQuest = true;
         _showResults = false;
         _questId = questId;
@@ -1259,6 +1272,7 @@ public sealed class Plugin : IPlugin
 
         // Expeditions have no normal quest-results screen/reward table.
         _guidingLands = false;
+        _guidingLandsOutsideSince = 0;
         _showResults = !wasGuidingLands && members.Length > 0;
         if (!_showResults)
             _snapshot = null;

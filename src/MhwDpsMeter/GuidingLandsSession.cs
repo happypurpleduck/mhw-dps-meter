@@ -52,16 +52,23 @@ internal static class GuidingLandsSession
     /// <summary>Stage-only transition policy. A long expedition has no
     /// conventional quest completion state; monster/party transitions and
     /// brief missing player pointers must not create duplicate sessions.</summary>
+    public const double ConfirmedExitSeconds = 1.5;
+
     public static GuidingLandsTransition Decide(
-        int stage, nint mainPlayer, bool alreadyActive)
+        int stage, nint mainPlayer, bool alreadyActive, double secondsOutside = 0)
     {
         if (IsStage(stage))
             return alreadyActive ? GuidingLandsTransition.Continue
                 : CanStart(stage, mainPlayer) ? GuidingLandsTransition.Begin
                 : GuidingLandsTransition.None;
-
-        return alreadyActive ? GuidingLandsTransition.Leave
-            : GuidingLandsTransition.None;
+        if (!alreadyActive)
+            return GuidingLandsTransition.None;
+        // A transient loading/unknown stage is not proof that the hunter
+        // left Guiding Lands. Require sustained concrete destination stage.
+        if (stage <= 0 || !double.IsFinite(secondsOutside)
+            || secondsOutside < ConfirmedExitSeconds)
+            return GuidingLandsTransition.Continue;
+        return GuidingLandsTransition.Leave;
     }
 
     /// <summary>Never reuse quest-award data, remote players' zeros or
