@@ -35,6 +35,15 @@ describe('parse', () => {
     expect(solo.players[0]!.damage).toBe(360)
     expect(solo.players[0]!.percent).toBe(100) // internal only, not a party-share UI claim
     expect(solo.hits).toHaveLength(2)
+    expect(solo.samples).toHaveLength(61) // t=0,2,...120 from the two-second writer
+    expect(solo.samples[0]).toEqual({ t: 0, damage: [0, 0, 0, 0] })
+    expect(solo.samples.find(s => s.t === 8)!.damage[0]).toBe(0)
+    expect(solo.samples.find(s => s.t === 10)!.damage[0]).toBe(120)
+    expect(solo.samples.find(s => s.t === 118)!.damage[0]).toBe(120)
+    expect(solo.samples.find(s => s.t === 120)!.damage[0]).toBe(360)
+    expect(solo.samples.every(s =>
+      s.damage[0]! <= solo.hits.filter(h => h.t <= s.t).reduce((sum, h) => sum + h.damage, 0)
+    )).toBe(true)
     expect(solo.gaugeSamples.every((s) => s.source === 'local-unverified')).toBe(true)
     expect(indexEntryFromLog(solo, 'guiding-lands-solo.json').damageScope).toBe('local-only')
     expect(multiplayer.damageScope).toBe('local-only')
@@ -42,6 +51,7 @@ describe('parse', () => {
     expect(hasObservedLocalDamage(multiplayer)).toBe(false)
     expect(multiplayer.players).toHaveLength(0)
     expect(multiplayer.hits).toHaveLength(0)
+    expect(multiplayer.samples).toEqual([{ t: 0, damage: [0, 0, 0, 0] }])
     expect(multiplayer.monsters.map((m) => m.id)).toEqual(['m1', 'm2'])
     expect(multiplayer.gaugeSamples.map((s) => s.monster)).toEqual(['m1', 'm2'])
     expect(multiplayer.gaugeSamples.every((s) => s.source === 'local-unverified')).toBe(true)

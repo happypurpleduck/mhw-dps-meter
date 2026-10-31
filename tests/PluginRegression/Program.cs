@@ -2068,6 +2068,9 @@ try
         [], recorded);
     Equal(true, noHook is not null && noHook.Players.Length == 0,
         "gauge-only expedition saves without any fabricated player row");
+    Equal(1, noHook!.Samples.Length,
+        "real production writer starts gauge-only logs with one t=0 damage sample");
+    Equal(0f, noHook.Samples[0].T, "initial damage sample timestamp is zero");
     Equal(4, store.Index.Count, "gauge-only no-hook entry added after two quest logs and three-hour sample log");
 }
 finally

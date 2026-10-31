@@ -36,7 +36,17 @@
       "firstSeenT": 90
     }
   ],
-  "samples": [],
+  "samples": [
+    {
+      "t": 0,
+      "damage": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
   "hits": [],
   "gaugeSamples": [
     {

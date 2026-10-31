@@ -466,6 +466,17 @@ mod guiding_lands_scope_tests {
         assert_eq!(solo.players[0].damage, 360);
         assert_eq!(solo.players[0].percent, 100.0); // never an actual multiplayer party share
         assert_eq!(solo.hits.len(), 2);
+        assert_eq!(solo.samples.len(), 61);
+        assert_eq!(solo.samples[0].t, 0.0);
+        assert_eq!(solo.samples[4].damage[0], 0);
+        assert_eq!(solo.samples[5].damage[0], 120);
+        assert_eq!(solo.samples[59].damage[0], 120);
+        assert_eq!(solo.samples[60].damage[0], 360);
+        assert!(solo.samples.iter().all(|s| {
+            let recorded_hits: i64 = solo.hits.iter()
+                .filter(|h| h.t <= s.t).map(|h| h.damage).sum();
+            s.damage[0] <= recorded_hits
+        }));
         assert!(solo.gauge_samples.iter().all(|g| g.source == "local-unverified"));
         assert_eq!(IndexEntry::from_log(&solo, "solo.json").damage_scope.as_deref(), Some("local-only"));
 
@@ -476,6 +487,9 @@ mod guiding_lands_scope_tests {
         assert_eq!(multi.quest_id, 0);
         assert!(multi.players.is_empty());
         assert!(multi.hits.is_empty());
+        assert_eq!(multi.samples.len(), 1);
+        assert_eq!(multi.samples[0].t, 0.0);
+        assert!(multi.samples[0].damage.iter().all(|d| *d == 0));
         assert_eq!(multi.monsters.len(), 2);
         assert_eq!(multi.gauge_samples.len(), 2);
         assert_eq!(multi.gauge_samples[0].monster, "m1");
