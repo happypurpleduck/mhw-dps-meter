@@ -622,6 +622,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
     let total = log.total_damage();
     let duration = log.duration_seconds.max(1.0);
     let local_only = log.is_local_only();
+    let unknown_scope = log.has_unknown_damage_scope();
     let has_local_damage = log.has_observed_local_damage();
     v_flex()
         .gap_3()
@@ -648,9 +649,11 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                     )))
                 }),
         )
-        .when(local_only, |this| {
+        .when(local_only || unknown_scope, |this| {
             this.child(div().text_sm().text_color(cx.theme().muted_foreground)
-                .child(if has_local_damage {
+                .child(if unknown_scope {
+                    "Unrecognized damage coverage: totals, DPS and party shares unavailable"
+                } else if has_local_damage {
                     "Guiding Lands: local hit damage only; teammate totals and party share unavailable"
                 } else {
                     "Guiding Lands: no local hit observations; teammate totals and party share unavailable"
@@ -662,19 +665,22 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
                 .w_full()
                 .flex_wrap()
                 .gap_2()
-                .child(stat_tile(if local_only { "Observed local damage" } else { "Total damage" },
+                .child(stat_tile(if local_only { "Observed local damage" } else if unknown_scope { "Damage (unknown coverage)" } else { "Total damage" },
                     if has_local_damage { format_int(total) } else { "unavailable".to_string() },
-                    if local_only {
+                    if unknown_scope { "unrecognized damage scope".to_string() }
+                    else if local_only {
                         if has_local_damage { "teammate totals unavailable".to_string() } else { "no local hook observations".to_string() }
                     } else { format!("{} hunter{}", log.players.len(), if log.players.len() == 1 { "" } else { "s" }) }, None, cx))
-                .child(stat_tile(if local_only { "Observed local DPS" } else { "Party DPS" },
+                .child(stat_tile(if local_only { "Observed local DPS" } else if unknown_scope { "DPS (unknown coverage)" } else { "Party DPS" },
                     if has_local_damage { format!("{:.1}", total as f32 / duration) } else { "unavailable".to_string() },
                     if has_local_damage { format!("over {}", format_duration(log.duration_seconds)) } else { "no local hook observations".to_string() }, None, cx))
                 .when_some(me, |this, p| {
                     this.child(stat_tile(
                         "Your damage",
-                        format_int(p.damage),
-                        if local_only {
+                        if unknown_scope { "unavailable".to_string() } else { format_int(p.damage) },
+                        if unknown_scope {
+                            "unrecognized damage coverage".to_string()
+                        } else if local_only {
                             format!("local hits only · {}", weapon_display_name(p.weapon.as_deref()))
                         } else {
                             format!("{:.1}% of party · {}", p.percent, weapon_display_name(p.weapon.as_deref()))
@@ -707,7 +713,7 @@ fn render_header(log: &FightLog, cx: &App) -> impl IntoElement {
 }
 
 fn render_players_table(log: &FightLog, cx: &App) -> impl IntoElement {
-    let local_only = log.is_local_only();
+    let local_only = log.damage_scope.is_some();
     Table::new()
         .small()
         .border_1()

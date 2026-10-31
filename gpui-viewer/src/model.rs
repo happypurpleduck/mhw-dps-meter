@@ -396,7 +396,12 @@ impl FightLog {
     }
 
     pub fn has_observed_local_damage(&self) -> bool {
-        !self.is_local_only() || self.players.iter().any(|p| p.is_local)
+        self.damage_scope.is_none() ||
+            (self.is_local_only() && self.players.iter().any(|p| p.is_local))
+    }
+
+    pub fn has_unknown_damage_scope(&self) -> bool {
+        self.damage_scope.as_deref().is_some_and(|value| value != "local-only")
     }
 
     /// Hits of one hunter (teammates only have estimated rows).
@@ -466,6 +471,10 @@ mod guiding_lands_scope_tests {
         let old = FightLog::parse(r#"{"questName":"Normal hunt","players":[]}"#).unwrap();
         assert!(!old.is_local_only());
         assert!(old.has_observed_local_damage());
+        let future = FightLog::parse(r#"{"questName":"Future","players":[],"damageScope":"host-verified"}"#).unwrap();
+        assert!(future.has_unknown_damage_scope());
+        assert!(!future.has_observed_local_damage());
+        assert_eq!(IndexEntry::from_log(&future, "future.json").damage_scope.as_deref(), Some("host-verified"));
         assert!(old.damage_scope.is_none());
         assert!(IndexEntry::from_log(&old, "old.json").damage_scope.is_none());
     }

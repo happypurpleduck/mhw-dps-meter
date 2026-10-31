@@ -67,7 +67,13 @@ describe('parse', () => {
     expect(hasObservedLocalDamage(regular)).toBe(true)
     expect(indexEntryFromLog(regular, 'normal.json').damageScope).toBeUndefined()
     const unknownScope = parseLog(JSON.stringify({ questName: 'Future hunt', players: [], damageScope: 'host-verified' }))
-    expect(unknownScope.damageScope).toBeUndefined()
+    expect(unknownScope.damageScope).toBe('host-verified')
+    expect(hasObservedLocalDamage(unknownScope)).toBe(false)
+    const futureIndex = parseIndex(JSON.stringify([{
+      file: 'future.json', questName: 'Future', players: ['Local'],
+      totalDamage: 9999, damageScope: 'host-verified',
+    }]))
+    expect(futureIndex[0]!.damageScope).toBe('host-verified')
   })
 
   it('reads every sample file, schema 1 included', () => {

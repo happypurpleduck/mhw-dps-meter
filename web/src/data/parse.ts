@@ -3,7 +3,8 @@ import { gaugeI32, isGaugeI32 } from './gaugeInteger'
 
 /** A gauge-only expedition lacks measured local hook damage. */
 export const hasObservedLocalDamage = (log: FightLog): boolean =>
-  log.damageScope !== 'local-only' || log.players.some(p => p.isLocal)
+  log.damageScope === undefined ||
+  (log.damageScope === 'local-only' && log.players.some(p => p.isLocal))
 
 /** Accepts schema-1 or schema-2 JSON and returns a fully populated FightLog. */
 export function normalizeLog(raw: unknown): FightLog {
@@ -30,7 +31,7 @@ export function normalizeLog(raw: unknown): FightLog {
     kind: r.kind === 'trial' ? 'trial' : 'quest',
     pluginVersion: (r.pluginVersion as string | undefined) ?? undefined,
     gameBuild: num(r.gameBuild, 0),
-    damageScope: r.damageScope === 'local-only' ? 'local-only' : undefined,
+    damageScope: typeof r.damageScope === 'string' ? r.damageScope : undefined,
     questId: num(r.questId, 0),
     questName: r.questName,
     result: str(r.result, ''),
@@ -150,7 +151,7 @@ export function parseIndex(text: string): IndexEntry[] {
     startedAt: str(e.startedAt, ''),
     durationSeconds: num(e.durationSeconds, 0),
     totalDamage: num(e.totalDamage, 0),
-    damageScope: e.damageScope === 'local-only' ? 'local-only' : undefined,
+    damageScope: typeof e.damageScope === 'string' ? e.damageScope : undefined,
     weapon: (e.weapon as string | null | undefined) ?? null,
     players: Array.isArray(e.players) ? (e.players as string[]) : [],
     monsters: Array.isArray(e.monsters) ? (e.monsters as string[]) : [],

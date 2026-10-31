@@ -73,6 +73,7 @@ function Header(props: { log: FightLog }) {
   const total = () => totalDamage(props.log)
   const duration = () => Math.max(props.log.durationSeconds, 1)
   const localOnly = () => props.log.damageScope === 'local-only'
+  const unknownScope = () => props.log.damageScope !== undefined && !localOnly()
   const observedLocal = () => hasObservedLocalDamage(props.log)
   return (
     <div class="flex flex-col gap-3">
@@ -94,6 +95,9 @@ function Header(props: { log: FightLog }) {
       <Show when={localOnly()}>
         <p class="text-sm text-warning">Guiding Lands: {observedLocal() ? 'only local hit damage was recorded' : 'no local hit damage was recorded'}. Teammate damage and actual multiplayer party share are unavailable.</p>
       </Show>
+      <Show when={unknownScope()}>
+        <p class="text-sm text-warning">Unrecognized damage coverage: totals, DPS and party shares are unavailable. Raw records remain inspectable but do not establish source authority.</p>
+      </Show>
       <Show when={props.log.gaugeClockDiscontinuities > 0}>
         <p class="text-sm text-warning">
           Experimental gauge timeline adjusted across {props.log.gaugeClockDiscontinuities} hunt-clock changes.
@@ -107,12 +111,12 @@ function Header(props: { log: FightLog }) {
         </p>
       </Show>
       <div class="stats stats-vertical sm:stats-horizontal bg-base-200 rounded-box shadow-sm flex-wrap">
-        <StatTile title={localOnly() ? "Observed local damage" : "Total damage"} value={observedLocal() ? formatInt(total()) : "unavailable"} desc={localOnly() ? (observedLocal() ? "teammate totals unavailable" : "no local hook observations") : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
-        <StatTile title={localOnly() ? "Observed local DPS" : "Party DPS"} value={observedLocal() ? (total() / duration()).toFixed(1) : "unavailable"} desc={observedLocal() ? `over ${formatDuration(props.log.durationSeconds)}` : "no local hook observations"} />
+        <StatTile title={localOnly() ? "Observed local damage" : unknownScope() ? "Damage (unknown coverage)" : "Total damage"} value={observedLocal() ? formatInt(total()) : "unavailable"} desc={unknownScope() ? "unrecognized damage scope" : localOnly() ? (observedLocal() ? "teammate totals unavailable" : "no local hook observations") : `${props.log.players.length} hunter${props.log.players.length === 1 ? '' : 's'}`} />
+        <StatTile title={localOnly() ? "Observed local DPS" : unknownScope() ? "DPS (unknown coverage)" : "Party DPS"} value={observedLocal() ? (total() / duration()).toFixed(1) : "unavailable"} desc={observedLocal() ? `over ${formatDuration(props.log.durationSeconds)}` : "no local hook observations"} />
         <Show when={me()}>
           {(p) => (
             <>
-              <StatTile title="Your damage" value={formatInt(p().damage)} desc={localOnly() ? `local hits only · ${weaponDisplayName(p().weapon)}` : `${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
+              <StatTile title="Your damage" value={unknownScope() ? "unavailable" : formatInt(p().damage)} desc={unknownScope() ? "unrecognized damage coverage" : localOnly() ? `local hits only · ${weaponDisplayName(p().weapon)}` : `${p().percent.toFixed(1)}% of party · ${weaponDisplayName(p().weapon)}`} accent="text-primary" />
               <StatTile title="Your hits" value={String(stats().hits)} desc={stats().hits ? `crit ${pct(stats().critRate)} · avg ${stats().avg.toFixed(0)} · max ${stats().max}` : 'no per-hit data (schema 1)'} />
               <Show when={stats().hits > 0}>
                 <StatTile title="Active DPS" value={stats().activeDps.toFixed(1)} desc={`first→last hit ${formatDuration(stats().activeSeconds)}`} />
@@ -128,7 +132,7 @@ function Header(props: { log: FightLog }) {
 // ---- Overview ----------------------------------------------------------------
 
 const playerCol = createColumnHelper<Features, FightLogPlayer>()
-const playerColumns = (localOnly: boolean) => [
+const playerColumns = (shareUnknown: boolean) => [
   playerCol.accessor('name', {
     header: 'Hunter',
     sortFn: 'alphanumeric',
@@ -154,7 +158,7 @@ const playerColumns = (localOnly: boolean) => [
     header: 'Share',
     sortFn: 'basic',
     meta: { class: 'w-52' },
-    cell: (info) => localOnly ? (
+    cell: (info) => shareUnknown ? (
       <span class="text-xs text-base-content/60">n/a — remote damage unknown</span>
     ) : (
       <div class="flex items-center gap-2 min-w-0">
@@ -167,7 +171,7 @@ const playerColumns = (localOnly: boolean) => [
 
 function Overview(props: { log: FightLog }) {
   const players = () => props.log.players
-  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns(props.log.damageScope === 'local-only'), initialSorting: [{ id: 'damage', desc: true }] })
+  const table = createSolidTable<FightLogPlayer>({ data: players, columns: playerColumns(props.log.damageScope !== undefined), initialSorting: [{ id: 'damage', desc: true }] })
   const [windowSeconds, setWindowSeconds] = createSignal(20)
   const hasSamples = () => props.log.samples.length > 1
   return (

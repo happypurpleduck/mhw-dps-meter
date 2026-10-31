@@ -143,3 +143,7 @@ Both SolidJS web and Rust GPUI viewers now parse the optional `damageScope: "loc
 ### Guiding Lands gauge-only history with unknown damage (source-only)
 
 If a `damageScope:"local-only"` expedition captured monster gauges but **no hook-backed local player row**, web and GPUI display **unavailable** for local damage/DPS (and an em dash in the hunt list), rather than a misleading measured zero. Where a local hunter row exists, actual observed local damage remains shown, including genuine zero. Both viewers use tested production-model checks against the shared synthetic fixtures. No host-authoritative claims; GL01–GL08 live runtime testing remains NOT RUN.
+
+### Unknown damage coverage fails closed (source-only review correction)
+
+Both viewers now preserve unknown future `damageScope` values as opaque provenance rather than converting them to missing metadata and claiming complete party authority. Unknown coverage receives a warning, unavailable total/DPS/local contribution and no numeric party shares. Old logs without scope still follow the ordinary quest display, while `local-only` logs retain their explicit source limitations. Parser/model regressions exercise future values. UI and runtime source validation remain required under #17.
